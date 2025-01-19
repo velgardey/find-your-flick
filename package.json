@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.21.0",
     "@next/font": "^14.2.15",
     "local": "link:@next/font/local",
     "next": "15.1.4",
