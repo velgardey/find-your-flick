@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from 'next/font/local'
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import MouseGlow from '@/components/MouseGlow';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,7 +33,10 @@ export default function RootLayout({
       <body
         className={`${sol.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <MouseGlow />
+        <div id="content-wrapper">
+          {children}
+        </div>
       </body>
     </html>
   );

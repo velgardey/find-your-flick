@@ -78,8 +78,8 @@ export default function MovieSearchModal({ isOpen, onClose, onSelectMovie }: Mov
                 <Image
                   src={`https://image.tmdb.org/t/p/w92${movie.poster_path}`}
                   alt={movie.title}
-                  width={46}
-                  height={69}
+                  width= {80}
+                  height={40}
                   className="rounded"
                 />
               )}
