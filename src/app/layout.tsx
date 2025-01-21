@@ -31,10 +31,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${sol.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${sol.variable} ${geistSans.variable} ${geistMono.variable} antialiased relative`}
       >
         <MouseGlow />
-        <div id="content-wrapper">
+        <div id="content-wrapper" className="relative z-30">
           {children}
         </div>
       </body>

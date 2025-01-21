@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 export default function MouseGlow() {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [backgroundImage, setBackgroundImage] = useState('');
+  const [isTouching, setIsTouching] = useState(false);
 
   useEffect(() => {
     const fetchRandomMovieBackdrop = async () => {
@@ -35,14 +36,33 @@ export default function MouseGlow() {
       });
     };
 
+    const handleTouchMove = (e: TouchEvent) => {
+      setIsTouching(true);
+      setPosition({
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+      });
+    };
+
+    const handleTouchEnd = () => {
+      setIsTouching(false);
+    };
+
     window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
   }, []);
 
   return (
-    <>
+    <div className="fixed inset-0 isolate pointer-events-none">
       <div 
-        className="fixed inset-0 z-0"
+        className="absolute inset-0 z-0"
         style={{
           backgroundImage: `url("${backgroundImage}")`,
           backgroundSize: 'cover',
@@ -52,31 +72,31 @@ export default function MouseGlow() {
         }}
       />
       <div
-        className="pointer-events-none fixed inset-0 z-10"
+        className="absolute inset-0 z-10"
         style={{
-          WebkitMaskImage: `radial-gradient(circle 150px at ${position.x}px ${position.y}px, 
+          WebkitMaskImage: `radial-gradient(circle ${isTouching ? '150px' : '300px'} at ${position.x}px ${position.y}px, 
             transparent 30%,
             black 70%)`,
-          maskImage: `radial-gradient(circle 150px at ${position.x}px ${position.y}px, 
+          maskImage: `radial-gradient(circle ${isTouching ? '150px' : '300px'} at ${position.x}px ${position.y}px, 
             transparent 30%,
             black 70%)`,
           background: 'black'
         }}
       />
       <div
-        className="pointer-events-none fixed inset-0 z-20"
+        className="absolute inset-0 z-20"
         style={{
           backgroundImage: `url("${backgroundImage}")`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          WebkitMaskImage: `radial-gradient(circle 150px at ${position.x}px ${position.y}px, 
+          WebkitMaskImage: `radial-gradient(circle ${isTouching ? '75px' : '150px'} at ${position.x}px ${position.y}px, 
             black 30%,
             transparent 70%)`,
-          maskImage: `radial-gradient(circle 150px at ${position.x}px ${position.y}px, 
+          maskImage: `radial-gradient(circle ${isTouching ? '75px' : '150px'} at ${position.x}px ${position.y}px, 
             black 30%,
             transparent 70%)`,
         }}
       />
-    </>
+    </div>
   );
 } 

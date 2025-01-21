@@ -74,63 +74,82 @@ export default function Home() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex flex-col items-center p-8">
-      <h1 className="text-6xl text-center font-bold text-white mb-12 mt-[15vh] font-sol">
-        Find Your Next Flick
-      </h1>
-      <div className="w-[60vw] max-w-2xl mt-[10vh] flex flex-col gap-4">
-        <div className="flex gap-4 items-start">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-black hover:bg-white hover:text-black text-white p-4 rounded-2xl flex items-center gap-2 mt-2"
-          >
-            <LuPlus />
-          </button>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full h-[10vh] p-4 bg-gray-800 text-white rounded-2xl resize-none placeholder:text-gray-700 placeholder:font-sol"
-            placeholder="Enter description of your next flick ..."
-          />
-          <button
-            onClick={handleGenerateRecommendations}
-            className="bg-black hover:bg-white hover:text-black transition-colors p-4 rounded-full aspect-auto flex items-center justify-center border border-black mt-2"
-          >
-            <LuArrowBigRightDash />
-          </button>
-        </div>
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleGenerateRecommendations();
+    }
+  };
 
-        {selectedMovies.length > 0 && (
-          <div className="flex gap-4 flex-wrap mt-4">
-            {selectedMovies.map((movie) => (
-              <div key={movie.id} className="relative group">
-                <Image
-                  src={`https://image.tmdb.org/t/p/w154${movie.poster_path}`}
-                  alt={movie.title}
-                  width={77}
-                  height={116}
-                  className="rounded-lg"
-                />
-                <button
-                  onClick={() => handleRemoveMovie(movie.id)}
-                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <LuX size={14} />
-                </button>
-              </div>
-            ))}
+  return (
+    <div className="min-h-screen flex flex-col">
+      <div className="w-full pt-[15vh] pb-8">
+        <div className="max-w-xl mx-auto px-4 sm:px-0">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl text-center font-bold text-white mb-8 font-sol">
+            Find Your Next Flick
+          </h1>
+          
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-2 sm:gap-4 items-start">
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="bg-black/50 backdrop-blur-sm hover:bg-white hover:text-black text-white p-2 sm:p-3 md:p-4 rounded-xl sm:rounded-2xl flex items-center gap-2"
+              >
+                <LuPlus />
+              </button>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Describe what kind of movie you're looking for..."
+                className="flex-1 bg-black/50 backdrop-blur-sm text-white placeholder:text-gray-500 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-800/50 min-h-[60px] resize-none hide-scrollbar shine-border"
+              />
+              <button
+                onClick={handleGenerateRecommendations}
+                className="bg-black/50 backdrop-blur-sm hover:bg-white hover:text-black transition-colors p-2 sm:p-3 md:p-4 rounded-full aspect-square flex items-center justify-center border border-gray-800/50"
+              >
+                <LuArrowBigRightDash />
+              </button>
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
-      <MovieRecommendations
-        recommendations={recommendations}
-        isLoading={isLoading}
-        description={description}
-        selectedMovies={selectedMovies}
-        setRecommendations={setRecommendations}
-      />
+      <div className="px-4 sm:px-8 flex-1">
+        {selectedMovies.length > 0 && (
+          <div className="max-w-xl mx-auto">
+            <div className="flex gap-2 sm:gap-4 flex-wrap mt-2 sm:mt-4">
+              {selectedMovies.map((movie) => (
+                <div key={movie.id} className="relative group">
+                  <Image
+                    src={`https://image.tmdb.org/t/p/w154${movie.poster_path}`}
+                    alt={movie.title}
+                    width={60}
+                    height={90}
+                    className="rounded-lg sm:w-[77px] sm:h-[116px]"
+                  />
+                  <button
+                    onClick={() => handleRemoveMovie(movie.id)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <LuX size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="max-w-7xl mx-auto">
+          <MovieRecommendations
+            recommendations={recommendations}
+            isLoading={isLoading}
+            description={description}
+            selectedMovies={selectedMovies}
+            setRecommendations={setRecommendations}
+          />
+        </div>
+      </div>
 
       <MovieSearchModal
         isOpen={isModalOpen}

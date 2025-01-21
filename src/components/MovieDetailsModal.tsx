@@ -68,8 +68,8 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
   if (!movieId) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-8 z-50 animate-fadeIn">
-      <div className="bg-gray-900 rounded-2xl w-[85vw] h-[85vh] overflow-hidden relative">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-2 sm:p-8 z-50 animate-fadeIn">
+      <div className="bg-gray-900 rounded-xl sm:rounded-2xl w-[95vw] sm:w-[85vw] h-[90vh] sm:h-[85vh] overflow-y-auto">
         <button
           onClick={handleClose}
           className="absolute top-4 right-4 text-white z-10 hover:bg-white hover:text-black p-2 rounded-full transition-colors"
@@ -98,10 +98,10 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
             </div>
 
             {/* Content */}
-            <div className="relative -mt-20 px-8 pb-8">
-              <div className="flex gap-8">
+            <div className="relative -mt-10 sm:-mt-20 px-4 sm:px-8 pb-4 sm:pb-8">
+              <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
                 {/* Poster */}
-                <div className="relative w-[200px] h-[300px] flex-shrink-0">
+                <div className="relative w-[150px] sm:w-[200px] h-[225px] sm:h-[300px] mx-auto sm:mx-0 flex-shrink-0">
                   <Image
                     src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
                     alt={movie.title}
@@ -113,7 +113,7 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
 
                 {/* Details */}
                 <div className="flex-1">
-                  <h2 className="text-4xl font-bold text-white mb-2 font-sol">{movie.title}</h2>
+                  <h2 className="text-2xl sm:text-4xl font-bold text-white mb-2 font-sol text-center sm:text-left">{movie.title}</h2>
                   {movie.tagline && (
                     <p className="text-gray-400 italic mb-4">{movie.tagline}</p>
                   )}

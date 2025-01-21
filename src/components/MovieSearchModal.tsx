@@ -45,26 +45,34 @@ export default function MovieSearchModal({ isOpen, onClose, onSelectMovie }: Mov
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-black rounded-2xl p-6 w-full max-w-xl border border-gray-800">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-start sm:items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+      <div className="bg-white/5 backdrop-blur-xl rounded-xl sm:rounded-2xl p-4 sm:p-6 w-full max-w-xl border border-white/10 mt-16 sm:mt-0 shadow-2xl">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-white font-sol">Search Movies</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
+          <h2 className="text-lg sm:text-xl font-bold text-white font-sol">Search Movies</h2>
+          <button 
+            onClick={onClose} 
+            className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors"
+          >
             ✕
           </button>
         </div>
         
         <input
-            className="w-full p-3 bg-gray-900 text-white rounded-xl mb-4 placeholder:text-gray-700"
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search for a movie..."
+          className="w-full p-3 sm:p-4 bg-black/30 text-white rounded-xl mb-4 placeholder:text-gray-500 backdrop-blur-sm border border-white/10 focus:border-white/20 transition-colors outline-none"
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search for a movie..."
+          autoFocus
         />
 
-        {isLoading && <div className="text-gray-400 text-center">Loading...</div>}
+        {isLoading && (
+          <div className="flex justify-center items-center py-4">
+            <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+          </div>
+        )}
 
-        <div className="max-h-[60vh] overflow-y-auto">
+        <div className="max-h-[60vh] sm:max-h-[70vh] overflow-y-auto">
           {suggestions.map((movie) => (
             <div
               key={movie.id}
@@ -72,18 +80,24 @@ export default function MovieSearchModal({ isOpen, onClose, onSelectMovie }: Mov
                 onSelectMovie(movie);
                 onClose();
               }}
-              className="flex items-center gap-4 p-2 hover:bg-gray-700 rounded-lg cursor-pointer"
+              className="flex items-center gap-4 p-3 hover:bg-white/10 active:bg-white/20 rounded-lg cursor-pointer transition-all group"
             >
-              {movie.poster_path && (
-                <Image
-                  src={`https://image.tmdb.org/t/p/w92${movie.poster_path}`}
-                  alt={movie.title}
-                  width= {80}
-                  height={40}
-                  className="rounded"
-                />
+              {movie.poster_path ? (
+                <div className="relative">
+                  <Image
+                    src={`https://image.tmdb.org/t/p/w92${movie.poster_path}`}
+                    alt={movie.title}
+                    width={60}
+                    height={90}
+                    className="rounded-lg object-cover transition-transform group-hover:scale-105"
+                  />
+                </div>
+              ) : (
+                <div className="w-[60px] h-[90px] bg-black/30 backdrop-blur-sm rounded-lg flex items-center justify-center border border-white/10">
+                  <span className="text-gray-500 text-sm">No Image</span>
+                </div>
               )}
-              <span className="text-white font-sol">{movie.title}</span>
+              <span className="text-white font-sol flex-1 group-hover:translate-x-1 transition-transform">{movie.title}</span>
             </div>
           ))}
         </div>

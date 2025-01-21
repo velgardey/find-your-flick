@@ -30,7 +30,14 @@ export default function MovieRecommendations({
   const [replacingMovieId, setReplacingMovieId] = useState<number | null>(null);
 
   if (isLoading) {
-    return <div className="text-white text-center mt-8">Generating recommendations...</div>;
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+          <p className="text-white text-center">Generating recommendations...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!recommendations.length) return null;
@@ -76,33 +83,30 @@ export default function MovieRecommendations({
   };
 
   return (
-    <div className="mt-8">
-      <h2 className="text-2xl font-bold text-white mb-4 font-sol">Recommended Movies</h2>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+    <div className="w-full max-w-5xl mx-auto">
+      <h2 className="text-lg sm:text-xl font-bold text-white mb-3 font-sol">Recommended Movies</h2>
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-3">
         {recommendations.map((movie, index) => (
           <div 
             key={movie.id || `temp-${index}`} 
-            className="relative group"
+            className="relative group touch-manipulation backdrop-blur-md bg-white/5 rounded-lg border border-white/10 shadow-lg aspect-[2/3] overflow-hidden"
           >
-            <div 
-              className="relative"
-            >
+            <div className="relative w-full h-full">
               {movie.poster_path ? (
                 <>
                   {!loadedImages[movie.id] && (
                     <div 
-                      className="absolute inset-0 bg-gray-800 animate-pulse rounded-lg flex items-center justify-center"
+                      className="absolute inset-0 bg-black/30 backdrop-blur-sm animate-pulse rounded-lg flex items-center justify-center"
                     >
-                      <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+                      <div className="w-8 h-8 border-4 border-white/30 border-t-white/80 rounded-full animate-spin" />
                     </div>
                   )}
                   <Image
                     src={`https://image.tmdb.org/t/p/w342${movie.poster_path}`}
                     alt={movie.title}
-                    width={171}
-                    height={256}
-                    className={`rounded-lg transition-opacity duration-300 ${
-                      loadedImages[movie.id] ? 'opacity-100' : 'opacity-0'
+                    fill
+                    className={`object-cover transition-all duration-300 ${
+                      loadedImages[movie.id] ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
                     }`}
                     onLoad={() => handleImageLoad(movie.id)}
                     onError={() => {
@@ -112,42 +116,48 @@ export default function MovieRecommendations({
                   />
                   
                   {/* Hover Options */}
-                  <div className="absolute inset-0 bg-black bg-opacity-75 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-4">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedMovieId(movie.id);
-                      }}
-                      className="flex items-center gap-2 bg-white text-black px-4 py-2 rounded-full hover:bg-gray-200 transition-colors"
-                    >
-                      <LuEye /> View Details
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleReplaceMovie(movie.id, index);
-                      }}
-                      className="flex items-center gap-2 bg-transparent border border-white text-white px-4 py-2 rounded-full hover:bg-white hover:text-black transition-colors"
-                      disabled={replacingMovieId === movie.id}
-                    >
-                      {replacingMovieId === movie.id ? (
-                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <LuCheck /> Already Watched
-                        </>
-                      )}
-                    </button>
+                  <div className="absolute inset-0 bg-black/40 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center">
+                    <div className="flex flex-col items-center gap-3 sm:gap-4 relative w-full px-2 sm:px-3">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedMovieId(movie.id);
+                        }}
+                        className="flex items-center gap-1.5 hover:bg-white/10 text-white text-xs sm:text-sm px-3 py-1.5 rounded-full transition-all duration-300 hover:scale-105"
+                      >
+                        <LuEye className="text-base" /> View Details
+                      </button>
+                      
+                      {/* Horizontal divider */}
+                      <div className="w-3/4 h-[2px] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+                      
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReplaceMovie(movie.id, index);
+                        }}
+                        className="flex items-center gap-1.5 hover:bg-white/10 text-white text-xs sm:text-sm px-3 py-1.5 rounded-full transition-all duration-300 hover:scale-105"
+                        disabled={replacingMovieId === movie.id}
+                      >
+                        {replacingMovieId === movie.id ? (
+                          <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <LuCheck className="text-base" /> Already Watched
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </>
               ) : (
-                <div className="w-[171px] h-[256px] bg-gray-800 rounded-lg flex items-center justify-center">
-                  <span className="text-gray-500 text-sm text-center px-2">No Image Available</span>
+                <div className="absolute inset-0 bg-black/30 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                  <span className="text-gray-400 text-sm text-center px-2">No Image Available</span>
                 </div>
               )}
             </div>
-            <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 p-2 rounded-b-lg">
-              <p className="text-white text-sm font-sol">{movie.title}</p>
+            <div className="absolute bottom-0 left-0 right-0 bg-black/50 backdrop-blur-md p-2 border-t border-white/10">
+              <p className="text-white text-sm font-sol line-clamp-1 text-center">{movie.title}</p>
             </div>
           </div>
         ))}
