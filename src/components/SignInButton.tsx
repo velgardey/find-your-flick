@@ -32,20 +32,20 @@ export default function SignInButton() {
 
   if (user) {
     return (
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         <Link href="/profile">
           <Image
             src={user.photoURL || '/default-avatar.png'}
             alt="Profile"
-            width={32}
-            height={32}
-            className="rounded-full"
+            width={28}
+            height={28}
+            className="rounded-full w-7 h-7 sm:w-8 sm:h-8"
           />
         </Link>
         <button
           onClick={handleSignOut}
           disabled={isLoading}
-          className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+          className="bg-white/10 hover:bg-white/20 active:bg-white/30 text-white text-sm sm:text-base px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg disabled:opacity-50 transition-colors"
         >
           {isLoading ? 'Signing out...' : 'Sign Out'}
         </button>
@@ -57,15 +57,17 @@ export default function SignInButton() {
     <button
       onClick={handleSignIn}
       disabled={isLoading}
-      className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50"
+      className="bg-white/10 hover:bg-white/20 active:bg-white/30 text-white text-sm sm:text-base px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors"
     >
       <Image
         src="/google-logo.png"
         alt="Google"
-        width={20}
-        height={20}
+        width={16}
+        height={16}
+        className="w-4 h-4 sm:w-5 sm:h-5"
       />
-      {isLoading ? 'Signing in...' : 'Sign in with Google'}
+      <span className="hidden xs:inline">{isLoading ? 'Signing in...' : 'Sign in with Google'}</span>
+      <span className="xs:hidden">Sign in</span>
     </button>
   );
 } 

@@ -32,13 +32,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
+      </head>
       <body
-        className={`${sol.variable} ${geistSans.variable} ${geistMono.variable} antialiased relative`}
+        className={`${sol.variable} ${geistSans.variable} ${geistMono.variable} antialiased relative min-h-[100dvh] overflow-x-hidden`}
       >
         <Providers>
           <NavBar />
           <MouseGlow />
-          <div id="content-wrapper" className="relative z-30 pt-16">
+          <div id="content-wrapper" className="relative z-30 pt-14 sm:pt-16 px-3 sm:px-6 lg:px-8">
             {children}
           </div>
         </Providers>

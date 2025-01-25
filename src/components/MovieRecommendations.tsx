@@ -163,14 +163,14 @@ export default function MovieRecommendations({
   if (!recommendations.length) return null;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-8">
+    <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-6 mt-8">
       {recommendations.map((movie) => (
         <div
           key={movie.id}
-          className="bg-white/5 backdrop-blur-xl rounded-xl overflow-hidden border border-white/10"
+          className="bg-white/5 backdrop-blur-xl rounded-xl overflow-hidden border border-white/10 touch-manipulation"
         >
           <div 
-            className="relative aspect-[2/3] cursor-pointer transition-transform hover:scale-[1.03] duration-200"
+            className="relative aspect-[2/3] cursor-pointer transition-transform active:scale-[0.98] hover:scale-[1.03] duration-200"
             onClick={() => setSelectedMovieId(movie.id)}
           >
             <Image
@@ -178,24 +178,25 @@ export default function MovieRecommendations({
               alt={movie.title}
               fill
               className="object-cover"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             />
           </div>
-          <div className="p-4">
-            <div className="flex items-start justify-between gap-4">
-              <h3 className="text-lg font-semibold flex-1">{movie.title}</h3>
+          <div className="p-3 sm:p-4">
+            <div className="flex items-start justify-between gap-2 sm:gap-4">
+              <h3 className="text-base sm:text-lg font-semibold flex-1 line-clamp-2">{movie.title}</h3>
               <button
                 onClick={() => handleRefreshMovie(movie.id)}
-                className="shrink-0 p-2 hover:bg-white/10 rounded-lg transition-colors"
+                className="shrink-0 p-1.5 sm:p-2 hover:bg-white/10 rounded-lg transition-colors"
                 disabled={refreshingMovieId === movie.id}
               >
                 <LuRefreshCw
-                  className={`w-5 h-5 ${
+                  className={`w-4 h-4 sm:w-5 sm:h-5 ${
                     refreshingMovieId === movie.id ? 'animate-spin' : ''
                   }`}
                 />
               </button>
             </div>
-            <div className="mt-4">
+            <div className="mt-3 sm:mt-4">
               <WatchlistButton movie={movie} />
             </div>
           </div>

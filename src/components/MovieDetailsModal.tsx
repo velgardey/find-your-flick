@@ -89,13 +89,13 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
   if (!movieId) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md">
       <div 
         ref={modalRef}
-        className="relative w-full max-w-5xl bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/20 rounded-2xl overflow-hidden max-h-[85vh] shadow-[0_0_15px_rgba(0,0,0,0.5)] before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/10 before:to-transparent before:pointer-events-none"
+        className="relative w-full sm:max-w-5xl bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/20 rounded-none sm:rounded-2xl overflow-hidden h-[90vh] sm:max-h-[85vh] shadow-[0_0_15px_rgba(0,0,0,0.5)] before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/10 before:to-transparent before:pointer-events-none"
       >
         {movie?.backdrop_path && (
-          <div className="relative h-56 w-full">
+          <div className="relative h-40 sm:h-56 w-full">
             {!backdropLoaded && (
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                 <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
@@ -118,12 +118,12 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
 
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 text-white/80 hover:text-white p-2 rounded-full bg-black/20 backdrop-blur-sm hover:bg-black/40 transition-colors"
+          className="absolute top-2 sm:top-4 right-2 sm:right-4 text-white/80 hover:text-white p-2 rounded-full bg-black/20 backdrop-blur-sm hover:bg-black/40 transition-colors z-50"
         >
           <LuX className="w-5 h-5" />
         </button>
 
-        <div className="relative p-6 overflow-y-auto">
+        <div className="relative p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-10rem)] sm:max-h-[calc(85vh-14rem)]">
           {isLoading ? (
             <div className="h-full flex items-center justify-center">
               <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin" />
@@ -132,7 +132,7 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
             <div className="h-full">
               <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
                 {/* Poster */}
-                <div className="relative w-[180px] sm:w-[220px] h-[270px] sm:h-[330px] mx-auto sm:mx-0 flex-shrink-0">
+                <div className="relative w-[140px] sm:w-[220px] h-[210px] sm:h-[330px] mx-auto sm:mx-0 flex-shrink-0">
                   {!posterLoaded && (
                     <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
                       <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
@@ -152,44 +152,44 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
 
                 {/* Details */}
                 <div className="flex-1">
-                  <h2 className="text-2xl sm:text-4xl font-bold text-white mb-2 font-sol text-center sm:text-left">{movie.title}</h2>
+                  <h2 className="text-xl sm:text-4xl font-bold text-white mb-2 font-sol text-center sm:text-left">{movie.title}</h2>
                   {movie.tagline && (
-                    <p className="text-gray-400 italic mb-4">{movie.tagline}</p>
+                    <p className="text-gray-400 italic mb-4 text-sm sm:text-base text-center sm:text-left">{movie.tagline}</p>
                   )}
 
-                  <div className="flex gap-6 mb-6">
+                  <div className="flex flex-wrap justify-center sm:justify-start gap-4 sm:gap-6 mb-4 sm:mb-6 text-sm sm:text-base">
                     <div className="flex items-center gap-2 text-yellow-400">
-                      <LuStar />
+                      <LuStar className="w-4 h-4 sm:w-5 sm:h-5" />
                       <span>{movie.vote_average.toFixed(1)}</span>
                     </div>
                     <div className="flex items-center gap-2 text-gray-400">
-                      <LuCalendar />
+                      <LuCalendar className="w-4 h-4 sm:w-5 sm:h-5" />
                       <span>{new Date(movie.release_date).getFullYear()}</span>
                     </div>
                     {movie.runtime > 0 && (
                       <div className="flex items-center gap-2 text-gray-400">
-                        <LuClock />
+                        <LuClock className="w-4 h-4 sm:w-5 sm:h-5" />
                         <span>{movie.runtime} min</span>
                       </div>
                     )}
                     <div className="flex items-center gap-2 text-gray-400">
-                      <LuLanguages />
+                      <LuLanguages className="w-4 h-4 sm:w-5 sm:h-5" />
                       <span>{movie.original_language.toUpperCase()}</span>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 mb-6">
+                  <div className="flex flex-wrap justify-center sm:justify-start gap-2 mb-4 sm:mb-6">
                     {movie.genres.map((genre) => (
                       <span
                         key={genre.id}
-                        className="px-3 py-1 bg-gray-800 rounded-full text-sm text-gray-300"
+                        className="px-2.5 sm:px-3 py-1 bg-gray-800 rounded-full text-xs sm:text-sm text-gray-300"
                       >
                         {genre.name}
                       </span>
                     ))}
                   </div>
 
-                  <p className="text-gray-300 leading-relaxed">{movie.overview}</p>
+                  <p className="text-gray-300 leading-relaxed text-sm sm:text-base">{movie.overview}</p>
                 </div>
               </div>
             </div>
