@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateMovieRecommendations } from '@/services/gemmaService';
+import { fetchWithRetry } from '@/lib/fetchWithRetry';
 
 interface Movie {
   id: number;
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
     const movieTitles = await generateMovieRecommendations(
       description, 
       selectedMovies,
-      15 // Get more recommendations to have better options
+      15
     );
     
     // Create a Set of IDs to exclude (current recommendations + the movie being replaced)
@@ -30,8 +31,14 @@ export async function POST(request: Request) {
     
     // Try each title until we find a different movie
     for (const title of movieTitles) {
-      const response = await fetch(
-        `https://api.themoviedb.org/3/search/movie?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&query=${encodeURIComponent(title)}`
+      const response = await fetchWithRetry(
+        `https://api.themoviedb.org/3/search/movie?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&query=${encodeURIComponent(title)}`,
+        {},
+        {
+          maxRetries: 2,
+          baseDelay: 500,
+          maxDelay: 2000,
+        }
       );
       
       if (!response.ok) {

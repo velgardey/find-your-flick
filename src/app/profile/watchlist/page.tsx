@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useWatchlist } from '@/contexts/WatchlistContext'
 import { WatchStatus } from '@/lib/prismaTypes'
 import Image from 'next/image'
-import { LuStar, LuPencil, LuTrash2, LuSearch } from 'react-icons/lu'
+import { LuStar, LuPencil, LuTrash2, LuSearch, LuChevronDown } from 'react-icons/lu'
+import { motion, AnimatePresence } from 'framer-motion'
 
 const watchStatusLabels: Record<WatchStatus, string> = {
   PLAN_TO_WATCH: 'Plan to Watch',
@@ -22,6 +23,7 @@ export default function WatchlistPage() {
   const [editRating, setEditRating] = useState<number | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [openStatusDropdown, setOpenStatusDropdown] = useState<string | null>(null)
 
   const filteredWatchlist = watchlist
     .filter(entry => selectedStatus === 'ALL' || entry.status === selectedStatus)
@@ -42,6 +44,15 @@ export default function WatchlistPage() {
       setEditingEntry(null)
     } catch (error) {
       console.error('Error updating entry:', error)
+    }
+  }
+
+  const handleStatusChange = async (entryId: string, newStatus: WatchStatus) => {
+    try {
+      await updateWatchlistEntry(entryId, { status: newStatus })
+      setOpenStatusDropdown(null)
+    } catch (error) {
+      console.error('Error updating status:', error)
     }
   }
 
@@ -109,105 +120,148 @@ export default function WatchlistPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {filteredWatchlist.map(entry => (
-              <div
+              <motion.div
                 key={entry.id}
-                className="bg-white/5 backdrop-blur-xl rounded-xl overflow-hidden border border-white/10"
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="group relative bg-white/5 backdrop-blur-xl rounded-xl overflow-hidden border border-white/10"
               >
-                <div className="flex">
-                  <div className="relative w-1/3 aspect-[2/3]">
-                    <Image
-                      src={`https://image.tmdb.org/t/p/w500${entry.posterPath}`}
-                      alt={entry.title}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 p-4">
-                    <h3 className="text-lg font-semibold mb-2">{entry.title}</h3>
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-sm text-gray-300">
-                        {watchStatusLabels[entry.status]}
-                      </span>
-                      {entry.rating && (
-                        <div className="flex items-center gap-1">
-                          <LuStar className="w-4 h-4 text-yellow-500" />
-                          <span>{entry.rating}/10</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {editingEntry === entry.id ? (
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm text-gray-300 mb-1">
-                            Rating
-                          </label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="10"
-                            value={editRating ?? ''}
-                            onChange={e => setEditRating(parseInt(e.target.value) || null)}
-                            className="w-full bg-black/30 rounded-lg px-3 py-2"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm text-gray-300 mb-1">
-                            Notes
-                          </label>
-                          <textarea
-                            value={editNote}
-                            onChange={e => setEditNote(e.target.value)}
-                            className="w-full bg-black/30 rounded-lg px-3 py-2 min-h-[80px]"
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleUpdateEntry(entry.id)}
-                            className="flex-1 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={() => setEditingEntry(null)}
-                            className="flex-1 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        {entry.notes && (
-                          <p className="text-sm text-gray-300 mb-4">{entry.notes}</p>
+                <div className="relative aspect-[2/3] w-full">
+                  <Image
+                    src={`https://image.tmdb.org/t/p/w500${entry.posterPath}`}
+                    alt={entry.title}
+                    fill
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute bottom-0 left-0 right-0 p-3">
+                      <h3 className="text-sm font-medium truncate">{entry.title}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        {entry.rating && (
+                          <div className="flex items-center gap-1 text-xs text-yellow-400">
+                            <LuStar className="w-3 h-3" />
+                            <span>{entry.rating}/10</span>
+                          </div>
                         )}
-                        <div className="flex gap-2">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <button
+                    onClick={() => setOpenStatusDropdown(openStatusDropdown === entry.id ? null : entry.id)}
+                    className="w-full px-2 py-1.5 text-xs flex items-center justify-between hover:bg-white/10 transition-colors"
+                  >
+                    <span className="text-gray-300">{watchStatusLabels[entry.status]}</span>
+                    <LuChevronDown className={`w-4 h-4 transition-transform ${openStatusDropdown === entry.id ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  <AnimatePresence>
+                    {openStatusDropdown === entry.id && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute left-0 right-0 bottom-full z-20 bg-gray-900/95 backdrop-blur-sm border border-white/10 rounded-lg shadow-lg overflow-hidden"
+                      >
+                        <div className="p-1">
+                          {Object.entries(watchStatusLabels).map(([status, label]) => (
+                            <button
+                              key={status}
+                              onClick={() => handleStatusChange(entry.id, status as WatchStatus)}
+                              className={`w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-white/10 ${
+                                entry.status === status ? 'bg-white/20 text-white' : 'text-gray-300'
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                          <div className="h-px bg-white/10 my-1" />
                           <button
                             onClick={() => {
                               setEditingEntry(entry.id)
                               setEditNote(entry.notes ?? '')
                               setEditRating(entry.rating)
+                              setOpenStatusDropdown(null)
                             }}
-                            className="flex-1 flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg"
+                            className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-gray-300 hover:bg-white/10"
                           >
-                            <LuPencil className="w-4 h-4" />
-                            <span>Edit</span>
+                            <LuPencil className="w-3 h-3" />
+                            <span>Edit Details</span>
                           </button>
                           <button
-                            onClick={() => removeFromWatchlist(entry.movieId)}
-                            className="flex-1 flex items-center justify-center gap-2 bg-red-500/20 hover:bg-red-500/30 px-4 py-2 rounded-lg text-red-300"
+                            onClick={() => {
+                              removeFromWatchlist(entry.movieId)
+                              setOpenStatusDropdown(null)
+                            }}
+                            className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10"
                           >
-                            <LuTrash2 className="w-4 h-4" />
+                            <LuTrash2 className="w-3 h-3" />
                             <span>Remove</span>
                           </button>
                         </div>
-                      </div>
+                      </motion.div>
                     )}
-                  </div>
+                  </AnimatePresence>
+
+                  <AnimatePresence>
+                    {editingEntry === entry.id && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute left-0 right-0 bottom-full z-20 bg-gray-900/95 backdrop-blur-sm border border-white/10 rounded-lg shadow-lg overflow-hidden p-3"
+                      >
+                        <div className="flex flex-col gap-3">
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">Rating</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="10"
+                              value={editRating || ''}
+                              onChange={(e) => setEditRating(e.target.value ? Number(e.target.value) : null)}
+                              className="w-full px-2 py-1 text-xs bg-white/10 rounded focus:outline-none focus:ring-1 focus:ring-white/20"
+                              placeholder="Rate from 1-10"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">Notes</label>
+                            <textarea
+                              value={editNote}
+                              onChange={(e) => setEditNote(e.target.value)}
+                              className="w-full px-2 py-1 text-xs bg-white/10 rounded focus:outline-none focus:ring-1 focus:ring-white/20 resize-none"
+                              placeholder="Add notes..."
+                              rows={3}
+                            />
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => setEditingEntry(null)}
+                              className="px-3 py-1 text-xs text-gray-400 hover:text-white transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => handleUpdateEntry(entry.id)}
+                              className="px-3 py-1 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors"
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>

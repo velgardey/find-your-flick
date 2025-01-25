@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { LuRefreshCw } from 'react-icons/lu';
 import MovieDetailsModal from './MovieDetailsModal';
 import WatchlistButton from './WatchlistButton';
+import { fetchWithRetry } from '@/lib/fetchWithRetry';
 
 interface Movie {
   id: number;
@@ -33,6 +34,7 @@ export default function MovieRecommendations({
     const handleClickOutside = (e: MouseEvent) => {
       if (!e.target) return;
       const target = e.target as HTMLElement;
+      if (target.closest('[role="dialog"]')) return;
       if (!target.closest('.movie-card')) {
         setSelectedMovieId(null);
       }
@@ -45,7 +47,7 @@ export default function MovieRecommendations({
   const handleRefreshMovie = async (movieId: number) => {
     setRefreshingMovieId(movieId);
     try {
-      const response = await fetch('/api/single-recommendation', {
+      const response = await fetchWithRetry('/api/single-recommendation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -101,11 +103,11 @@ export default function MovieRecommendations({
       {recommendations.map((movie) => (
         <div
           key={movie.id}
-          className="bg-white/5 backdrop-blur-xl rounded-xl overflow-hidden border border-white/10 touch-manipulation"
+          onClick={() => setSelectedMovieId(movie.id)}
+          className="movie-card bg-white/5 backdrop-blur-xl rounded-xl overflow-hidden border border-white/10 touch-manipulation cursor-pointer"
         >
           <div 
-            className="relative aspect-[2/3] cursor-pointer transition-transform active:scale-[0.98] hover:scale-[1.03] duration-200"
-            onClick={() => setSelectedMovieId(movie.id)}
+            className="relative aspect-[2/3] transition-transform active:scale-[0.98] hover:scale-[1.03] duration-200"
           >
             <Image
               src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
@@ -133,7 +135,7 @@ export default function MovieRecommendations({
                 />
               </button>
             </div>
-            <div className="mt-3 sm:mt-4">
+            <div className="mt-3 sm:mt-4" onClick={(e) => e.stopPropagation()}>
               <WatchlistButton movie={movie} />
             </div>
           </div>

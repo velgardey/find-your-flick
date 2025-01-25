@@ -47,7 +47,7 @@ export default function SignInButton() {
           disabled={isLoading}
           className="bg-white/10 hover:bg-white/20 active:bg-white/30 text-white text-sm sm:text-base px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg disabled:opacity-50 transition-colors"
         >
-          {isLoading ? 'Signing out...' : 'Sign Out'}
+          {isLoading ? 'Signing in...' : 'Sign Out'}
         </button>
       </div>
     );

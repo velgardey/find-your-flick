@@ -45,10 +45,10 @@ export default function MovieSearchModal({ isOpen, onClose, onSelectMovie }: Mov
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-start sm:items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
-      <div className="bg-white/5 backdrop-blur-xl rounded-xl sm:rounded-2xl p-4 sm:p-6 w-full max-w-xl border border-white/10 mt-16 sm:mt-0 shadow-2xl">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-start sm:items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+      <div className="bg-gradient-to-br from-white/[0.15] to-white/[0.05] backdrop-blur-2xl rounded-xl sm:rounded-2xl p-4 sm:p-6 w-full max-w-xl border border-white/20 mt-16 sm:mt-0 shadow-[0_8px_32px_rgba(0,0,0,0.4)] before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/[0.12] before:to-transparent before:pointer-events-none relative">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg sm:text-xl font-bold text-white font-sol">Search Movies</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-white">Search Movies</h2>
           <button 
             onClick={onClose} 
             className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors"
@@ -58,7 +58,7 @@ export default function MovieSearchModal({ isOpen, onClose, onSelectMovie }: Mov
         </div>
         
         <input
-          className="w-full p-3 sm:p-4 bg-black/30 text-white rounded-xl mb-4 placeholder:text-gray-500 backdrop-blur-sm border border-white/10 focus:border-white/20 transition-colors outline-none"
+          className="w-full p-3 sm:p-4 bg-black/40 text-white rounded-xl mb-4 placeholder:text-gray-500 backdrop-blur-sm border border-white/20 focus:border-white/30 transition-colors outline-none"
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -97,7 +97,7 @@ export default function MovieSearchModal({ isOpen, onClose, onSelectMovie }: Mov
                   <span className="text-gray-500 text-sm">No Image</span>
                 </div>
               )}
-              <span className="text-white font-sol flex-1 group-hover:translate-x-1 transition-transform">{movie.title}</span>
+              <span className="text-white flex-1 group-hover:translate-x-1 transition-transform">{movie.title}</span>
             </div>
           ))}
         </div>

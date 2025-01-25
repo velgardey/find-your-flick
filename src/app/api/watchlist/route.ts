@@ -1,122 +1,103 @@
-import { NextResponse } from 'next/server'
-import { adminAuth } from '@/lib/firebase-admin'
 import { prisma } from '@/lib/prisma'
-import { WatchStatus } from '@/lib/prismaTypes'
+import { authenticateRequest } from '@/lib/authMiddleware'
+import { 
+  successResponse, 
+  handleApiError, 
+  badRequestResponse 
+} from '@/lib/apiResponse'
+import { watchlistCreateSchema } from '@/lib/validationSchemas'
 
 // GET /api/watchlist - Get user's watchlist
 export async function GET(request: Request) {
   try {
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const token = authHeader.split('Bearer ')[1]
-    const decodedToken = await adminAuth.verifyIdToken(token)
+    const auth = await authenticateRequest(request)
+    if (!auth.success) return auth.response
 
     // Get search query from URL params
     const { searchParams } = new URL(request.url)
     const searchQuery = searchParams.get('search')?.toLowerCase()
 
-    let watchlist = await prisma.watchlistEntry.findMany({
-      where: { userId: decodedToken.uid },
+    const watchlist = await prisma.watchlistEntry.findMany({
+      where: { 
+        userId: auth.user.uid,
+        ...(searchQuery && {
+          title: {
+            contains: searchQuery,
+            mode: 'insensitive'
+          }
+        })
+      },
       orderBy: { updatedAt: 'desc' },
     })
 
-    // Filter results if search query is provided
-    if (searchQuery) {
-      watchlist = watchlist.filter(movie => 
-        movie.title.toLowerCase().includes(searchQuery)
-      )
-    }
-
-    return NextResponse.json(watchlist)
+    return successResponse(watchlist)
   } catch (error) {
-    console.error('Error fetching watchlist:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch watchlist' },
-      { status: 500 }
-    )
+    return handleApiError(error)
   }
 }
 
 // POST /api/watchlist - Add movie to watchlist
 export async function POST(request: Request) {
   try {
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const auth = await authenticateRequest(request)
+    if (!auth.success) return auth.response
+    
+    const body = await request.json()
+    const validatedData = watchlistCreateSchema.parse(body)
 
-    const token = authHeader.split('Bearer ')[1]
-    const decodedToken = await adminAuth.verifyIdToken(token)
-    const { movieId, title, posterPath, status } = await request.json()
+    const entry = await prisma.$transaction(async (tx) => {
+      // Create or update user record
+      await tx.user.upsert({
+        where: { id: auth.user.uid },
+        update: {},
+        create: {
+          id: auth.user.uid,
+          email: auth.user.email,
+          displayName: auth.user.name,
+          photoURL: auth.user.picture,
+        },
+      })
 
-    // Create or update user record
-    await prisma.user.upsert({
-      where: { id: decodedToken.uid },
-      update: {},
-      create: {
-        id: decodedToken.uid,
-        email: decodedToken.email!,
-        displayName: decodedToken.name,
-        photoURL: decodedToken.picture,
-      },
+      // Add movie to watchlist
+      return tx.watchlistEntry.create({
+        data: {
+          userId: auth.user.uid,
+          movieId: validatedData.movieId,
+          title: validatedData.title,
+          posterPath: validatedData.posterPath,
+          status: validatedData.status,
+        },
+      })
     })
 
-    // Add movie to watchlist
-    const entry = await prisma.watchlistEntry.create({
-      data: {
-        userId: decodedToken.uid,
-        movieId,
-        title,
-        posterPath,
-        status: status as WatchStatus,
-      },
-    })
-
-    return NextResponse.json(entry)
+    return successResponse(entry)
   } catch (error) {
-    console.error('Error adding to watchlist:', error)
-    return NextResponse.json(
-      { error: 'Failed to add to watchlist' },
-      { status: 500 }
-    )
+    return handleApiError(error)
   }
 }
 
 // DELETE /api/watchlist - Remove movie from watchlist
 export async function DELETE(request: Request) {
   try {
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const token = authHeader.split('Bearer ')[1]
-    const decodedToken = await adminAuth.verifyIdToken(token)
+    const auth = await authenticateRequest(request)
+    if (!auth.success) return auth.response
     
     const { searchParams } = new URL(request.url)
     const movieId = searchParams.get('movieId')
 
-    if (!movieId) {
-      return NextResponse.json({ error: 'Movie ID is required' }, { status: 400 })
+    if (!movieId || isNaN(parseInt(movieId))) {
+      return badRequestResponse('Valid movie ID is required')
     }
 
-    // Delete the watchlist entry
     await prisma.watchlistEntry.deleteMany({
       where: {
-        userId: decodedToken.uid,
+        userId: auth.user.uid,
         movieId: parseInt(movieId),
       },
     })
 
-    return NextResponse.json({ success: true })
+    return successResponse({ success: true })
   } catch (error) {
-    console.error('Error removing from watchlist:', error)
-    return NextResponse.json(
-      { error: 'Failed to remove from watchlist' },
-      { status: 500 }
-    )
+    return handleApiError(error)
   }
 } 
