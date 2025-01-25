@@ -6,6 +6,7 @@ import {
   badRequestResponse 
 } from '@/lib/apiResponse'
 import { watchlistCreateSchema } from '@/lib/validationSchemas'
+import { Prisma } from '@prisma/client'
 
 // GET /api/watchlist - Get user's watchlist
 export async function GET(request: Request) {
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const validatedData = watchlistCreateSchema.parse(body)
 
-    const entry = await prisma.$transaction(async (tx) => {
+    const entry = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Create or update user record
       await tx.user.upsert({
         where: { id: auth.user.uid },
