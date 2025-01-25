@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useAuth } from './AuthContext'
 import { WatchStatus } from '@/lib/prismaTypes'
 
@@ -18,10 +18,11 @@ interface WatchlistContextType {
   watchlist: WatchlistEntry[]
   addToWatchlist: (movie: { id: number; title: string; poster_path: string }, status: WatchStatus) => Promise<void>
   updateWatchlistEntry: (entryId: string, updates: Partial<WatchlistEntry>) => Promise<void>
-  removeFromWatchlist: (entryId: string) => Promise<void>
+  removeFromWatchlist: (movieId: number) => Promise<void>
   isInWatchlist: (movieId: number) => boolean
   getWatchlistEntry: (movieId: number) => WatchlistEntry | undefined
   isLoading: boolean
+  fetchWatchlist: (searchQuery?: string) => Promise<void>
 }
 
 const WatchlistContext = createContext<WatchlistContextType>({
@@ -32,6 +33,7 @@ const WatchlistContext = createContext<WatchlistContextType>({
   isInWatchlist: () => false,
   getWatchlistEntry: () => undefined,
   isLoading: false,
+  fetchWatchlist: async () => {},
 })
 
 export function WatchlistProvider({ children }: { children: React.ReactNode }) {
@@ -39,44 +41,47 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   const [watchlist, setWatchlist] = useState<WatchlistEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    const fetchWatchlist = async () => {
-      if (!user) {
-        setWatchlist([])
-        setIsLoading(false)
-        return
-      }
-
-      try {
-        const token = await user.getIdToken()
-        const response = await fetch('/api/watchlist', {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Authorization': `Bearer ${token}`,
-          },
-        })
-        
-        if (!response.ok) {
-          if (response.status === 401) {
-            // Unauthorized - user not logged in
-            setWatchlist([])
-            return
-          }
-          throw new Error('Failed to fetch watchlist')
-        }
-        
-        const data = await response.json()
-        setWatchlist(data)
-      } catch (error) {
-        console.error('Error fetching watchlist:', error)
-        setWatchlist([])
-      } finally {
-        setIsLoading(false)
-      }
+  const fetchWatchlist = useCallback(async (searchQuery?: string) => {
+    if (!user) {
+      setWatchlist([])
+      setIsLoading(false)
+      return
     }
 
-    fetchWatchlist()
+    try {
+      const token = await user.getIdToken()
+      const url = searchQuery 
+        ? `/api/watchlist?search=${encodeURIComponent(searchQuery)}`
+        : '/api/watchlist'
+        
+      const response = await fetch(url, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          setWatchlist([])
+          return
+        }
+        throw new Error('Failed to fetch watchlist')
+      }
+      
+      const data = await response.json()
+      setWatchlist(data)
+    } catch (error) {
+      console.error('Error fetching watchlist:', error)
+      setWatchlist([])
+    } finally {
+      setIsLoading(false)
+    }
   }, [user])
+
+  useEffect(() => {
+    fetchWatchlist()
+  }, [user, fetchWatchlist])
 
   const addToWatchlist = async (
     movie: { id: number; title: string; poster_path: string },
@@ -134,12 +139,12 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const removeFromWatchlist = async (entryId: string) => {
+  const removeFromWatchlist = async (movieId: number) => {
     if (!user) throw new Error('User must be logged in')
 
     try {
       const token = await user.getIdToken()
-      const response = await fetch(`/api/watchlist/${entryId}`, {
+      const response = await fetch(`/api/watchlist?movieId=${movieId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -147,7 +152,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       })
 
       if (!response.ok) throw new Error('Failed to remove from watchlist')
-      setWatchlist((prev) => prev.filter((entry) => entry.id !== entryId))
+      setWatchlist((prev) => prev.filter((entry) => entry.movieId !== movieId))
     } catch (error) {
       console.error('Error removing from watchlist:', error)
       throw error
@@ -172,6 +177,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         isInWatchlist,
         getWatchlistEntry,
         isLoading,
+        fetchWatchlist,
       }}
     >
       {children}

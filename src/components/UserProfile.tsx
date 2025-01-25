@@ -6,6 +6,7 @@ import { WatchStatus } from '@/lib/prismaTypes';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import { LuSearch } from 'react-icons/lu';
 
 const watchStatusLabels: Record<WatchStatus, string> = {
   PLAN_TO_WATCH: 'Plan to Watch',
@@ -23,6 +24,8 @@ export default function UserProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [showWatchlist, setShowWatchlist] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<WatchStatus | 'ALL'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const loadUserProfile = useCallback(async () => {
     if (!user?.uid) return;
@@ -98,10 +101,14 @@ export default function UserProfile() {
     ? watchlist
     : watchlist.filter(entry => entry.status === selectedStatus);
 
+  const searchFilteredWatchlist = filteredWatchlist.filter(entry =>
+    !searchQuery || entry.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (!user) return null;
 
   return (
-    <div className="max-w-md mx-auto">
+    <div className="max-w-3xl mx-auto">
       <div className="p-6 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10">
         <div className="flex flex-col items-center gap-4">
           <div className="relative w-32 h-32">
@@ -162,45 +169,72 @@ export default function UserProfile() {
             className="mt-4 overflow-hidden"
           >
             <div className="p-6 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10">
-              <div className="flex flex-wrap gap-2 mb-4">
-                <button
-                  onClick={() => setSelectedStatus('ALL')}
-                  className={`px-3 py-1 rounded-lg transition-colors ${
-                    selectedStatus === 'ALL'
-                      ? 'bg-white/20 text-white'
-                      : 'bg-white/10 hover:bg-white/20 text-gray-300'
-                  }`}
-                >
-                  All
-                </button>
-                {Object.entries(watchStatusLabels).map(([status, label]) => (
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
                   <button
-                    key={status}
-                    onClick={() => setSelectedStatus(status as WatchStatus)}
+                    onClick={() => setSelectedStatus('ALL')}
                     className={`px-3 py-1 rounded-lg transition-colors ${
-                      selectedStatus === status
+                      selectedStatus === 'ALL'
                         ? 'bg-white/20 text-white'
                         : 'bg-white/10 hover:bg-white/20 text-gray-300'
                     }`}
                   >
-                    {label}
+                    All
                   </button>
-                ))}
+                  {Object.entries(watchStatusLabels).map(([status, label]) => (
+                    <button
+                      key={status}
+                      onClick={() => setSelectedStatus(status as WatchStatus)}
+                      className={`px-3 py-1 rounded-lg transition-colors ${
+                        selectedStatus === status
+                          ? 'bg-white/20 text-white'
+                          : 'bg-white/10 hover:bg-white/20 text-gray-300'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative flex items-center">
+                  <button
+                    onClick={() => setIsSearchOpen(!isSearchOpen)}
+                    className={`p-2 rounded-lg transition-colors ${
+                      isSearchOpen ? 'bg-white/20' : 'bg-white/10 hover:bg-white/20'
+                    }`}
+                  >
+                    <LuSearch className="w-4 h-4" />
+                  </button>
+                  <div 
+                    className={`absolute right-0 top-[calc(100%+0.5rem)] transition-all duration-300 z-10 ${
+                      isSearchOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'
+                    }`}
+                  >
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search movies..."
+                      className={`w-[250px] sm:w-[300px] px-3 py-2 bg-black/80 backdrop-blur-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 text-white placeholder-gray-400 border border-white/10 shadow-xl`}
+                    />
+                  </div>
+                </div>
               </div>
 
               {watchlistLoading ? (
                 <div className="flex justify-center py-8">
                   <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
                 </div>
-              ) : filteredWatchlist.length === 0 ? (
+              ) : searchFilteredWatchlist.length === 0 ? (
                 <p className="text-center text-gray-400 py-8">
-                  {selectedStatus === 'ALL' 
-                    ? 'No movies in your watchlist yet.'
-                    : `No movies in ${watchStatusLabels[selectedStatus as WatchStatus].toLowerCase()}.`}
+                  {searchQuery 
+                    ? 'No movies found matching your search.'
+                    : selectedStatus === 'ALL' 
+                      ? 'No movies in your watchlist yet.'
+                      : `No movies in ${watchStatusLabels[selectedStatus as WatchStatus].toLowerCase()}.`}
                 </p>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
-                  {filteredWatchlist.map((movie) => (
+                  {searchFilteredWatchlist.map((movie) => (
                     <motion.div
                       key={movie.id}
                       layout

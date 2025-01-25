@@ -27,12 +27,7 @@ export default function MovieRecommendations({
   setRecommendations 
 }: MovieRecommendationsProps) {
   const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
   const [refreshingMovieId, setRefreshingMovieId] = useState<number | null>(null);
-
-  useEffect(() => {
-    setIsTouchDevice('ontouchstart' in window);
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
