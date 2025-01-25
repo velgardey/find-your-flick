@@ -74,10 +74,10 @@ export default function MouseGlow() {
       <div
         className="absolute inset-0 z-10"
         style={{
-          WebkitMaskImage: `radial-gradient(circle ${isTouching ? '150px' : '300px'} at ${position.x}px ${position.y}px, 
+          WebkitMaskImage: `radial-gradient(circle ${isTouching ? '200px' : '450px'} at ${position.x}px ${position.y}px, 
             transparent 30%,
             black 70%)`,
-          maskImage: `radial-gradient(circle ${isTouching ? '150px' : '300px'} at ${position.x}px ${position.y}px, 
+          maskImage: `radial-gradient(circle ${isTouching ? '200px' : '450px'} at ${position.x}px ${position.y}px, 
             transparent 30%,
             black 70%)`,
           background: 'black'

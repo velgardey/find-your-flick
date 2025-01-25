@@ -3,6 +3,8 @@ import localFont from 'next/font/local'
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import MouseGlow from '@/components/MouseGlow';
+import NavBar from '@/components/NavBar';
+import Providers from '@/components/Providers';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,10 +35,13 @@ export default function RootLayout({
       <body
         className={`${sol.variable} ${geistSans.variable} ${geistMono.variable} antialiased relative`}
       >
-        <MouseGlow />
-        <div id="content-wrapper" className="relative z-30">
-          {children}
-        </div>
+        <Providers>
+          <NavBar />
+          <MouseGlow />
+          <div id="content-wrapper" className="relative z-30 pt-16">
+            {children}
+          </div>
+        </Providers>
       </body>
     </html>
   );
