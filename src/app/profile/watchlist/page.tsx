@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useWatchlist } from '@/contexts/WatchlistContext'
 import { WatchStatus } from '@/lib/prismaTypes'
 import Image from 'next/image'
-import Link from 'next/link'
 import { LuStar, LuPencil, LuTrash2 } from 'react-icons/lu'
 
 const watchStatusLabels: Record<WatchStatus, string> = {

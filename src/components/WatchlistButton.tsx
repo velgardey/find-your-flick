@@ -15,7 +15,6 @@ interface Movie {
 
 interface WatchlistButtonProps {
   movie: Movie
-  className?: string
 }
 
 const watchStatusLabels: Record<WatchStatus, string> = {
@@ -26,7 +25,7 @@ const watchStatusLabels: Record<WatchStatus, string> = {
   DROPPED: 'Dropped',
 }
 
-export default function WatchlistButton({ movie, className = '' }: WatchlistButtonProps) {
+export default function WatchlistButton({ movie }: WatchlistButtonProps) {
   const { user } = useAuth()
   const router = useRouter()
   const { isInWatchlist, getWatchlistEntry, addToWatchlist, updateWatchlistEntry } = useWatchlist()

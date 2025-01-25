@@ -5,7 +5,6 @@ import { useWatchlist } from '@/contexts/WatchlistContext';
 import { WatchStatus } from '@/lib/prismaTypes';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const watchStatusLabels: Record<WatchStatus, string> = {

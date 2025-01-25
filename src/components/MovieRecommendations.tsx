@@ -1,7 +1,7 @@
 'use client'
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
-import { LuEye, LuCheck, LuRefreshCw } from 'react-icons/lu';
+import { LuRefreshCw } from 'react-icons/lu';
 import MovieDetailsModal from './MovieDetailsModal';
 import WatchlistButton from './WatchlistButton';
 
@@ -26,10 +26,7 @@ export default function MovieRecommendations({
   selectedMovies,
   setRecommendations 
 }: MovieRecommendationsProps) {
-  const [loadedImages, setLoadedImages] = useState<Record<number, boolean>>({});
   const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
-  const [replacingMovieId, setReplacingMovieId] = useState<number | null>(null);
-  const [activeCardId, setActiveCardId] = useState<number | null>(null);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   const [refreshingMovieId, setRefreshingMovieId] = useState<number | null>(null);
 
@@ -42,71 +39,13 @@ export default function MovieRecommendations({
       if (!e.target) return;
       const target = e.target as HTMLElement;
       if (!target.closest('.movie-card')) {
-        setActiveCardId(null);
+        setSelectedMovieId(null);
       }
     };
 
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
-
-  const handleImageLoad = (movieId: number) => {
-    setLoadedImages(prev => ({ ...prev, [movieId]: true }));
-  };
-
-  const handleReplaceMovie = async (movieId: number, index: number) => {
-    setReplacingMovieId(movieId);
-    try {
-      const response = await fetch('/api/single-recommendation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          description,
-          selectedMovies,
-          excludeMovieId: movieId,
-          currentRecommendations: recommendations
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to get new movie');
-      }
-
-      const newMovie = await response.json();
-      
-      if (newMovie.error || !newMovie.id || newMovie.id === movieId) {
-        throw new Error(newMovie.error || 'Invalid movie data received');
-      }
-
-      const newRecommendations = [...recommendations];
-      newRecommendations[index] = newMovie;
-      setRecommendations(newRecommendations);
-    } catch (error) {
-      console.error('Error replacing movie:', error);
-    } finally {
-      setReplacingMovieId(null);
-    }
-  };
-
-  const handleCardClick = (movieId: number) => {
-    setActiveCardId(activeCardId === movieId ? null : movieId);
-  };
-
-  const handleButtonClick = (
-    e: React.MouseEvent,
-    action: () => void,
-    movieId: number
-  ) => {
-    e.stopPropagation();
-    if (!isTouchDevice || (isTouchDevice && activeCardId === movieId)) {
-      action();
-      if (isTouchDevice) {
-        setActiveCardId(null);
-      }
-    }
-  };
 
   const handleRefreshMovie = async (movieId: number) => {
     setRefreshingMovieId(movieId);
@@ -185,7 +124,10 @@ export default function MovieRecommendations({
             <div className="flex items-start justify-between gap-2 sm:gap-4">
               <h3 className="text-base sm:text-lg font-semibold flex-1 line-clamp-2">{movie.title}</h3>
               <button
-                onClick={() => handleRefreshMovie(movie.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRefreshMovie(movie.id);
+                }}
                 className="shrink-0 p-1.5 sm:p-2 hover:bg-white/10 rounded-lg transition-colors"
                 disabled={refreshingMovieId === movie.id}
               >

@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { adminAuth } from '@/lib/firebase-admin';
 
+interface PrismaUpdates {
+  displayName: string;
+  updatedAt: Date;
+  photoURL?: string | null;
+}
+
 function isValidUrl(url: string) {
   try {
     new URL(url);
@@ -71,7 +77,7 @@ export async function PATCH(request: Request) {
     await adminAuth.updateUser(decodedToken.uid, firebaseUpdates);
 
     // Prepare Prisma updates
-    const prismaUpdates: any = {
+    const prismaUpdates: PrismaUpdates = {
       displayName: updates.username,
       updatedAt: new Date(),
     };
