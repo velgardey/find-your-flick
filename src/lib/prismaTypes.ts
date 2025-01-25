@@ -1,0 +1,7 @@
+export enum WatchStatus {
+  PLAN_TO_WATCH = 'PLAN_TO_WATCH',
+  WATCHING = 'WATCHING',
+  WATCHED = 'WATCHED',
+  ON_HOLD = 'ON_HOLD',
+  DROPPED = 'DROPPED',
+} 

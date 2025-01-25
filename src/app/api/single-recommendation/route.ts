@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     const movieTitles = await generateMovieRecommendations(
       description, 
       selectedMovies,
-      10 // Get more recommendations to have better options
+      15 // Get more recommendations to have better options
     );
     
     // Create a Set of IDs to exclude (current recommendations + the movie being replaced)
