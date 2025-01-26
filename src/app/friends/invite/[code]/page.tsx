@@ -21,9 +21,11 @@ export default function InvitePage() {
   const [acceptSuccess, setAcceptSuccess] = useState(false);
 
   useEffect(() => {
-    // Store the invite code when the component mounts
+    // Store the invite code and current URL when the component mounts
     if (code && !user && !authLoading) {
       localStorage.setItem(PENDING_INVITE_KEY, code as string);
+      // Store the full URL to handle mobile redirects better
+      localStorage.setItem('lastInviteUrl', window.location.href);
     }
   }, [code, user, authLoading]);
 
@@ -77,10 +79,16 @@ export default function InvitePage() {
     // Check for pending invite after sign in
     if (user && !authLoading) {
       const pendingInvite = localStorage.getItem(PENDING_INVITE_KEY);
+      const lastInviteUrl = localStorage.getItem('lastInviteUrl');
+      
       if (pendingInvite) {
         localStorage.removeItem(PENDING_INVITE_KEY);
-        // Only redirect if we're not already on the correct page
-        if (pendingInvite !== code) {
+        localStorage.removeItem('lastInviteUrl');
+        
+        // Handle mobile redirects by using the full stored URL if available
+        if (lastInviteUrl) {
+          window.location.href = lastInviteUrl;
+        } else if (pendingInvite !== code) {
           router.push(`/friends/invite/${pendingInvite}`);
         }
       }
@@ -91,11 +99,22 @@ export default function InvitePage() {
     setIsSigningIn(true);
     const auth = getAuth();
     const provider = new GoogleAuthProvider();
+    
+    // Configure Google Sign-in for better mobile experience
+    provider.setCustomParameters({
+      prompt: 'select_account',
+      // Enable mobile-optimized sign-in
+      mobile: '1',
+    });
+    
     try {
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error('Error signing in with Google:', error);
       setError('Failed to sign in with Google');
+      // Clear stored data on error to prevent stuck states
+      localStorage.removeItem(PENDING_INVITE_KEY);
+      localStorage.removeItem('lastInviteUrl');
     } finally {
       setIsSigningIn(false);
     }
@@ -161,25 +180,25 @@ export default function InvitePage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen pt-24 px-4 flex flex-col items-center">
+      <div className="min-h-screen pt-16 md:pt-24 px-4 flex flex-col items-center">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-md bg-black/50 backdrop-blur-sm border border-gray-800/50 rounded-xl p-6 text-center"
         >
-          <h2 className="text-2xl font-bold text-white mb-4">Sign in Required</h2>
-          <p className="text-gray-400 mb-6">
-            You need to sign in to accept this friend invite. Don&apos;t worry, we&apos;ll take you right back here after signing in.
+          <h2 className="text-xl md:text-2xl font-bold text-white mb-4">Sign in Required</h2>
+          <p className="text-gray-400 mb-6 text-sm md:text-base">
+            You need to sign in to accept this friend invite. After signing in, you&apos;ll be automatically redirected back to this invite.
           </p>
           <button
             onClick={handleSignIn}
             disabled={isSigningIn}
-            className="w-full bg-white/10 hover:bg-white/20 disabled:bg-white/5 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-white/10 hover:bg-white/20 disabled:bg-white/5 disabled:cursor-not-allowed text-white px-4 md:px-6 py-3 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm md:text-base"
           >
             {isSigningIn ? (
               <>
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Signing in...
+                <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Signing in...</span>
               </>
             ) : (
               <>
@@ -188,51 +207,82 @@ export default function InvitePage() {
                   alt="Google"
                   width={20}
                   height={20}
-                  className="w-5 h-5"
+                  className="w-4 h-4 md:w-5 md:h-5"
                 />
-                Sign in with Google
+                <span>Sign in with Google</span>
               </>
             )}
           </button>
+          {error && (
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mt-4 text-sm text-red-400"
+            >
+              {error}
+              <button
+                onClick={() => window.location.reload()}
+                className="ml-2 underline hover:text-red-300"
+              >
+                Try again
+              </button>
+            </motion.p>
+          )}
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen pt-24 px-4">
+    <div className="min-h-screen pt-16 md:pt-24 px-4">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="max-w-md mx-auto bg-black/50 backdrop-blur-sm border border-gray-800/50 rounded-xl p-6"
       >
-        <h1 className="text-2xl font-bold text-white mb-4">Friend Invite</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-white mb-4">Friend Invite</h1>
         {inviteData && (
           <>
-            <p className="text-gray-300 mb-6">
+            <p className="text-gray-300 mb-6 text-sm md:text-base">
               {inviteData.userDisplayName} would like to be your friend
             </p>
             {error && (
-              <p className="text-red-400 mb-4 text-sm">{error}</p>
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-red-400 mb-4 text-sm"
+              >
+                {error}
+                <button
+                  onClick={() => window.location.reload()}
+                  className="ml-2 underline hover:text-red-300"
+                >
+                  Try again
+                </button>
+              </motion.p>
             )}
             {acceptSuccess ? (
-              <div className="flex items-center justify-center gap-2 text-green-400 mb-4">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex items-center justify-center gap-2 text-green-400 mb-4 text-sm md:text-base"
+              >
+                <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <span>Friend request accepted!</span>
-              </div>
+              </motion.div>
             ) : (
-              <div className="flex gap-4">
+              <div className="flex gap-3 md:gap-4">
                 <button
                   onClick={handleAcceptInvite}
                   disabled={isAccepting}
-                  className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 disabled:bg-white/5 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-3 md:px-4 py-2 bg-white/10 hover:bg-white/20 disabled:bg-white/5 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2 text-sm md:text-base"
                 >
                   {isAccepting ? (
                     <>
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Accepting...
+                      <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Accepting...</span>
                     </>
                   ) : (
                     'Accept'
@@ -241,7 +291,7 @@ export default function InvitePage() {
                 <button
                   onClick={() => router.push('/')}
                   disabled={isAccepting}
-                  className="flex-1 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 disabled:bg-red-500/5 disabled:cursor-not-allowed text-red-500 rounded-lg transition-colors"
+                  className="flex-1 px-3 md:px-4 py-2 bg-red-500/10 hover:bg-red-500/20 disabled:bg-red-500/5 disabled:cursor-not-allowed text-red-500 rounded-lg transition-colors text-sm md:text-base"
                 >
                   Decline
                 </button>
