@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react';
 
-export default function MouseGlow() {
+export default function MouseGlow({ onMovieChange }: { onMovieChange?: (movieId: number) => void }) {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [backgroundImage, setBackgroundImage] = useState('');
   const [isTouching, setIsTouching] = useState(false);
@@ -16,9 +16,9 @@ export default function MouseGlow() {
         
         const randomMovie = data.results[Math.floor(Math.random() * data.results.length)];
         
-
         if (randomMovie.backdrop_path) {
           setBackgroundImage(`https://image.tmdb.org/t/p/original${randomMovie.backdrop_path}`);
+          onMovieChange?.(randomMovie.id);
         }
       } catch (error) {
         console.error('Error fetching random movie backdrop:', error);
@@ -26,7 +26,7 @@ export default function MouseGlow() {
     };
 
     fetchRandomMovieBackdrop();
-  }, []);
+  }, [onMovieChange]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { LuArrowBigRightDash, LuPlus, LuX } from "react-icons/lu";
+import { LuArrowBigRightDash, LuPlus, LuX, LuInfo } from "react-icons/lu";
 import MovieSearchModal from "@/components/MovieSearchModal";
 import MovieRecommendations from "@/components/MovieRecommendations";
 import { generateMovieRecommendations } from "@/services/gemmaService";
 import Image from "next/image";
+import MouseGlow from "@/components/MouseGlow";
+import MovieDetailsModal from "@/components/MovieDetailsModal";
 
 interface Movie {
   id: number;
@@ -19,6 +21,8 @@ export default function Home() {
   const [description, setDescription] = useState("");
   const [recommendations, setRecommendations] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [backdropMovieId, setBackdropMovieId] = useState<number | null>(null);
+  const [showMovieDetails, setShowMovieDetails] = useState(false);
 
   const handleSelectMovie = (movie: Movie) => {
     setSelectedMovies((prev) => [...prev, movie]);
@@ -82,7 +86,9 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col relative">
+      <MouseGlow onMovieChange={setBackdropMovieId} />
+      
       <div className="w-full pt-[12vh] sm:pt-[15vh] pb-6 sm:pb-8">
         <div className="max-w-xl mx-auto px-4 sm:px-6">
           <h1 className="text-3xl sm:text-4xl md:text-6xl text-center font-bold text-white mb-6 sm:mb-8 font-sol">
@@ -154,11 +160,26 @@ export default function Home() {
         </div>
       </div>
 
+      <button
+        onClick={() => setShowMovieDetails(true)}
+        className="fixed bottom-4 right-4 bg-black/50 backdrop-blur-sm hover:bg-white/10 active:bg-white/20 text-white p-3 rounded-full z-50 transition-all duration-200 hover:scale-110"
+        aria-label="Show backdrop movie details"
+      >
+        <LuInfo className="w-5 h-5" />
+      </button>
+
       <MovieSearchModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSelectMovie={handleSelectMovie}
       />
+
+      {showMovieDetails && backdropMovieId && (
+        <MovieDetailsModal
+          movieId={backdropMovieId}
+          onClose={() => setShowMovieDetails(false)}
+        />
+      )}
     </div>
   );
 }
