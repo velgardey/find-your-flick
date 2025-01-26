@@ -1,9 +1,9 @@
 'use client'
-import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { LuRefreshCw } from 'react-icons/lu';
 import MovieDetailsModal from './MovieDetailsModal';
 import WatchlistButton from './WatchlistButton';
+import RetryImage from './ui/RetryImage';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
 
 interface Movie {
@@ -112,23 +112,16 @@ export default function MovieRecommendations({
             {movie.poster_path ? (
               <>
                 <div className="absolute inset-0 bg-white/5 animate-pulse" />
-                <Image
+                <RetryImage
                   src={`https://image.tmdb.org/t/p/w342${movie.poster_path}`}
                   alt={movie.title}
-                  fill
-                  priority
                   className="object-cover rounded-t-xl"
                   sizes="(max-width: 640px) 150px, (max-width: 1024px) 200px, 250px"
                   quality={85}
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    target.parentElement?.classList.add('bg-gray-800', 'rounded-t-xl');
-                    const fallbackText = document.createElement('span');
-                    fallbackText.className = 'text-gray-400 text-sm text-center absolute inset-0 flex items-center justify-center px-4';
-                    fallbackText.textContent = 'Image not available';
-                    target.parentElement?.appendChild(fallbackText);
-                  }}
+                  priority
+                  maxRetries={5}
+                  retryDelay={1500}
+                  fallbackText="Image not available"
                 />
               </>
             ) : (

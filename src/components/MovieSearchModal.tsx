@@ -1,5 +1,6 @@
+'use client'
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
+import RetryImage from './ui/RetryImage';
 
 interface Movie {
   id: number;
@@ -85,29 +86,22 @@ export default function MovieSearchModal({ isOpen, onClose, onSelectMovie }: Mov
               className="flex items-center gap-4 p-3 hover:bg-white/10 active:bg-white/20 rounded-lg cursor-pointer transition-all group"
             >
               {movie.poster_path ? (
-                <div className="relative">
-                  <Image
+                <div className="relative w-[60px] h-[90px] rounded-lg overflow-hidden">
+                  <RetryImage
                     src={`https://image.tmdb.org/t/p/w92${movie.poster_path}`}
                     alt={movie.title}
-                    width={60}
-                    height={90}
-                    className="rounded-lg object-cover transition-transform group-hover:scale-105"
-                    placeholder="blur"
-                    blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVigAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      const parent = target.parentElement;
-                      if (parent) {
-                        target.style.display = 'none';
-                        parent.classList.add('bg-black/30', 'backdrop-blur-sm', 'border', 'border-white/10');
-                        parent.innerHTML = '<span class="text-gray-500 text-sm">No Image</span>';
-                      }
-                    }}
+                    className="object-cover"
+                    sizes="60px"
+                    quality={85}
+                    priority={false}
+                    maxRetries={3}
+                    retryDelay={1000}
+                    fallbackText="No Image"
                   />
                 </div>
               ) : (
                 <div className="w-[60px] h-[90px] bg-black/30 backdrop-blur-sm rounded-lg flex items-center justify-center border border-white/10">
-                  <span className="text-gray-500 text-sm">No Image</span>
+                  <span className="text-gray-500 text-sm text-center px-2">No Image</span>
                 </div>
               )}
               <span className="text-white flex-1 group-hover:translate-x-1 transition-transform">{movie.title}</span>

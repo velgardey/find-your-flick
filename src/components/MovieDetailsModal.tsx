@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { LuX, LuStar, LuCalendar, LuClock, LuLanguages } from 'react-icons/lu';
 import { motion, AnimatePresence } from 'framer-motion';
+import RetryImage from './ui/RetryImage';
 
 interface MovieDetails {
   id: number;
@@ -180,18 +181,15 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
           {movie?.backdrop_path ? (
             <div className="absolute inset-0 z-0">
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent z-10" />
-              <Image
+              <RetryImage
                 src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
                 alt={movie.title}
-                fill
-                priority
                 className="object-cover opacity-40"
                 sizes="100vw"
                 quality={85}
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.parentElement?.classList.add('bg-black');
-                }}
+                priority
+                maxRetries={5}
+                retryDelay={1500}
               />
             </div>
           ) : (
@@ -235,19 +233,15 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
                   <div className="relative w-[120px] sm:w-[200px] flex-shrink-0 mx-auto sm:mx-0">
                     <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-black/30">
                       {movie.poster_path ? (
-                        <Image
+                        <RetryImage
                           src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
                           alt={movie.title}
-                          fill
-                          priority
                           className="object-cover"
                           sizes="(max-width: 640px) 120px, 200px"
                           quality={85}
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.parentElement?.classList.add('bg-gray-800');
-                            target.style.display = 'none';
-                          }}
+                          priority
+                          maxRetries={5}
+                          retryDelay={1500}
                         />
                       ) : (
                         <div className="absolute inset-0 bg-gray-800 rounded-xl flex items-center justify-center">
