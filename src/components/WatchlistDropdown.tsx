@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { LuPlus, LuCheck, LuLoader, LuList } from 'react-icons/lu';
+import { LuPlus, LuCheck, LuLoader } from 'react-icons/lu';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchWithAuth } from '@/lib/api';
