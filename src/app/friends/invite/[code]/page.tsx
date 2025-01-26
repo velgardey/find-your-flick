@@ -75,6 +75,14 @@ export default function InvitePage() {
     validateInvite();
   }, [code, user, authLoading]);
 
+  // Add new effect to handle loading state when not signed in
+  useEffect(() => {
+    // If auth is not loading and user is not signed in, we can stop loading
+    if (!authLoading && !user) {
+      setLoading(false);
+    }
+  }, [authLoading, user]);
+
   useEffect(() => {
     // Check for pending invite after sign in
     if (user && !authLoading) {
