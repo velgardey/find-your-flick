@@ -40,7 +40,6 @@ export default function RootLayout({
       >
         <Providers>
           <Navbar />
-          <MouseGlow />
           <div id="content-wrapper" className="relative z-30 pt-14 sm:pt-16 px-3 sm:px-6 lg:px-8">
             {children}
           </div>
