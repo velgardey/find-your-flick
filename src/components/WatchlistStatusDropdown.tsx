@@ -10,6 +10,7 @@ interface WatchlistStatusDropdownProps {
   entryId: string
   currentStatus: WatchStatus
   isEnabled?: boolean
+  movieId: number
 }
 
 const watchStatusLabels: Record<WatchStatus, string> = {
@@ -23,9 +24,10 @@ const watchStatusLabels: Record<WatchStatus, string> = {
 export default function WatchlistStatusDropdown({ 
   entryId, 
   currentStatus,
-  isEnabled = true 
+  isEnabled = true,
+  movieId,
 }: WatchlistStatusDropdownProps) {
-  const { updateWatchlistEntry } = useWatchlist()
+  const { updateWatchlistEntry, removeFromWatchlist } = useWatchlist()
   const [isOpen, setIsOpen] = useState(false)
 
   const handleStatusSelect = async (status: WatchStatus) => {
@@ -35,6 +37,17 @@ export default function WatchlistStatusDropdown({
       await updateWatchlistEntry(entryId, { status })
     } catch (error) {
       console.error('Error updating watchlist status:', error)
+    }
+    setIsOpen(false)
+  }
+
+  const handleRemove = async () => {
+    if (!isEnabled) return
+    
+    try {
+      await removeFromWatchlist(movieId)
+    } catch (error) {
+      console.error('Error removing from watchlist:', error)
     }
     setIsOpen(false)
   }
@@ -70,6 +83,16 @@ export default function WatchlistStatusDropdown({
           {label}
         </button>
       ))}
+      <div className="my-1 border-t border-white/10" />
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          handleRemove()
+        }}
+        className="w-full px-3 py-1.5 text-left text-sm text-red-400 hover:bg-white/10 transition-colors"
+      >
+        Remove from Watchlist
+      </button>
     </Dropdown>
   )
 } 

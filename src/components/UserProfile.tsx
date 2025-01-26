@@ -379,6 +379,7 @@ export default function UserProfile() {
                             entryId={movie.id} 
                             currentStatus={movie.status}
                             isEnabled={true}
+                            movieId={movie.movieId}
                           />
                         </div>
                       </div>
