@@ -46,7 +46,6 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
   const [videos, setVideos] = useState<MovieVideo[]>([]);
   const [streamingData, setStreamingData] = useState<StreamingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [posterLoaded, setPosterLoaded] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -120,11 +119,6 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
     };
   }, [movieId, onClose]);
 
-  const handleClose = () => {
-    setMovie(null);
-    onClose();
-  };
-
   const renderProviders = (providers: Provider[] | undefined, title: string) => {
     if (!providers?.length) return null;
     
@@ -172,89 +166,86 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
           transition={{ type: "spring", damping: 25, stiffness: 200 }}
           className="relative w-full sm:max-w-5xl h-[85vh] sm:h-[85vh] sm:max-h-[85vh] rounded-t-[20px] sm:rounded-2xl bg-black/90 overflow-hidden"
         >
+          {/* Close Button */}
+          <div className="absolute top-0 right-0 z-50 p-4">
+            <button
+              onClick={onClose}
+              className="text-white/80 hover:text-white p-2 rounded-full bg-black/20 backdrop-blur-sm hover:bg-black/40 transition-colors"
+            >
+              <LuX className="w-6 h-6" />
+            </button>
+          </div>
+
           {/* Full Background Backdrop */}
           {movie?.backdrop_path ? (
             <div className="absolute inset-0 z-0">
-              <div className="absolute inset-0 bg-white/5 animate-pulse" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent z-10" />
               <Image
                 src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
                 alt={movie.title}
                 fill
-                className="object-cover transition-opacity duration-300"
                 priority
-                placeholder="blur"
-                blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                className="object-cover opacity-40"
                 sizes="100vw"
+                quality={85}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
+                  target.parentElement?.classList.add('bg-black');
                 }}
               />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/80 to-black/90" />
             </div>
           ) : (
-            <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/60 via-black/80 to-black/90" />
+            <div className="absolute inset-0 bg-black/90" />
           )}
 
           {/* Content Container */}
-          <div className="relative h-full z-10">
-            {/* Close Button */}
-            <div className="sticky top-0 z-[150] w-full flex justify-between items-center p-4 bg-gradient-to-b from-black/80 to-transparent">
-              <div className="sm:hidden w-12 h-1 bg-white/20 rounded-full mx-auto mb-4" />
-              <button
-                onClick={handleClose}
-                className="ml-auto text-white/80 hover:text-white p-2 sm:p-3 rounded-full bg-black/20 backdrop-blur-sm hover:bg-black/40 transition-colors touch-manipulation"
-              >
-                <LuX className="w-5 h-5 sm:w-6 sm:h-6" />
-              </button>
-            </div>
-
-            {/* Main Content */}
-            <div className="h-[calc(100%-4rem)] overflow-y-auto overscroll-contain scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-              {/* Video Section */}
-              {videos[0] && (
-                <div className="relative w-full bg-black">
-                  <div className="sm:container sm:mx-auto">
-                    <div className="relative w-full aspect-[4/3] sm:aspect-[16/9] lg:aspect-[2.4/1]">
-                      <iframe
-                        src={`https://www.youtube-nocookie.com/embed/${videos[0].key}?rel=0&modestbranding=1&playsinline=1`}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        className="absolute inset-0 w-full h-full"
-                      />
-                    </div>
+          <div className="relative z-10 h-full overflow-y-auto">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="animate-pulse space-y-8 w-full max-w-2xl mx-auto p-6">
+                  <div className="h-8 bg-white/10 rounded w-3/4" />
+                  <div className="space-y-3">
+                    <div className="h-4 bg-white/10 rounded w-full" />
+                    <div className="h-4 bg-white/10 rounded w-5/6" />
+                    <div className="h-4 bg-white/10 rounded w-4/6" />
                   </div>
                 </div>
-              )}
-
-              {/* Movie Details */}
-              <div className="p-4 sm:p-6">
-                {isLoading ? (
-                  <div className="h-full flex items-center justify-center">
-                    <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+              </div>
+            ) : movie ? (
+              <div className="p-4 sm:p-6 space-y-6">
+                {/* Video Section */}
+                {videos[0] && (
+                  <div className="relative w-full bg-black">
+                    <div className="sm:container sm:mx-auto">
+                      <div className="relative w-full aspect-[4/3] sm:aspect-[16/9] lg:aspect-[2.4/1]">
+                        <iframe
+                          src={`https://www.youtube-nocookie.com/embed/${videos[0].key}?rel=0&modestbranding=1&playsinline=1`}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          className="absolute inset-0 w-full h-full"
+                        />
+                      </div>
+                    </div>
                   </div>
-                ) : movie ? (
-                  <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
-                    {/* Poster */}
-                    <div className="relative w-[120px] sm:w-[200px] h-[180px] sm:h-[300px] mx-auto sm:mx-0 flex-shrink-0">
-                      {!posterLoaded && (
-                        <div className="absolute inset-0 bg-white/5 animate-pulse rounded-xl" />
-                      )}
+                )}
+
+                {/* Movie Details */}
+                <div className="flex flex-col sm:flex-row gap-6">
+                  {/* Poster */}
+                  <div className="relative w-[120px] sm:w-[200px] flex-shrink-0 mx-auto sm:mx-0">
+                    <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-black/30">
                       {movie.poster_path ? (
                         <Image
                           src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
                           alt={movie.title}
                           fill
-                          className={`rounded-xl object-cover transition-opacity duration-300 ${
-                            posterLoaded ? 'opacity-100' : 'opacity-0'
-                          }`}
-                          onLoad={() => setPosterLoaded(true)}
                           priority
-                          placeholder="blur"
-                          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                          className="object-cover"
                           sizes="(max-width: 640px) 120px, 200px"
+                          quality={85}
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
+                            target.parentElement?.classList.add('bg-gray-800');
                             target.style.display = 'none';
                           }}
                         />
@@ -264,75 +255,75 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
                         </div>
                       )}
                     </div>
+                  </div>
 
-                    {/* Details */}
-                    <div className="flex-1 space-y-3 sm:space-y-6">
-                      {/* Title and Tagline */}
-                      <div>
-                        <h2 className="text-2xl sm:text-4xl font-bold text-white">{movie.title}</h2>
-                        {movie.tagline && (
-                          <p className="text-sm sm:text-base text-gray-400 italic mt-2">{movie.tagline}</p>
-                        )}
-                      </div>
+                  {/* Details */}
+                  <div className="flex-1 space-y-3 sm:space-y-6">
+                    {/* Title and Tagline */}
+                    <div>
+                      <h2 className="text-2xl sm:text-4xl font-bold text-white">{movie.title}</h2>
+                      {movie.tagline && (
+                        <p className="text-sm sm:text-base text-gray-400 italic mt-2">{movie.tagline}</p>
+                      )}
+                    </div>
 
-                      {/* Movie Stats */}
-                      <div className="flex flex-wrap gap-3 sm:gap-4 text-sm">
-                        {movie.vote_average > 0 && (
-                          <div className="flex items-center gap-1 bg-black/30 rounded-lg px-3 py-2 touch-manipulation">
-                            <LuStar className="w-4 h-4 text-yellow-500" />
-                            <span>{movie.vote_average.toFixed(1)}</span>
-                          </div>
-                        )}
-                        {movie.release_date && (
-                          <div className="flex items-center gap-1 bg-black/30 rounded-lg px-3 py-2 touch-manipulation">
-                            <LuCalendar className="w-4 h-4" />
-                            <span>{new Date(movie.release_date).getFullYear()}</span>
-                          </div>
-                        )}
-                        {movie.runtime > 0 && (
-                          <div className="flex items-center gap-1 bg-black/30 rounded-lg px-3 py-2 touch-manipulation">
-                            <LuClock className="w-4 h-4" />
-                            <span>{`${movie.runtime}m`}</span>
-                          </div>
-                        )}
-                        {movie.original_language && (
-                          <div className="flex items-center gap-1 bg-black/30 rounded-lg px-3 py-2 touch-manipulation">
-                            <LuLanguages className="w-4 h-4" />
-                            <span>{movie.original_language.toUpperCase()}</span>
-                          </div>
-                        )}
-                      </div>
+                    {/* Movie Stats */}
+                    <div className="flex flex-wrap gap-3 sm:gap-4 text-sm">
+                      {movie.vote_average > 0 && (
+                        <div className="flex items-center gap-1 bg-black/30 rounded-lg px-3 py-2 touch-manipulation">
+                          <LuStar className="w-4 h-4 text-yellow-500" />
+                          <span>{movie.vote_average.toFixed(1)}</span>
+                        </div>
+                      )}
+                      {movie.release_date && (
+                        <div className="flex items-center gap-1 bg-black/30 rounded-lg px-3 py-2 touch-manipulation">
+                          <LuCalendar className="w-4 h-4" />
+                          <span>{new Date(movie.release_date).getFullYear()}</span>
+                        </div>
+                      )}
+                      {movie.runtime > 0 && (
+                        <div className="flex items-center gap-1 bg-black/30 rounded-lg px-3 py-2 touch-manipulation">
+                          <LuClock className="w-4 h-4" />
+                          <span>{`${movie.runtime}m`}</span>
+                        </div>
+                      )}
+                      {movie.original_language && (
+                        <div className="flex items-center gap-1 bg-black/30 rounded-lg px-3 py-2 touch-manipulation">
+                          <LuLanguages className="w-4 h-4" />
+                          <span>{movie.original_language.toUpperCase()}</span>
+                        </div>
+                      )}
+                    </div>
 
-                      {/* Genres */}
-                      <div className="flex flex-wrap gap-2">
-                        {movie.genres.map((genre) => (
-                          <span
-                            key={genre.id}
-                            className="text-sm bg-white/10 text-white px-3 py-1.5 rounded-lg touch-manipulation"
-                          >
-                            {genre.name}
-                          </span>
-                        ))}
-                      </div>
+                    {/* Genres */}
+                    <div className="flex flex-wrap gap-2">
+                      {movie.genres.map((genre) => (
+                        <span
+                          key={genre.id}
+                          className="text-sm bg-white/10 text-white px-3 py-1.5 rounded-lg touch-manipulation"
+                        >
+                          {genre.name}
+                        </span>
+                      ))}
+                    </div>
 
-                      {/* Overview */}
-                      <p className="text-sm sm:text-base text-gray-300 leading-relaxed">{movie.overview}</p>
+                    {/* Overview */}
+                    <p className="text-sm sm:text-base text-gray-300 leading-relaxed">{movie.overview}</p>
 
-                      {/* Streaming Providers */}
-                      <div className="space-y-4">
-                        {renderProviders(streamingData?.flatrate, 'Stream')}
-                        {renderProviders(streamingData?.rent, 'Rent')}
-                        {renderProviders(streamingData?.buy, 'Buy')}
-                      </div>
+                    {/* Streaming Providers */}
+                    <div className="space-y-4">
+                      {renderProviders(streamingData?.flatrate, 'Stream')}
+                      {renderProviders(streamingData?.rent, 'Rent')}
+                      {renderProviders(streamingData?.buy, 'Buy')}
                     </div>
                   </div>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-gray-400">
-                    Movie details not found
-                  </div>
-                )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-gray-400">Movie details not found</p>
+              </div>
+            )}
           </div>
         </motion.div>
       </motion.div>
