@@ -122,6 +122,7 @@ export default function MovieRecommendations({
                   maxRetries={5}
                   retryDelay={1500}
                   fallbackText="Image not available"
+                  fill
                 />
               </>
             ) : (

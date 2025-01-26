@@ -190,6 +190,7 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
                 priority
                 maxRetries={5}
                 retryDelay={1500}
+                fill
               />
             </div>
           ) : (
@@ -242,6 +243,7 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
                           priority
                           maxRetries={5}
                           retryDelay={1500}
+                          fill
                         />
                       ) : (
                         <div className="absolute inset-0 bg-gray-800 rounded-xl flex items-center justify-center">
