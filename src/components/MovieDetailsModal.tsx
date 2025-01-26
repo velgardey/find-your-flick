@@ -215,7 +215,6 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
                         className="absolute inset-0 w-full h-full"
-                        loading="lazy"
                       />
                     </div>
                   </div>
