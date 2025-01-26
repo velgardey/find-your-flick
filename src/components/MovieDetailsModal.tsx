@@ -1,7 +1,8 @@
 'use client'
-import { useEffect, useRef , useState} from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { LuX, LuStar, LuCalendar, LuClock, LuLanguages } from 'react-icons/lu';
+import { LuX, LuStar, LuCalendar, LuClock, LuLanguages, LuPlay } from 'react-icons/lu';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface MovieDetails {
   id: number;
@@ -17,6 +18,23 @@ interface MovieDetails {
   tagline: string;
 }
 
+interface MovieVideo {
+  key: string;
+  site: string;
+  type: string;
+}
+
+interface Provider {
+  provider_name: string;
+  logo_path: string;
+}
+
+interface StreamingData {
+  flatrate?: Provider[];
+  rent?: Provider[];
+  buy?: Provider[];
+}
+
 interface MovieDetailsModalProps {
   movieId: number | null;
   onClose: () => void;
@@ -25,29 +43,49 @@ interface MovieDetailsModalProps {
 export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [movie, setMovie] = useState<MovieDetails | null>(null);
+  const [videos, setVideos] = useState<MovieVideo[]>([]);
+  const [streamingData, setStreamingData] = useState<StreamingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [backdropLoaded, setBackdropLoaded] = useState(false);
+  const [isPlayingTrailer, setIsPlayingTrailer] = useState(false);
   const [posterLoaded, setPosterLoaded] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
 
-    const fetchMovieDetails = async () => {
+    const fetchMovieData = async () => {
       if (!movieId) return;
       
       setIsLoading(true);
       setMovie(null);
+      setVideos([]);
+      setStreamingData(null);
       
       try {
-        const response = await fetch(
+        // Fetch movie details
+        const movieResponse = await fetch(
           `https://api.themoviedb.org/3/movie/${movieId}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=en-US`
         );
-        const data = await response.json();
+        const movieData = await movieResponse.json();
+
+        // Fetch videos
+        const videosResponse = await fetch(
+          `https://api.themoviedb.org/3/movie/${movieId}/videos?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=en-US`
+        );
+        const videosData = await videosResponse.json();
+
+        // Fetch streaming providers
+        const providersResponse = await fetch(
+          `https://api.themoviedb.org/3/movie/${movieId}/watch/providers?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}`
+        );
+        const providersData = await providersResponse.json();
+
         if (isMounted) {
-          setMovie(data);
+          setMovie(movieData);
+          setVideos(videosData.results?.filter((v: MovieVideo) => v.site === 'YouTube' && v.type === 'Trailer') || []);
+          setStreamingData(providersData.results?.US || null);
         }
       } catch (error) {
-        console.error('Error fetching movie details:', error);
+        console.error('Error fetching movie data:', error);
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -55,11 +93,13 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
       }
     };
 
-    fetchMovieDetails();
+    fetchMovieData();
 
     return () => {
       isMounted = false;
       setMovie(null);
+      setVideos([]);
+      setStreamingData(null);
     };
   }, [movieId]);
 
@@ -83,123 +123,189 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
 
   const handleClose = () => {
     setMovie(null);
+    setIsPlayingTrailer(false);
     onClose();
+  };
+
+  const renderProviders = (providers: Provider[] | undefined, title: string) => {
+    if (!providers?.length) return null;
+    
+    return (
+      <div className="mb-4">
+        <h4 className="text-sm text-gray-400 mb-2">{title}</h4>
+        <div className="flex flex-wrap gap-2">
+          {providers.map((provider) => (
+            <div
+              key={provider.provider_name}
+              className="relative w-8 h-8 rounded-lg overflow-hidden tooltip-trigger group"
+            >
+              <Image
+                src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+                alt={provider.provider_name}
+                fill
+                className="object-cover"
+              />
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                {provider.provider_name}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   if (!movieId) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md" role="dialog">
-      <div 
-        ref={modalRef}
-        className="relative w-full sm:max-w-5xl bg-gradient-to-br from-white/[0.15] to-white/[0.05] backdrop-blur-2xl border border-white/20 rounded-none sm:rounded-2xl overflow-hidden h-[90vh] sm:max-h-[85vh] shadow-[0_8px_32px_rgba(0,0,0,0.4)] before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/[0.12] before:to-transparent before:pointer-events-none"
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md"
+        role="dialog"
       >
-        {movie?.backdrop_path && (
-          <div className="relative h-40 sm:h-56 w-full">
-            {!backdropLoaded && (
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
-              </div>
-            )}
-            <Image
-              src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
-              alt={movie.title}
-              fill
-              className={`object-cover transition-opacity duration-300 ${
-                backdropLoaded ? 'opacity-100' : 'opacity-0'
-              }`}
-              onLoad={() => setBackdropLoaded(true)}
-              priority
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#00000099] via-[#00000066] to-[#00000033]" />
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[rgba(0,0,0,0.95)]" />
-          </div>
-        )}
-
-        <button
-          onClick={handleClose}
-          className="absolute top-2 sm:top-4 right-2 sm:right-4 text-white/80 hover:text-white p-2 rounded-full bg-black/20 backdrop-blur-sm hover:bg-black/40 transition-colors z-50"
+        <motion.div
+          ref={modalRef}
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -20, opacity: 0 }}
+          className="relative w-full sm:max-w-5xl overflow-hidden h-[90vh] sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl"
         >
-          <LuX className="w-5 h-5" />
-        </button>
-
-        <div className="relative p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-10rem)] sm:max-h-[calc(85vh-14rem)]">
-          {isLoading ? (
-            <div className="h-full flex items-center justify-center">
-              <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : movie ? (
-            <div className="h-full">
-              <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
-                {/* Poster */}
-                <div className="relative w-[140px] sm:w-[220px] h-[210px] sm:h-[330px] mx-auto sm:mx-0 flex-shrink-0">
-                  {!posterLoaded && (
-                    <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
-                      <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
-                    </div>
-                  )}
-                  <Image
-                    src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
-                    alt={movie.title}
-                    fill
-                    className={`rounded-xl object-cover transition-opacity duration-300 ${
-                      posterLoaded ? 'opacity-100' : 'opacity-0'
-                    }`}
-                    onLoad={() => setPosterLoaded(true)}
-                    priority
-                  />
-                </div>
-
-                {/* Details */}
-                <div className="flex-1">
-                  <h2 className="text-xl sm:text-4xl font-bold text-white mb-2 text-center sm:text-left">{movie.title}</h2>
-                  {movie.tagline && (
-                    <p className="text-gray-400 italic mb-4 text-sm sm:text-base text-center sm:text-left">{movie.tagline}</p>
-                  )}
-
-                  <div className="flex flex-wrap justify-center sm:justify-start gap-4 sm:gap-6 mb-4 sm:mb-6 text-sm sm:text-base">
-                    <div className="flex items-center gap-2 text-yellow-400">
-                      <LuStar className="w-4 h-4 sm:w-5 sm:h-5" />
-                      <span>{movie.vote_average.toFixed(1)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-400">
-                      <LuCalendar className="w-4 h-4 sm:w-5 sm:h-5" />
-                      <span>{new Date(movie.release_date).getFullYear()}</span>
-                    </div>
-                    {movie.runtime > 0 && (
-                      <div className="flex items-center gap-2 text-gray-400">
-                        <LuClock className="w-4 h-4 sm:w-5 sm:h-5" />
-                        <span>{movie.runtime} min</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 text-gray-400">
-                      <LuLanguages className="w-4 h-4 sm:w-5 sm:h-5" />
-                      <span>{movie.original_language.toUpperCase()}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap justify-center sm:justify-start gap-2 mb-4 sm:mb-6">
-                    {movie.genres.map((genre) => (
-                      <span
-                        key={genre.id}
-                        className="px-2.5 sm:px-3 py-1 bg-gray-800 rounded-full text-xs sm:text-sm text-gray-300"
-                      >
-                        {genre.name}
-                      </span>
-                    ))}
-                  </div>
-
-                  <p className="text-gray-300 leading-relaxed text-sm sm:text-base">{movie.overview}</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="h-full flex items-center justify-center text-gray-400">
-              Movie details not found
+          {/* Full Background Backdrop */}
+          {movie?.backdrop_path && (
+            <div className="absolute inset-0">
+              <Image
+                src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
+                alt={movie.title}
+                fill
+                className="object-cover"
+                priority
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/80 to-black/90" />
             </div>
           )}
-        </div>
-      </div>
-    </div>
+
+          {/* Content Container */}
+          <div className="relative h-full">
+            {/* Close Button */}
+            <button
+              onClick={handleClose}
+              className="absolute top-4 right-4 text-white/80 hover:text-white p-2 rounded-full bg-black/20 backdrop-blur-sm hover:bg-black/40 transition-colors z-50"
+            >
+              <LuX className="w-5 h-5" />
+            </button>
+
+            {/* Main Content */}
+            <div className="h-full overflow-y-auto scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+              {/* Video Section */}
+              {videos[0] && (
+                <div className="relative aspect-video w-full bg-black">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${videos[0].key}?rel=0`}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="absolute inset-0 w-full h-full"
+                  />
+                </div>
+              )}
+
+              {/* Movie Details */}
+              <div className="p-6">
+                {isLoading ? (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+                  </div>
+                ) : movie ? (
+                  <div className="flex flex-col sm:flex-row gap-6">
+                    {/* Poster */}
+                    <div className="relative w-[140px] sm:w-[200px] h-[210px] sm:h-[300px] mx-auto sm:mx-0 flex-shrink-0">
+                      {!posterLoaded && (
+                        <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
+                          <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                        </div>
+                      )}
+                      <Image
+                        src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+                        alt={movie.title}
+                        fill
+                        className={`rounded-xl object-cover transition-opacity duration-300 ${
+                          posterLoaded ? 'opacity-100' : 'opacity-0'
+                        }`}
+                        onLoad={() => setPosterLoaded(true)}
+                        priority
+                      />
+                    </div>
+
+                    {/* Details */}
+                    <div className="flex-1 space-y-6">
+                      {/* Title and Tagline */}
+                      <div>
+                        <h2 className="text-2xl sm:text-4xl font-bold text-white">{movie.title}</h2>
+                        {movie.tagline && (
+                          <p className="text-gray-400 italic mt-2">{movie.tagline}</p>
+                        )}
+                      </div>
+
+                      {/* Movie Stats */}
+                      <div className="flex flex-wrap gap-4 text-sm">
+                        <div className="flex items-center gap-2 text-yellow-400">
+                          <LuStar className="w-5 h-5" />
+                          <span>{movie.vote_average.toFixed(1)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-400">
+                          <LuCalendar className="w-5 h-5" />
+                          <span>{new Date(movie.release_date).getFullYear()}</span>
+                        </div>
+                        {movie.runtime > 0 && (
+                          <div className="flex items-center gap-2 text-gray-400">
+                            <LuClock className="w-5 h-5" />
+                            <span>{movie.runtime} min</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-gray-400">
+                          <LuLanguages className="w-5 h-5" />
+                          <span>{movie.original_language.toUpperCase()}</span>
+                        </div>
+                      </div>
+
+                      {/* Genres */}
+                      <div className="flex flex-wrap gap-2">
+                        {movie.genres.map((genre) => (
+                          <span
+                            key={genre.id}
+                            className="px-3 py-1 bg-white/10 rounded-full text-sm text-gray-300"
+                          >
+                            {genre.name}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Overview */}
+                      <p className="text-gray-300 leading-relaxed">{movie.overview}</p>
+
+                      {/* Streaming Providers */}
+                      {streamingData && (
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold">Where to Watch</h3>
+                          {renderProviders(streamingData.flatrate, "Stream")}
+                          {renderProviders(streamingData.rent, "Rent")}
+                          {renderProviders(streamingData.buy, "Buy")}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-gray-400">
+                    Movie details not found
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 } 
