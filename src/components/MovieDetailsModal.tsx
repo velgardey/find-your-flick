@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { LuX, LuStar, LuCalendar, LuClock, LuLanguages, LuPlay } from 'react-icons/lu';
+import { LuX, LuStar, LuCalendar, LuClock, LuLanguages } from 'react-icons/lu';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface MovieDetails {
@@ -46,7 +46,6 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
   const [videos, setVideos] = useState<MovieVideo[]>([]);
   const [streamingData, setStreamingData] = useState<StreamingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isPlayingTrailer, setIsPlayingTrailer] = useState(false);
   const [posterLoaded, setPosterLoaded] = useState(false);
 
   useEffect(() => {
@@ -123,7 +122,6 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
 
   const handleClose = () => {
     setMovie(null);
-    setIsPlayingTrailer(false);
     onClose();
   };
 

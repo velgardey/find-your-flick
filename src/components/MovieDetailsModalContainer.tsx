@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import MovieDetailsModal from './MovieDetailsModal';
 
 interface MovieDetailsModalContainerProps {
