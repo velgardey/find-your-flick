@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { generateMovieRecommendations } from '@/services/gemmaService';
+import { generateMediaRecommendations } from '@/services/gemmaService';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
 
 interface Movie {
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const { description, selectedMovies, excludeMovieId, currentRecommendations } = await request.json();
     
     // Get multiple recommendations to increase chances of finding a different movie
-    const movieTitles = await generateMovieRecommendations(
+    const movieTitles = await generateMediaRecommendations(
       description, 
       selectedMovies,
       15
