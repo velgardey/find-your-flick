@@ -113,7 +113,7 @@ export default function MovieRecommendations({
               <>
                 <div className="absolute inset-0 bg-white/5 animate-pulse" />
                 <RetryImage
-                  src={`https://image.tmdb.org/t/p/w154${movie.poster_path}`}
+                  src={`https://image.tmdb.org/t/p/w342${movie.poster_path}`}
                   alt={movie.title}
                   className="object-cover rounded-t-xl"
                   sizes="(max-width: 640px) 150px, (max-width: 1024px) 200px, 250px"
