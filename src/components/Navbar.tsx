@@ -3,7 +3,7 @@
 import { Fragment, useState } from 'react';
 import { Dialog, Transition, Menu } from '@headlessui/react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { LuHouse, LuUsers, LuRss, LuMenu, LuX, LuLogIn, LuLogOut, LuUser } from 'react-icons/lu';
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
@@ -13,13 +13,14 @@ import Image from 'next/image';
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const auth = getAuth();
   const [user] = useAuthState(auth);
 
   const navigation = [
-    { name: 'Home', href: '/', icon: LuHouse },
-    { name: 'Feed', href: '/feed', icon: LuRss },
-    { name: 'Friends', href: '/friends', icon: LuUsers },
+    { name: 'Home', href: '/', icon: LuHouse, protected: false },
+    { name: 'Feed', href: '/feed', icon: LuRss, protected: true },
+    { name: 'Friends', href: '/friends', icon: LuUsers, protected: true },
   ];
 
   const handleSignIn = async () => {
@@ -34,8 +35,19 @@ export default function Navbar() {
   const handleSignOut = async () => {
     try {
       await signOut(auth);
+      router.push('/');
     } catch (error) {
       console.error('Error signing out:', error);
+    }
+  };
+
+  const handleNavigation = (href: string, isProtected: boolean, e: React.MouseEvent) => {
+    if (isProtected && !user) {
+      e.preventDefault();
+      const shouldSignIn = window.confirm('You need to sign in to access this feature. Would you like to sign in now?');
+      if (shouldSignIn) {
+        handleSignIn();
+      }
     }
   };
 
@@ -57,6 +69,7 @@ export default function Navbar() {
                     <Link
                       key={item.name}
                       href={item.href}
+                      onClick={(e) => handleNavigation(item.href, item.protected, e)}
                       className={`relative px-4 py-2.5 text-sm font-medium text-white rounded-lg hover:bg-white/10 active:bg-white/20 transition-colors touch-manipulation ${
                         isActive ? 'text-white' : 'text-gray-300'
                       }`}
@@ -107,7 +120,7 @@ export default function Navbar() {
                             >
                               <div className="flex items-center gap-2">
                                 <LuUser className="w-4 h-4" />
-                                Profile
+                                Your Profile
                               </div>
                             </Link>
                           )}
@@ -199,7 +212,7 @@ export default function Navbar() {
                           <Link
                             key={item.name}
                             href={item.href}
-                            onClick={() => setMobileMenuOpen(false)}
+                            onClick={(e) => handleNavigation(item.href, item.protected, e)}
                             className={`px-4 py-3.5 text-base font-medium rounded-xl touch-manipulation ${
                               isActive
                                 ? 'bg-white/10 text-white'

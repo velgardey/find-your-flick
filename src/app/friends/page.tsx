@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { LuCopy, LuCheck, LuUserPlus } from 'react-icons/lu';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchWithAuth } from '@/lib/api';
+import { withAuth } from '@/components/withAuth';
 
 interface Friend {
   id: string;
@@ -24,7 +25,7 @@ interface FriendRequest {
   };
 }
 
-export default function Friends() {
+function Friends() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [inviteLink, setInviteLink] = useState('');
@@ -98,17 +99,6 @@ export default function Friends() {
       setError(error instanceof Error ? error.message : 'Failed to handle friend request');
     }
   };
-
-  if (!user) {
-    return (
-      <div className="min-h-screen pt-24 px-4">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">Sign in to manage friends</h2>
-          <p className="text-gray-400">Connect with friends and see what they&apos;re watching.</p>
-        </div>
-      </div>
-    );
-  }
 
   if (error) {
     return (
@@ -281,4 +271,6 @@ export default function Friends() {
       </div>
     </div>
   );
-} 
+}
+
+export default withAuth(Friends); 

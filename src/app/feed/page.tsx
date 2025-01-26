@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { fetchWithAuth } from '@/lib/api';
 import MovieDetailsModal from '@/components/MovieDetailsModal';
 import WatchlistButton from '@/components/WatchlistButton';
+import { withAuth } from '@/components/withAuth';
 
 interface FeedItem {
   id: string;
@@ -23,7 +24,7 @@ interface FeedItem {
   createdAt: string;
 }
 
-export default function Feed() {
+function Feed() {
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,17 +49,6 @@ export default function Feed() {
 
     fetchFeedItems();
   }, [user]);
-
-  if (!user) {
-    return (
-      <div className="min-h-screen pt-24 px-4">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">Sign in to view your feed</h2>
-          <p className="text-gray-400">See what movies your friends are watching and planning to watch.</p>
-        </div>
-      </div>
-    );
-  }
 
   if (error) {
     return (
@@ -214,4 +204,6 @@ export default function Feed() {
       )}
     </div>
   );
-} 
+}
+
+export default withAuth(Feed); 
