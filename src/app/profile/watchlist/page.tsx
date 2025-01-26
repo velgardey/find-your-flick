@@ -6,6 +6,7 @@ import { WatchStatus } from '@/lib/prismaTypes'
 import Image from 'next/image'
 import { LuStar, LuPencil, LuTrash2, LuSearch, LuChevronDown } from 'react-icons/lu'
 import { motion, AnimatePresence } from 'framer-motion'
+import MovieDetailsModal from '@/components/MovieDetailsModal'
 
 const watchStatusLabels: Record<WatchStatus, string> = {
   PLAN_TO_WATCH: 'Plan to Watch',
@@ -25,12 +26,25 @@ export default function WatchlistPage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [openStatusDropdown, setOpenStatusDropdown] = useState<string | null>(null)
   const [touchedMovieId, setTouchedMovieId] = useState<string | null>(null)
+  const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null)
 
   const handleCardTouch = (movieId: string, event: React.MouseEvent) => {
     if (window.matchMedia('(hover: hover)').matches) return;
     
     event.preventDefault();
     setTouchedMovieId(touchedMovieId === movieId ? null : movieId);
+  };
+
+  const handleMovieClick = (movieId: number, entryId: string, event: React.MouseEvent) => {
+    if (!window.matchMedia('(hover: hover)').matches) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (touchedMovieId !== entryId) {
+        handleCardTouch(entryId, event);
+        return;
+      }
+    }
+    setSelectedMovieId(movieId);
   };
 
   useEffect(() => {
@@ -153,7 +167,9 @@ export default function WatchlistPage() {
                 className="movie-card relative group"
               >
                 <div
-                  onClick={(e) => handleCardTouch(entry.id, e)}
+                  onClick={(e) => {
+                    handleMovieClick(entry.movieId, entry.id, e);
+                  }}
                   className="relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer"
                 >
                   {entry.posterPath ? (
@@ -163,7 +179,7 @@ export default function WatchlistPage() {
                       fill
                       className="object-cover"
                       placeholder="blur"
-                      blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                      blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
@@ -195,22 +211,28 @@ export default function WatchlistPage() {
                 <div className="relative">
                   <button
                     onClick={(e) => {
-                      if (!window.matchMedia('(hover: hover)').matches && touchedMovieId !== entry.id) {
+                      if (!window.matchMedia('(hover: hover)').matches) {
                         e.preventDefault();
                         e.stopPropagation();
-                        handleCardTouch(entry.id, e);
-                        return;
+                        if (touchedMovieId !== entry.id) {
+                          handleCardTouch(entry.id, e);
+                          return;
+                        }
                       }
                       setOpenStatusDropdown(openStatusDropdown === entry.id ? null : entry.id);
                     }}
-                    className="w-full px-2 py-1.5 text-xs flex items-center justify-between hover:bg-white/10 transition-colors"
+                    className={`w-full px-2 py-1.5 text-xs flex items-center justify-between transition-colors ${
+                      !window.matchMedia('(hover: hover)').matches && touchedMovieId !== entry.id 
+                        ? 'pointer-events-none' 
+                        : 'hover:bg-white/10'
+                    }`}
                   >
                     <span className="text-gray-300">{watchStatusLabels[entry.status]}</span>
                     <LuChevronDown className={`w-4 h-4 transition-transform ${openStatusDropdown === entry.id ? 'rotate-180' : ''}`} />
                   </button>
 
                   <AnimatePresence>
-                    {openStatusDropdown === entry.id && touchedMovieId === entry.id && (
+                    {openStatusDropdown === entry.id && (window.matchMedia('(hover: hover)').matches || touchedMovieId === entry.id) && (
                       <motion.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -218,7 +240,7 @@ export default function WatchlistPage() {
                         transition={{ duration: 0.2 }}
                         className="absolute left-0 right-0 bottom-full z-20 bg-gray-900/95 backdrop-blur-sm border border-white/10 rounded-lg shadow-lg overflow-hidden"
                       >
-                        <div className="p-1">
+                        <div className={`p-1 ${!window.matchMedia('(hover: hover)').matches && touchedMovieId !== entry.id ? 'pointer-events-none' : ''}`}>
                           {Object.entries(watchStatusLabels).map(([status, label]) => (
                             <button
                               key={status}
@@ -232,13 +254,7 @@ export default function WatchlistPage() {
                           ))}
                           <div className="h-px bg-white/10 my-1" />
                           <button
-                            onClick={(e) => {
-                              if (!window.matchMedia('(hover: hover)').matches && touchedMovieId !== entry.id) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleCardTouch(entry.id, e);
-                                return;
-                              }
+                            onClick={() => {
                               setEditingEntry(entry.id);
                               setEditNote(entry.notes ?? '');
                               setEditRating(entry.rating);
@@ -250,13 +266,7 @@ export default function WatchlistPage() {
                             <span>Edit Details</span>
                           </button>
                           <button
-                            onClick={(e) => {
-                              if (!window.matchMedia('(hover: hover)').matches && touchedMovieId !== entry.id) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleCardTouch(entry.id, e);
-                                return;
-                              }
+                            onClick={() => {
                               removeFromWatchlist(entry.movieId);
                               setOpenStatusDropdown(null);
                             }}
@@ -326,6 +336,13 @@ export default function WatchlistPage() {
           </div>
         </div>
       </div>
+
+      {selectedMovieId && (
+        <MovieDetailsModal
+          movieId={selectedMovieId}
+          onClose={() => setSelectedMovieId(null)}
+        />
+      )}
     </div>
   )
 } 
