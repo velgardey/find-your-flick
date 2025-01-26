@@ -89,7 +89,7 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
   if (!movieId) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md" role="dialog">
       <div 
         ref={modalRef}
         className="relative w-full sm:max-w-5xl bg-gradient-to-br from-white/[0.15] to-white/[0.05] backdrop-blur-2xl border border-white/20 rounded-none sm:rounded-2xl overflow-hidden h-[90vh] sm:max-h-[85vh] shadow-[0_8px_32px_rgba(0,0,0,0.4)] before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/[0.12] before:to-transparent before:pointer-events-none"
