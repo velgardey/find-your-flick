@@ -30,6 +30,7 @@ export default function Friends() {
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
@@ -58,6 +59,7 @@ export default function Friends() {
   }, [user]);
 
   const generateInviteLink = async () => {
+    setIsGeneratingLink(true);
     try {
       const { inviteLink } = await fetchWithAuth('/api/friends/invite', {
         method: 'POST',
@@ -67,6 +69,8 @@ export default function Friends() {
     } catch (error) {
       console.error('Error generating invite link:', error);
       setError(error instanceof Error ? error.message : 'Failed to generate invite link');
+    } finally {
+      setIsGeneratingLink(false);
     }
   };
 
@@ -130,10 +134,20 @@ export default function Friends() {
           <h2 className="text-2xl font-bold text-white">Friends</h2>
           <button
             onClick={generateInviteLink}
-            className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
+            disabled={isGeneratingLink}
+            className="bg-white/10 hover:bg-white/20 disabled:bg-white/5 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
           >
-            <LuUserPlus className="w-5 h-5" />
-            Invite Friend
+            {isGeneratingLink ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <LuUserPlus className="w-5 h-5" />
+                Invite Friend
+              </>
+            )}
           </button>
         </div>
 
