@@ -6,6 +6,8 @@ import Image from 'next/image';
 interface RetryImageProps {
   src: string;
   alt: string;
+  width?: number;
+  height?: number;
   fill?: boolean;
   className?: string;
   sizes?: string;
@@ -13,55 +15,51 @@ interface RetryImageProps {
   priority?: boolean;
   maxRetries?: number;
   retryDelay?: number;
+  fallbackSrc?: string;
   fallbackText?: string;
 }
 
 export default function RetryImage({
   src,
   alt,
-  fill = true,
+  width,
+  height,
+  fill = false,
   className = '',
   sizes = '100vw',
   quality = 85,
   priority = false,
   maxRetries = 3,
-  retryDelay = 2000,
+  retryDelay = 1000,
+  fallbackSrc = '/default-avatar.png',
   fallbackText = 'Image not available'
 }: RetryImageProps) {
   const [retryCount, setRetryCount] = useState(0);
   const [imageKey, setImageKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [imageSrc, setImageSrc] = useState(src);
+  const [currentSrc, setCurrentSrc] = useState(src);
 
   useEffect(() => {
-    setImageSrc(src);
+    setCurrentSrc(src);
     setRetryCount(0);
     setHasError(false);
     setIsLoading(true);
     setImageKey(prev => prev + 1);
   }, [src]);
 
-  const handleError = async () => {
+  const handleError = () => {
     setIsLoading(false);
     if (retryCount < maxRetries) {
       setHasError(true);
-      
-      // Try different TMDB image sizes if the current one fails
-      const sizes = ['original', 'w1280', 'w780', 'w500', 'w342', 'w185'];
-      const currentSize = imageSrc.match(/\/[^/]+\//)?.[0]?.replace(/\//g, '') || '';
-      const currentIndex = sizes.indexOf(currentSize);
-      const nextSize = sizes[currentIndex + 1] || sizes[0];
-      
-      const newSrc = imageSrc.replace(`/${currentSize}/`, `/${nextSize}/`);
-      
       setTimeout(() => {
         setRetryCount(prev => prev + 1);
         setImageKey(prev => prev + 1);
-        setImageSrc(newSrc);
         setIsLoading(true);
         setHasError(false);
       }, retryDelay);
+    } else {
+      setCurrentSrc(fallbackSrc);
     }
   };
 
@@ -71,17 +69,20 @@ export default function RetryImage({
   };
 
   return (
-    <div className="relative w-full h-full">
+    <div className={`relative ${!fill ? 'inline-block' : 'w-full h-full'}`}>
       {isLoading && (
-        <div className="absolute inset-0 bg-white/5 animate-pulse flex items-center justify-center">
+        <div className={`${fill ? 'absolute inset-0' : ''} bg-white/5 animate-pulse flex items-center justify-center`} 
+             style={{ width: width, height: height }}>
           <div className="text-sm text-gray-400">Loading...</div>
         </div>
       )}
       
       <Image
         key={imageKey}
-        src={imageSrc}
+        src={currentSrc}
         alt={alt}
+        width={width}
+        height={height}
         fill={fill}
         className={`${className} ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
         sizes={sizes}
@@ -93,16 +94,20 @@ export default function RetryImage({
       />
 
       {hasError && retryCount < maxRetries && (
-        <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
+        <div className={`${fill ? 'absolute inset-0' : ''} bg-gray-800 flex items-center justify-center`}
+             style={{ width: width, height: height }}>
           <div className="text-sm text-gray-400 text-center px-2">
-            Retrying with different quality... ({retryCount + 1}/{maxRetries})
+            Retrying... ({retryCount + 1}/{maxRetries})
           </div>
         </div>
       )}
 
-      {!isLoading && hasError && retryCount >= maxRetries && (
-        <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
-          <div className="text-sm text-gray-400 text-center px-2">{fallbackText}</div>
+      {hasError && retryCount >= maxRetries && (
+        <div className={`${fill ? 'absolute inset-0' : ''} bg-gray-800 flex items-center justify-center`}
+             style={{ width: width, height: height }}>
+          <div className="text-sm text-gray-400 text-center px-2">
+            {fallbackText}
+          </div>
         </div>
       )}
     </div>

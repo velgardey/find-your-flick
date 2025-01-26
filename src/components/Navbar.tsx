@@ -98,6 +98,13 @@ export default function Navbar() {
                         alt=""
                         width={36}
                         height={36}
+                        priority={true}
+                        onError={(e) => {
+                          const img = e.target as HTMLImageElement;
+                          if (img.src !== '/default-avatar.png') {
+                            img.src = '/default-avatar.png';
+                          }
+                        }}
                       />
                     </Menu.Button>
                     <Transition
