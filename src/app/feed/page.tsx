@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchWithAuth } from '@/lib/api';
 import MovieDetailsModal from '@/components/MovieDetailsModal';
+import WatchlistButton from '@/components/WatchlistButton';
 
 interface FeedItem {
   id: string;
@@ -162,10 +163,12 @@ export default function Feed() {
                         </span>
                       </p>
                       <div 
-                        className="mt-4 flex items-start space-x-4 cursor-pointer group/poster bg-black/30 rounded-lg p-3 hover:bg-black/50 transition-all duration-300"
-                        onClick={() => setSelectedMovieId(item.movieId)}
+                        className="mt-4 flex items-start space-x-4 group/poster bg-black/30 rounded-lg p-3 hover:bg-black/50 transition-all duration-300"
                       >
-                        <div className="relative overflow-hidden rounded-lg transition-transform duration-300 group-hover/poster:scale-105 shadow-md">
+                        <div 
+                          className="relative overflow-hidden rounded-lg transition-transform duration-300 group-hover/poster:scale-105 shadow-md cursor-pointer"
+                          onClick={() => setSelectedMovieId(item.movieId)}
+                        >
                           <Image
                             src={`https://image.tmdb.org/t/p/w154${item.moviePosterPath}`}
                             alt={item.movieTitle}
@@ -175,10 +178,23 @@ export default function Feed() {
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-white text-lg font-semibold group-hover/poster:text-blue-400 transition-colors">
+                          <h3 
+                            className="text-white text-lg font-semibold group-hover/poster:text-blue-400 transition-colors cursor-pointer"
+                            onClick={() => setSelectedMovieId(item.movieId)}
+                          >
                             {item.movieTitle}
                           </h3>
-                          <p className="text-gray-400 mt-1 text-sm">Click to view details</p>
+                          <p className="text-gray-400 mt-1 text-sm mb-3">Click to view details</p>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <WatchlistButton
+                              movie={{
+                                id: item.movieId,
+                                title: item.movieTitle,
+                                poster_path: item.moviePosterPath || '',
+                              }}
+                              position="bottom"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>

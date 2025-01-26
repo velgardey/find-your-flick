@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchWithAuth } from '@/lib/api';
+import WatchlistButton from '@/components/WatchlistButton';
+import MovieDetailsModal from '@/components/MovieDetailsModal';
 
 interface UserProfile {
   id: string;
@@ -36,6 +38,7 @@ export default function UserProfile({ params }: PageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -146,7 +149,10 @@ export default function UserProfile({ params }: PageProps) {
                         exit={{ opacity: 0, scale: 0.9 }}
                         className="relative group"
                       >
-                        <div className="aspect-[2/3] relative rounded-xl overflow-hidden">
+                        <div 
+                          className="aspect-[2/3] relative rounded-xl overflow-hidden cursor-pointer"
+                          onClick={() => setSelectedMovieId(movie.movieId)}
+                        >
                           <Image
                             src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`}
                             alt={movie.title}
@@ -154,17 +160,27 @@ export default function UserProfile({ params }: PageProps) {
                             className="object-cover"
                           />
                           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
-                            <h4 className="text-white font-medium mb-1">
+                            <h4 className="text-white font-medium mb-2">
                               {movie.title}
                             </h4>
-                            <p className="text-gray-300 text-sm">
+                            <p className="text-gray-300 text-sm mb-3">
                               {movie.status.replace(/_/g, ' ')}
                             </p>
                             {movie.rating && (
-                              <div className="text-yellow-400 text-sm mt-1">
+                              <div className="text-yellow-400 text-sm mb-3">
                                 Rating: {movie.rating}/10
                               </div>
                             )}
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <WatchlistButton
+                                movie={{
+                                  id: movie.movieId,
+                                  title: movie.title,
+                                  poster_path: movie.posterPath || '',
+                                }}
+                                position="top"
+                              />
+                            </div>
                           </div>
                         </div>
                       </motion.div>
@@ -176,6 +192,13 @@ export default function UserProfile({ params }: PageProps) {
           </>
         ) : null}
       </div>
+
+      {selectedMovieId && (
+        <MovieDetailsModal
+          movieId={selectedMovieId}
+          onClose={() => setSelectedMovieId(null)}
+        />
+      )}
     </div>
   );
 } 

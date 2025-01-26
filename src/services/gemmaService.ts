@@ -32,7 +32,9 @@ Remember to:
 1. Only return movie titles
 2. Separate titles with commas
 3. Return exactly ${count} movie${count > 1 ? 's' : ''}
-4. Don't include any other text`;
+4. Don't include any other text
+5. If the user has entered the name of a movie, pick that movie among the list of recommended movies`
+;
 
   try {
     const result = await model.generateContent(prompt);

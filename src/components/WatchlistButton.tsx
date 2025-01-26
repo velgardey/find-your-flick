@@ -17,6 +17,7 @@ interface Movie {
 
 interface WatchlistButtonProps {
   movie: Movie
+  position?: 'top' | 'bottom'
 }
 
 const watchStatusLabels: Record<WatchStatus, string> = {
@@ -27,7 +28,7 @@ const watchStatusLabels: Record<WatchStatus, string> = {
   DROPPED: 'Dropped',
 }
 
-export default function WatchlistButton({ movie }: WatchlistButtonProps) {
+export default function WatchlistButton({ movie, position = 'bottom' }: WatchlistButtonProps) {
   const { user } = useAuth()
   const router = useRouter()
   const { 
@@ -148,6 +149,7 @@ export default function WatchlistButton({ movie }: WatchlistButtonProps) {
       onClose={() => setIsDropdownOpen(false)}
       trigger={trigger}
       className="py-2"
+      position={position}
     >
       {Object.entries(watchStatusLabels).map(([status, label]) => (
         <motion.button
