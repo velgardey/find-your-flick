@@ -40,6 +40,10 @@ export default function SignInButton() {
             width={28}
             height={28}
             className="rounded-full w-7 h-7 sm:w-8 sm:h-8"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = '/default-avatar.png';
+            }}
           />
         </Link>
         <button
@@ -65,6 +69,10 @@ export default function SignInButton() {
         width={16}
         height={16}
         className="w-4 h-4 sm:w-5 sm:h-5"
+        onError={(e) => {
+          const target = e.target as HTMLImageElement;
+          target.style.display = 'none';
+        }}
       />
       <span className="hidden xs:inline">{isLoading ? 'Signing in...' : 'Sign in with Google'}</span>
       <span className="xs:hidden">Sign in</span>

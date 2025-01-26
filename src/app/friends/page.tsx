@@ -185,6 +185,10 @@ function Friends() {
                           width={40}
                           height={40}
                           className="rounded-full"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/default-avatar.png';
+                          }}
                         />
                         <span className="font-medium text-white">
                           {request.sender.displayName || 'Unknown User'}
@@ -253,6 +257,10 @@ function Friends() {
                       width={40}
                       height={40}
                       className="rounded-full"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/default-avatar.png';
+                      }}
                     />
                     <div>
                       <div className="font-medium text-white">
