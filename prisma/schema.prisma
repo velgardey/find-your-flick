@@ -85,12 +85,10 @@ model Friendship {
 
 model FriendInvite {
   id        String    @id @default(cuid())
-  userId    String
+  userId    String    @unique  // Make userId unique to ensure one invite per user
   code      String    @unique
-  expiresAt DateTime
   createdAt DateTime  @default(now())
   user      User      @relation("UserInvites", fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
   @@index([code])
 }

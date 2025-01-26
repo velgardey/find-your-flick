@@ -35,11 +35,11 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
       </head>
       <body
-        className={`${sol.variable} ${geistSans.variable} ${geistMono.variable} antialiased relative min-h-[100dvh] overflow-x-hidden`}
+        className={`${sol.variable} ${geistSans.variable} ${geistMono.variable} antialiased relative min-h-[100dvh] overflow-x-hidden bg-background`}
       >
         <Providers>
           <Navbar />
-          <div id="content-wrapper" className="relative z-30 pt-14 sm:pt-16 px-3 sm:px-6 lg:px-8">
+          <div id="content-wrapper" className="relative z-30 min-h-[calc(100dvh-3.5rem)] sm:min-h-[calc(100dvh-4rem)]">
             {children}
           </div>
         </Providers>

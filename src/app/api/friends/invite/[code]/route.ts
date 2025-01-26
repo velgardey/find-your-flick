@@ -44,13 +44,6 @@ export async function GET(
         );
       }
 
-      if (invite.expiresAt < new Date()) {
-        return NextResponse.json(
-          { error: 'Invite link has expired' },
-          { status: 400 }
-        );
-      }
-
       if (invite.userId === currentUserId) {
         return NextResponse.json(
           { error: 'Cannot use your own invite link' },

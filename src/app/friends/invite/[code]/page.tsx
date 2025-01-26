@@ -161,20 +161,20 @@ export default function InvitePage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen pt-24 px-4">
+      <div className="min-h-screen pt-24 px-4 flex flex-col items-center">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-2xl mx-auto text-center"
+          className="w-full max-w-md bg-black/50 backdrop-blur-sm border border-gray-800/50 rounded-xl p-6 text-center"
         >
-          <h2 className="text-2xl font-bold text-white mb-4">Sign in to continue</h2>
+          <h2 className="text-2xl font-bold text-white mb-4">Sign in Required</h2>
           <p className="text-gray-400 mb-6">
             You need to sign in to accept this friend invite. Don&apos;t worry, we&apos;ll take you right back here after signing in.
           </p>
           <button
             onClick={handleSignIn}
             disabled={isSigningIn}
-            className="bg-white/10 hover:bg-white/20 disabled:bg-white/5 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 mx-auto"
+            className="w-full bg-white/10 hover:bg-white/20 disabled:bg-white/5 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             {isSigningIn ? (
               <>

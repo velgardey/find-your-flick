@@ -35,13 +35,6 @@ export async function POST(request: Request) {
       );
     }
 
-    if (invite.expiresAt < new Date()) {
-      return NextResponse.json(
-        { error: 'Invite link has expired' },
-        { status: 400 }
-      );
-    }
-
     if (invite.userId === currentUserId) {
       return NextResponse.json(
         { error: 'Cannot accept your own invite link' },
@@ -81,11 +74,6 @@ export async function POST(request: Request) {
         },
       }),
     ]);
-
-    // Delete the used invite
-    await prisma.friendInvite.delete({
-      where: { id: invite.id },
-    });
 
     return NextResponse.json({
       message: 'Friend added successfully',

@@ -45,26 +45,31 @@ export async function POST(request: Request) {
       });
       console.log('User ensured in database:', user.id);
 
-      // Generate a unique invite code
-      const code = Math.random().toString(36).substring(2, 15);
-      console.log('Generated invite code:', code);
-      
-      // Set expiration to 24 hours from now
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24);
-
-      console.log('Creating invite in database...');
-      const invite = await prisma.friendInvite.create({
-        data: {
-          code,
-          userId,
-          expiresAt,
-        },
+      // Check if user already has an invite
+      console.log('Checking for existing invite...');
+      let invite = await prisma.friendInvite.findUnique({
+        where: { userId },
       });
+
+      if (!invite) {
+        // Generate a unique invite code
+        const code = Math.random().toString(36).substring(2, 15);
+        console.log('Generated new invite code:', code);
+        
+        console.log('Creating invite in database...');
+        invite = await prisma.friendInvite.create({
+          data: {
+            code,
+            userId,
+          },
+        });
+      } else {
+        console.log('Found existing invite:', invite.code);
+      }
 
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://find-your-flick.vercel.app';
       const inviteLink = `${baseUrl}/friends/invite/${invite.code}`;
-      console.log('Invite created successfully:', { code, userId });
+      console.log('Returning invite link:', { code: invite.code, userId });
 
       return NextResponse.json({ inviteLink });
     } catch (error) {
