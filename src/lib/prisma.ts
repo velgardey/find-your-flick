@@ -7,6 +7,10 @@ export const prisma = globalForPrisma.prisma || new PrismaClient()
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
+interface PrismaError extends Error {
+  code?: string;
+}
+
 // Wrapper function to add retry functionality to Prisma operations
 export async function withPrismaRetry<T>(
   operation: () => Promise<T>,
@@ -14,7 +18,7 @@ export async function withPrismaRetry<T>(
     maxRetries: 3,
     baseDelay: 500,
     maxDelay: 2000,
-    shouldRetry: (error: any) => {
+    shouldRetry: (error: PrismaError) => {
       // Retry on connection errors or deadlocks
       return (
         error.code === 'P1001' || // Authentication failed
@@ -25,8 +29,8 @@ export async function withPrismaRetry<T>(
       )
     }
   }
-) {
-  return withRetry(operation, options)
+): Promise<T> {
+  return withRetry<T, PrismaError>(operation, options)
 }
 
 export default prisma 
