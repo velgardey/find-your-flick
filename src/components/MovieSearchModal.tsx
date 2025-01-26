@@ -45,15 +45,17 @@ export default function MovieSearchModal({ isOpen, onClose, onSelectMovie }: Mov
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-start sm:items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-start sm:items-center justify-center p-2 sm:p-4 z-[100] overflow-y-auto">
       <div className="bg-gradient-to-br from-white/[0.15] to-white/[0.05] backdrop-blur-2xl rounded-xl sm:rounded-2xl p-4 sm:p-6 w-full max-w-xl border border-white/20 mt-16 sm:mt-0 shadow-[0_8px_32px_rgba(0,0,0,0.4)] before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/[0.12] before:to-transparent before:pointer-events-none relative">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-4 relative z-[150]">
           <h2 className="text-lg sm:text-xl font-bold text-white">Search Movies</h2>
           <button 
             onClick={onClose} 
-            className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors"
+            className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors touch-manipulation"
           >
-            ✕
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
           </button>
         </div>
         

@@ -161,19 +161,20 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md touch-none"
+        className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md overflow-hidden"
         role="dialog"
       >
         <motion.div
           ref={modalRef}
-          initial={{ y: 20, opacity: 0 }}
+          initial={{ y: "100%", opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -20, opacity: 0 }}
-          className="relative w-full sm:max-w-5xl overflow-hidden h-[90vh] sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl bg-black/90"
+          exit={{ y: "100%", opacity: 0 }}
+          transition={{ type: "spring", damping: 25, stiffness: 200 }}
+          className="relative w-full sm:max-w-5xl h-[85vh] sm:h-[85vh] sm:max-h-[85vh] rounded-t-[20px] sm:rounded-2xl bg-black/90 overflow-hidden"
         >
           {/* Full Background Backdrop */}
           {movie?.backdrop_path && (
-            <div className="absolute inset-0">
+            <div className="absolute inset-0 z-0">
               <Image
                 src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
                 alt={movie.title}
@@ -186,27 +187,34 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
           )}
 
           {/* Content Container */}
-          <div className="relative h-full">
+          <div className="relative h-full z-10">
             {/* Close Button */}
-            <button
-              onClick={handleClose}
-              className="absolute top-4 right-4 text-white/80 hover:text-white p-3 rounded-full bg-black/20 backdrop-blur-sm hover:bg-black/40 transition-colors z-50 touch-manipulation"
-            >
-              <LuX className="w-6 h-6" />
-            </button>
+            <div className="sticky top-0 z-[150] w-full flex justify-between items-center p-4 bg-gradient-to-b from-black/80 to-transparent">
+              <div className="sm:hidden w-12 h-1 bg-white/20 rounded-full mx-auto mb-4" />
+              <button
+                onClick={handleClose}
+                className="ml-auto text-white/80 hover:text-white p-2 sm:p-3 rounded-full bg-black/20 backdrop-blur-sm hover:bg-black/40 transition-colors touch-manipulation"
+              >
+                <LuX className="w-5 h-5 sm:w-6 sm:h-6" />
+              </button>
+            </div>
 
             {/* Main Content */}
-            <div className="h-full overflow-y-auto scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+            <div className="h-[calc(100%-4rem)] overflow-y-auto overscroll-contain scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
               {/* Video Section */}
               {videos[0] && (
-                <div className="relative aspect-video w-full bg-black">
-                  <iframe
-                    src={`https://www.youtube-nocookie.com/embed/${videos[0].key}?rel=0&modestbranding=1&playsinline=1`}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="absolute inset-0 w-full h-full"
-                    loading="lazy"
-                  />
+                <div className="relative w-full bg-black">
+                  <div className="sm:container sm:mx-auto">
+                    <div className="relative w-full aspect-[4/3] sm:aspect-[16/9] lg:aspect-[2.4/1]">
+                      <iframe
+                        src={`https://www.youtube-nocookie.com/embed/${videos[0].key}?rel=0&modestbranding=1&playsinline=1`}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="absolute inset-0 w-full h-full"
+                        loading="lazy"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -238,10 +246,10 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
                     </div>
 
                     {/* Details */}
-                    <div className="flex-1 space-y-4 sm:space-y-6">
+                    <div className="flex-1 space-y-3 sm:space-y-6">
                       {/* Title and Tagline */}
                       <div>
-                        <h2 className="text-xl sm:text-4xl font-bold text-white">{movie.title}</h2>
+                        <h2 className="text-2xl sm:text-4xl font-bold text-white">{movie.title}</h2>
                         {movie.tagline && (
                           <p className="text-sm sm:text-base text-gray-400 italic mt-2">{movie.tagline}</p>
                         )}

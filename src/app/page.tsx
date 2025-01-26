@@ -4,7 +4,7 @@ import { useState } from "react";
 import { LuArrowBigRightDash, LuPlus, LuX, LuInfo } from "react-icons/lu";
 import MovieSearchModal from "@/components/MovieSearchModal";
 import MovieRecommendations from "@/components/MovieRecommendations";
-import { generateMovieRecommendations } from "@/services/gemmaService";
+import { generateMediaRecommendations } from "@/services/gemmaService";
 import Image from "next/image";
 import MouseGlow from "@/components/MouseGlow";
 import MovieDetailsModal from "@/components/MovieDetailsModal";
@@ -37,7 +37,7 @@ export default function Home() {
 
     setIsLoading(true);
     try {
-      const movieTitles = await generateMovieRecommendations(
+      const movieTitles = await generateMediaRecommendations(
         description,
         selectedMovies
       );
