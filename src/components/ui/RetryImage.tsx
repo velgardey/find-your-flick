@@ -32,22 +32,33 @@ export default function RetryImage({
   const [imageKey, setImageKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [imageSrc, setImageSrc] = useState(src);
 
   useEffect(() => {
-    // Reset states when src changes
+    setImageSrc(src);
     setRetryCount(0);
     setHasError(false);
     setIsLoading(true);
     setImageKey(prev => prev + 1);
   }, [src]);
 
-  const handleError = () => {
+  const handleError = async () => {
     setIsLoading(false);
     if (retryCount < maxRetries) {
       setHasError(true);
+      
+      // Try different TMDB image sizes if the current one fails
+      const sizes = ['original', 'w1280', 'w780', 'w500', 'w342', 'w185'];
+      const currentSize = imageSrc.match(/\/[^/]+\//)?.[0]?.replace(/\//g, '') || '';
+      const currentIndex = sizes.indexOf(currentSize);
+      const nextSize = sizes[currentIndex + 1] || sizes[0];
+      
+      const newSrc = imageSrc.replace(`/${currentSize}/`, `/${nextSize}/`);
+      
       setTimeout(() => {
         setRetryCount(prev => prev + 1);
         setImageKey(prev => prev + 1);
+        setImageSrc(newSrc);
         setIsLoading(true);
         setHasError(false);
       }, retryDelay);
@@ -69,7 +80,7 @@ export default function RetryImage({
       
       <Image
         key={imageKey}
-        src={src}
+        src={imageSrc}
         alt={alt}
         fill={fill}
         className={`${className} ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
@@ -78,12 +89,13 @@ export default function RetryImage({
         priority={priority}
         onError={handleError}
         onLoad={handleLoad}
+        unoptimized={true}
       />
 
-      {hasError && (
+      {hasError && retryCount < maxRetries && (
         <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
           <div className="text-sm text-gray-400 text-center px-2">
-            Retrying... ({retryCount + 1}/{maxRetries})
+            Retrying with different quality... ({retryCount + 1}/{maxRetries})
           </div>
         </div>
       )}

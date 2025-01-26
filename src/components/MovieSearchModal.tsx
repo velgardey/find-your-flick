@@ -88,7 +88,7 @@ export default function MovieSearchModal({ isOpen, onClose, onSelectMovie }: Mov
               {movie.poster_path ? (
                 <div className="relative w-[60px] h-[90px] rounded-lg overflow-hidden">
                   <RetryImage
-                    src={`https://image.tmdb.org/t/p/w92${movie.poster_path}`}
+                    src={`https://image.tmdb.org/t/p/w154${movie.poster_path}`}
                     alt={movie.title}
                     className="object-cover"
                     sizes="60px"
