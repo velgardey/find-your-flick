@@ -163,7 +163,7 @@ export default function WatchlistPage() {
                       fill
                       className="object-cover"
                       placeholder="blur"
-                      blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                      blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
@@ -194,7 +194,15 @@ export default function WatchlistPage() {
 
                 <div className="relative">
                   <button
-                    onClick={() => setOpenStatusDropdown(openStatusDropdown === entry.id ? null : entry.id)}
+                    onClick={(e) => {
+                      if (!window.matchMedia('(hover: hover)').matches && touchedMovieId !== entry.id) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleCardTouch(entry.id, e);
+                        return;
+                      }
+                      setOpenStatusDropdown(openStatusDropdown === entry.id ? null : entry.id);
+                    }}
                     className="w-full px-2 py-1.5 text-xs flex items-center justify-between hover:bg-white/10 transition-colors"
                   >
                     <span className="text-gray-300">{watchStatusLabels[entry.status]}</span>
@@ -202,7 +210,7 @@ export default function WatchlistPage() {
                   </button>
 
                   <AnimatePresence>
-                    {openStatusDropdown === entry.id && (
+                    {openStatusDropdown === entry.id && touchedMovieId === entry.id && (
                       <motion.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -224,11 +232,17 @@ export default function WatchlistPage() {
                           ))}
                           <div className="h-px bg-white/10 my-1" />
                           <button
-                            onClick={() => {
-                              setEditingEntry(entry.id)
-                              setEditNote(entry.notes ?? '')
-                              setEditRating(entry.rating)
-                              setOpenStatusDropdown(null)
+                            onClick={(e) => {
+                              if (!window.matchMedia('(hover: hover)').matches && touchedMovieId !== entry.id) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleCardTouch(entry.id, e);
+                                return;
+                              }
+                              setEditingEntry(entry.id);
+                              setEditNote(entry.notes ?? '');
+                              setEditRating(entry.rating);
+                              setOpenStatusDropdown(null);
                             }}
                             className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-gray-300 hover:bg-white/10"
                           >
@@ -236,9 +250,15 @@ export default function WatchlistPage() {
                             <span>Edit Details</span>
                           </button>
                           <button
-                            onClick={() => {
-                              removeFromWatchlist(entry.movieId)
-                              setOpenStatusDropdown(null)
+                            onClick={(e) => {
+                              if (!window.matchMedia('(hover: hover)').matches && touchedMovieId !== entry.id) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleCardTouch(entry.id, e);
+                                return;
+                              }
+                              removeFromWatchlist(entry.movieId);
+                              setOpenStatusDropdown(null);
                             }}
                             className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10"
                           >
