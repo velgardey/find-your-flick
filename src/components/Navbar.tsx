@@ -212,7 +212,10 @@ export default function Navbar() {
                           <Link
                             key={item.name}
                             href={item.href}
-                            onClick={(e) => handleNavigation(item.href, item.protected, e)}
+                            onClick={(e) => {
+                              handleNavigation(item.href, item.protected, e);
+                              setMobileMenuOpen(false);
+                            }}
                             className={`px-4 py-3.5 text-base font-medium rounded-xl touch-manipulation ${
                               isActive
                                 ? 'bg-white/10 text-white'
@@ -227,7 +230,28 @@ export default function Navbar() {
                         );
                       })}
                       
-                      {!user && (
+                      {user ? (
+                        <>
+                          <Link
+                            href="/profile"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-3.5 text-base font-medium text-gray-300 hover:text-white hover:bg-white/5 active:bg-white/10 rounded-xl touch-manipulation"
+                          >
+                            <LuUser className="w-5 h-5" />
+                            Your Profile
+                          </Link>
+                          <button
+                            onClick={() => {
+                              handleSignOut();
+                              setMobileMenuOpen(false);
+                            }}
+                            className="flex items-center gap-3 px-4 py-3.5 text-base font-medium text-gray-300 hover:text-white hover:bg-white/5 active:bg-white/10 rounded-xl touch-manipulation w-full text-left"
+                          >
+                            <LuLogOut className="w-5 h-5" />
+                            Sign out
+                          </button>
+                        </>
+                      ) : (
                         <button
                           onClick={() => {
                             handleSignIn();

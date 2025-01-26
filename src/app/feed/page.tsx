@@ -105,7 +105,7 @@ function Feed() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  className="relative bg-gradient-to-br from-black/70 to-black/50 backdrop-blur-lg border border-gray-800/50 rounded-xl p-6 transition-all duration-300 hover:bg-white/10 group overflow-hidden shadow-lg hover:shadow-xl hover:scale-[1.02] hover:border-gray-700/50"
+                  className="relative bg-gradient-to-br from-black/70 to-black/50 backdrop-blur-lg border border-gray-800/50 rounded-xl p-4 sm:p-6 transition-all duration-300 hover:bg-white/10 group overflow-hidden shadow-lg hover:shadow-xl hover:scale-[1.02] hover:border-gray-700/50"
                 >
                   {item.movieBackdropPath && (
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-30 transition-opacity duration-500">
@@ -118,7 +118,7 @@ function Feed() {
                       />
                     </div>
                   )}
-                  <div className="relative flex items-start space-x-4">
+                  <div className="relative flex flex-col sm:flex-row sm:items-start space-y-4 sm:space-y-0 sm:space-x-4">
                     <Link href={`/profile/${item.userId}`} className="transform hover:scale-105 transition-transform duration-300">
                       <div className="relative">
                         <Image
@@ -131,7 +131,7 @@ function Feed() {
                       </div>
                     </Link>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline space-x-2 mb-2">
+                      <div className="flex flex-col sm:flex-row sm:items-baseline sm:space-x-2 space-y-1 sm:space-y-0 mb-2">
                         <Link href={`/profile/${item.userId}`} className="font-semibold text-white hover:text-blue-400 transition-colors duration-300">
                           {item.userDisplayName}
                         </Link>
@@ -153,10 +153,10 @@ function Feed() {
                         </span>
                       </p>
                       <div 
-                        className="mt-4 flex items-start space-x-4 group/poster bg-black/30 rounded-lg p-3 hover:bg-black/50 transition-all duration-300"
+                        className="mt-4 flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-4 group/poster bg-black/30 rounded-lg p-3 hover:bg-black/50 transition-all duration-300"
                       >
                         <div 
-                          className="relative overflow-hidden rounded-lg transition-transform duration-300 group-hover/poster:scale-105 shadow-md cursor-pointer"
+                          className="relative overflow-hidden rounded-lg transition-transform duration-300 group-hover/poster:scale-105 shadow-md cursor-pointer shrink-0"
                           onClick={() => setSelectedMovieId(item.movieId)}
                         >
                           <Image
@@ -167,9 +167,9 @@ function Feed() {
                             className="rounded-lg transform group-hover/poster:brightness-110 transition-all duration-300"
                           />
                         </div>
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 text-center sm:text-left">
                           <h3 
-                            className="text-white text-lg font-semibold group-hover/poster:text-blue-400 transition-colors cursor-pointer"
+                            className="text-white text-lg font-semibold group-hover/poster:text-blue-400 transition-colors cursor-pointer line-clamp-2"
                             onClick={() => setSelectedMovieId(item.movieId)}
                           >
                             {item.movieTitle}

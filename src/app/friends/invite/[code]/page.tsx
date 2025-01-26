@@ -17,6 +17,8 @@ export default function InvitePage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [acceptSuccess, setAcceptSuccess] = useState(false);
 
   useEffect(() => {
     // Store the invite code when the component mounts
@@ -102,6 +104,8 @@ export default function InvitePage() {
   const handleAcceptInvite = async () => {
     if (!user || !inviteData) return;
 
+    setIsAccepting(true);
+    setError(null);
     try {
       const response = await fetch('/api/friends/invite/accept', {
         method: 'POST',
@@ -119,9 +123,14 @@ export default function InvitePage() {
         throw new Error(data.error || 'Failed to accept invite');
       }
 
-      router.push('/friends');
+      setAcceptSuccess(true);
+      setTimeout(() => {
+        router.push('/friends');
+      }, 1500); // Show success state for 1.5 seconds before redirecting
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to accept invite');
+    } finally {
+      setIsAccepting(false);
     }
   };
 
@@ -203,20 +212,41 @@ export default function InvitePage() {
             <p className="text-gray-300 mb-6">
               {inviteData.userDisplayName} would like to be your friend
             </p>
-            <div className="flex gap-4">
-              <button
-                onClick={handleAcceptInvite}
-                className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
-              >
-                Accept
-              </button>
-              <button
-                onClick={() => router.push('/')}
-                className="flex-1 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-colors"
-              >
-                Decline
-              </button>
-            </div>
+            {error && (
+              <p className="text-red-400 mb-4 text-sm">{error}</p>
+            )}
+            {acceptSuccess ? (
+              <div className="flex items-center justify-center gap-2 text-green-400 mb-4">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Friend request accepted!</span>
+              </div>
+            ) : (
+              <div className="flex gap-4">
+                <button
+                  onClick={handleAcceptInvite}
+                  disabled={isAccepting}
+                  className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 disabled:bg-white/5 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  {isAccepting ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Accepting...
+                    </>
+                  ) : (
+                    'Accept'
+                  )}
+                </button>
+                <button
+                  onClick={() => router.push('/')}
+                  disabled={isAccepting}
+                  className="flex-1 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 disabled:bg-red-500/5 disabled:cursor-not-allowed text-red-500 rounded-lg transition-colors"
+                >
+                  Decline
+                </button>
+              </div>
+            )}
           </>
         )}
       </motion.div>
