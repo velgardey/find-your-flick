@@ -1,36 +1,118 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Find Your Flick 🎬
 
-## Getting Started
+A modern movie recommendation engine that helps you discover your next favorite film. Built with an elegant UI and powered by cutting-edge technology, Find Your Flick makes movie exploration a delightful experience.
 
-First, run the development server:
+![Next.js](https://img.shields.io/badge/Next.js-13-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
+![Tailwind](https://img.shields.io/badge/Tailwind-3-38bdf8)
+![Prisma](https://img.shields.io/badge/Prisma-5-2D3748)
 
+## ✨ Features
+
+- **Personalized Movie Recommendations**: Get tailored movie suggestions based on your watching history and preferences
+- **Social Movie Experience**: 
+  - Connect with friends and share movie recommendations
+  - See what your friends are watching
+  - Send and receive movie suggestions
+- **Smart Search**: Find movies quickly with our intelligent search functionality
+- **Watchlist Management**: 
+  - Keep track of movies you want to watch
+  - Organize your watched movies
+  - Rate and review films
+- **Beautiful UI/UX**:
+  - Modern, responsive design
+  - Smooth animations and transitions
+  - Dark mode optimized interface
+
+## 🛠️ Tech Stack
+
+- **Frontend**:
+  - Next.js 13 (App Router)
+  - TypeScript
+  - Tailwind CSS
+  - Framer Motion
+  - Headless UI
+  - React Icons
+
+- **Backend**:
+  - Next.js API Routes
+  - Prisma ORM
+  - PostgreSQL
+  - Authentication (NextAuth.js)
+
+- **Development Tools**:
+  - ESLint
+  - Prettier
+  - Husky (Git Hooks)
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- PostgreSQL
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/find-your-flick.git
+cd find-your-flick
+```
+
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+```
+
+3. Set up environment variables:
+```bash
+cp .env.example .env
+```
+
+4. Update the `.env` file with your credentials:
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/findyourflick"
+NEXTAUTH_SECRET="your-secret-here"
+TMDB_API_KEY="your-tmdb-api-key"
+```
+
+5. Run database migrations:
+```bash
+npx prisma migrate dev
+```
+
+6. Start the development server:
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit `http://localhost:3000` to see the application running!
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📝 Contributing
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-## Learn More
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-To learn more about Next.js, take a look at the following resources:
+## 📜 License
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🙏 Acknowledgments
 
-## Deploy on Vercel
+- [TMDB](https://www.themoviedb.org/) for providing the movie database API
+- All the amazing contributors and users of Find Your Flick
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Made with ❤️ by velgardey

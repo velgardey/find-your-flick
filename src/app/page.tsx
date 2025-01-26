@@ -83,9 +83,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="w-full pt-[15vh] pb-8">
-        <div className="max-w-xl mx-auto px-4 sm:px-0">
-          <h1 className="text-3xl sm:text-4xl md:text-6xl text-center font-bold text-white mb-8 font-sol">
+      <div className="w-full pt-[12vh] sm:pt-[15vh] pb-6 sm:pb-8">
+        <div className="max-w-xl mx-auto px-4 sm:px-6">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl text-center font-bold text-white mb-6 sm:mb-8 font-sol">
             Find Your Next Flick
           </h1>
           
@@ -93,22 +93,24 @@ export default function Home() {
             <div className="flex gap-2 sm:gap-4 items-start">
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="bg-black/50 backdrop-blur-sm hover:bg-white hover:text-black text-white p-2 sm:p-3 md:p-4 rounded-xl sm:rounded-2xl flex items-center gap-2"
+                className="bg-black/50 backdrop-blur-sm hover:bg-white/10 active:bg-white/20 text-white p-3 sm:p-4 rounded-xl sm:rounded-2xl flex items-center justify-center touch-manipulation"
+                aria-label="Add movie"
               >
-                <LuPlus />
+                <LuPlus className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Describe what kind of movie you're looking for..."
-                className="flex-1 bg-black/50 backdrop-blur-sm text-white placeholder:text-gray-500 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-800/50 min-h-[60px] resize-none hide-scrollbar shine-border"
+                className="flex-1 bg-black/50 backdrop-blur-sm text-white placeholder:text-gray-500 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-800/50 min-h-[60px] resize-none hide-scrollbar shine-border text-sm sm:text-base"
               />
               <button
                 onClick={handleGenerateRecommendations}
-                className="bg-black/50 backdrop-blur-sm hover:bg-white hover:text-black transition-colors p-2 sm:p-3 md:p-4 rounded-full aspect-square flex items-center justify-center border border-gray-800/50"
+                className="bg-black/50 backdrop-blur-sm hover:bg-white/10 active:bg-white/20 transition-colors p-3 sm:p-4 rounded-xl sm:rounded-2xl flex items-center justify-center border border-gray-800/50 touch-manipulation"
+                aria-label="Generate recommendations"
               >
-                <LuArrowBigRightDash />
+                <LuArrowBigRightDash className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
           </div>
@@ -120,19 +122,20 @@ export default function Home() {
           <div className="max-w-xl mx-auto">
             <div className="flex gap-2 sm:gap-4 flex-wrap mt-2 sm:mt-4">
               {selectedMovies.map((movie) => (
-                <div key={movie.id} className="relative group">
+                <div key={movie.id} className="relative group touch-manipulation">
                   <Image
                     src={`https://image.tmdb.org/t/p/w154${movie.poster_path}`}
                     alt={movie.title}
-                    width={60}
-                    height={90}
-                    className="rounded-lg sm:w-[77px] sm:h-[116px]"
+                    width={50}
+                    height={75}
+                    className="rounded-lg sm:w-[77px] sm:h-[116px] object-cover"
                   />
                   <button
                     onClick={() => handleRemoveMovie(movie.id)}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 sm:group-hover:opacity-100 active:opacity-100 transition-opacity touch-manipulation"
+                    aria-label={`Remove ${movie.title}`}
                   >
-                    <LuX size={14} />
+                    <LuX className="w-3 h-3 sm:w-4 sm:h-4" />
                   </button>
                 </div>
               ))}

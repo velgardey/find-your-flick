@@ -3,7 +3,7 @@ import localFont from 'next/font/local'
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import MouseGlow from '@/components/MouseGlow';
-import NavBar from '@/components/NavBar';
+import Navbar from '@/components/Navbar';
 import Providers from '@/components/Providers';
 
 const geistSans = Geist({
@@ -39,7 +39,7 @@ export default function RootLayout({
         className={`${sol.variable} ${geistSans.variable} ${geistMono.variable} antialiased relative min-h-[100dvh] overflow-x-hidden`}
       >
         <Providers>
-          <NavBar />
+          <Navbar />
           <MouseGlow />
           <div id="content-wrapper" className="relative z-30 pt-14 sm:pt-16 px-3 sm:px-6 lg:px-8">
             {children}

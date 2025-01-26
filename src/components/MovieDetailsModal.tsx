@@ -161,7 +161,7 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md"
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md touch-none"
         role="dialog"
       >
         <motion.div
@@ -169,7 +169,7 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -20, opacity: 0 }}
-          className="relative w-full sm:max-w-5xl overflow-hidden h-[90vh] sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl"
+          className="relative w-full sm:max-w-5xl overflow-hidden h-[90vh] sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl bg-black/90"
         >
           {/* Full Background Backdrop */}
           {movie?.backdrop_path && (
@@ -190,9 +190,9 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
             {/* Close Button */}
             <button
               onClick={handleClose}
-              className="absolute top-4 right-4 text-white/80 hover:text-white p-2 rounded-full bg-black/20 backdrop-blur-sm hover:bg-black/40 transition-colors z-50"
+              className="absolute top-4 right-4 text-white/80 hover:text-white p-3 rounded-full bg-black/20 backdrop-blur-sm hover:bg-black/40 transition-colors z-50 touch-manipulation"
             >
-              <LuX className="w-5 h-5" />
+              <LuX className="w-6 h-6" />
             </button>
 
             {/* Main Content */}
@@ -201,24 +201,25 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
               {videos[0] && (
                 <div className="relative aspect-video w-full bg-black">
                   <iframe
-                    src={`https://www.youtube.com/embed/${videos[0].key}?rel=0`}
+                    src={`https://www.youtube-nocookie.com/embed/${videos[0].key}?rel=0&modestbranding=1&playsinline=1`}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                     className="absolute inset-0 w-full h-full"
+                    loading="lazy"
                   />
                 </div>
               )}
 
               {/* Movie Details */}
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 {isLoading ? (
                   <div className="h-full flex items-center justify-center">
                     <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
                   </div>
                 ) : movie ? (
-                  <div className="flex flex-col sm:flex-row gap-6">
+                  <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
                     {/* Poster */}
-                    <div className="relative w-[140px] sm:w-[200px] h-[210px] sm:h-[300px] mx-auto sm:mx-0 flex-shrink-0">
+                    <div className="relative w-[120px] sm:w-[200px] h-[180px] sm:h-[300px] mx-auto sm:mx-0 flex-shrink-0">
                       {!posterLoaded && (
                         <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
                           <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
@@ -237,35 +238,41 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
                     </div>
 
                     {/* Details */}
-                    <div className="flex-1 space-y-6">
+                    <div className="flex-1 space-y-4 sm:space-y-6">
                       {/* Title and Tagline */}
                       <div>
-                        <h2 className="text-2xl sm:text-4xl font-bold text-white">{movie.title}</h2>
+                        <h2 className="text-xl sm:text-4xl font-bold text-white">{movie.title}</h2>
                         {movie.tagline && (
-                          <p className="text-gray-400 italic mt-2">{movie.tagline}</p>
+                          <p className="text-sm sm:text-base text-gray-400 italic mt-2">{movie.tagline}</p>
                         )}
                       </div>
 
                       {/* Movie Stats */}
-                      <div className="flex flex-wrap gap-4 text-sm">
-                        <div className="flex items-center gap-2 text-yellow-400">
-                          <LuStar className="w-5 h-5" />
-                          <span>{movie.vote_average.toFixed(1)}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-400">
-                          <LuCalendar className="w-5 h-5" />
-                          <span>{new Date(movie.release_date).getFullYear()}</span>
-                        </div>
-                        {movie.runtime > 0 && (
-                          <div className="flex items-center gap-2 text-gray-400">
-                            <LuClock className="w-5 h-5" />
-                            <span>{movie.runtime} min</span>
+                      <div className="flex flex-wrap gap-3 sm:gap-4 text-sm">
+                        {movie.vote_average > 0 && (
+                          <div className="flex items-center gap-1 bg-black/30 rounded-lg px-3 py-2 touch-manipulation">
+                            <LuStar className="w-4 h-4 text-yellow-500" />
+                            <span>{movie.vote_average.toFixed(1)}</span>
                           </div>
                         )}
-                        <div className="flex items-center gap-2 text-gray-400">
-                          <LuLanguages className="w-5 h-5" />
-                          <span>{movie.original_language.toUpperCase()}</span>
-                        </div>
+                        {movie.release_date && (
+                          <div className="flex items-center gap-1 bg-black/30 rounded-lg px-3 py-2 touch-manipulation">
+                            <LuCalendar className="w-4 h-4" />
+                            <span>{new Date(movie.release_date).getFullYear()}</span>
+                          </div>
+                        )}
+                        {movie.runtime > 0 && (
+                          <div className="flex items-center gap-1 bg-black/30 rounded-lg px-3 py-2 touch-manipulation">
+                            <LuClock className="w-4 h-4" />
+                            <span>{`${movie.runtime}m`}</span>
+                          </div>
+                        )}
+                        {movie.original_language && (
+                          <div className="flex items-center gap-1 bg-black/30 rounded-lg px-3 py-2 touch-manipulation">
+                            <LuLanguages className="w-4 h-4" />
+                            <span>{movie.original_language.toUpperCase()}</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Genres */}
@@ -273,7 +280,7 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
                         {movie.genres.map((genre) => (
                           <span
                             key={genre.id}
-                            className="px-3 py-1 bg-white/10 rounded-full text-sm text-gray-300"
+                            className="text-sm bg-white/10 text-white px-3 py-1.5 rounded-lg touch-manipulation"
                           >
                             {genre.name}
                           </span>
@@ -281,17 +288,14 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
                       </div>
 
                       {/* Overview */}
-                      <p className="text-gray-300 leading-relaxed">{movie.overview}</p>
+                      <p className="text-sm sm:text-base text-gray-300 leading-relaxed">{movie.overview}</p>
 
                       {/* Streaming Providers */}
-                      {streamingData && (
-                        <div className="space-y-4">
-                          <h3 className="text-lg font-semibold">Where to Watch</h3>
-                          {renderProviders(streamingData.flatrate, "Stream")}
-                          {renderProviders(streamingData.rent, "Rent")}
-                          {renderProviders(streamingData.buy, "Buy")}
-                        </div>
-                      )}
+                      <div className="space-y-4">
+                        {renderProviders(streamingData?.flatrate, 'Stream')}
+                        {renderProviders(streamingData?.rent, 'Rent')}
+                        {renderProviders(streamingData?.buy, 'Buy')}
+                      </div>
                     </div>
                   </div>
                 ) : (
