@@ -1,5 +1,6 @@
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { fetchWithRetry } from './retryUtils';
 
 export async function fetchWithAuth(url: string, options: RequestInit = {}) {
   // First check if we have a current user
@@ -33,9 +34,21 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}) {
       ...options.headers,
     };
 
-    const response = await fetch(url, {
+    const response = await fetchWithRetry(url, {
       ...options,
       headers,
+    }, {
+      maxRetries: 3,
+      baseDelay: 1000,
+      maxDelay: 5000,
+      shouldRetry: (error) => {
+        // Don't retry on 401/403 errors
+        if (error instanceof Response) {
+          const status = error.status;
+          return status >= 500 || (status !== 401 && status !== 403);
+        }
+        return true;
+      }
     });
 
     if (!response.ok) {

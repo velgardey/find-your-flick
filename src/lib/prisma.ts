@@ -1,12 +1,32 @@
 import { PrismaClient } from '@prisma/client'
+import { withRetry } from './retryUtils'
 
-declare global {
-  // eslint-disable-next-line no-var
-  var prisma: PrismaClient | undefined
+const globalForPrisma = global as unknown as { prisma: PrismaClient }
+
+export const prisma = globalForPrisma.prisma || new PrismaClient()
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+
+// Wrapper function to add retry functionality to Prisma operations
+export async function withPrismaRetry<T>(
+  operation: () => Promise<T>,
+  options = {
+    maxRetries: 3,
+    baseDelay: 500,
+    maxDelay: 2000,
+    shouldRetry: (error: any) => {
+      // Retry on connection errors or deadlocks
+      return (
+        error.code === 'P1001' || // Authentication failed
+        error.code === 'P1002' || // Connection timed out
+        error.code === 'P1008' || // Operations timed out
+        error.code === 'P1017' || // Server closed the connection
+        error.code === 'P2034'    // Transaction deadlock
+      )
+    }
+  }
+) {
+  return withRetry(operation, options)
 }
 
-export const prisma = globalThis.prisma || new PrismaClient()
-
-if (process.env.NODE_ENV !== 'production') {
-  globalThis.prisma = prisma
-} 
+export default prisma 

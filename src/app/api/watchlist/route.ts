@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma'
+import { prisma, withPrismaRetry } from '@/lib/prisma'
 import { authenticateRequest } from '@/lib/authMiddleware'
 import { 
   successResponse, 
@@ -18,18 +18,20 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const searchQuery = searchParams.get('search')?.toLowerCase()
 
-    const watchlist = await prisma.watchlistEntry.findMany({
-      where: { 
-        userId: auth.user.uid,
-        ...(searchQuery && {
-          title: {
-            contains: searchQuery,
-            mode: 'insensitive'
-          }
-        })
-      },
-      orderBy: { updatedAt: 'desc' },
-    })
+    const watchlist = await withPrismaRetry(() => 
+      prisma.watchlistEntry.findMany({
+        where: { 
+          userId: auth.user.uid,
+          ...(searchQuery && {
+            title: {
+              contains: searchQuery,
+              mode: 'insensitive'
+            }
+          })
+        },
+        orderBy: { updatedAt: 'desc' },
+      })
+    )
 
     return successResponse(watchlist)
   } catch (error) {
@@ -46,30 +48,32 @@ export async function POST(request: Request) {
     const body = await request.json()
     const validatedData = watchlistCreateSchema.parse(body)
 
-    const entry = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // Create or update user record
-      await tx.user.upsert({
-        where: { id: auth.user.uid },
-        update: {},
-        create: {
-          id: auth.user.uid,
-          email: auth.user.email,
-          displayName: auth.user.name,
-          photoURL: auth.user.picture,
-        },
-      })
+    const entry = await withPrismaRetry(() =>
+      prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        // Create or update user record
+        await tx.user.upsert({
+          where: { id: auth.user.uid },
+          update: {},
+          create: {
+            id: auth.user.uid,
+            email: auth.user.email,
+            displayName: auth.user.name,
+            photoURL: auth.user.picture,
+          },
+        })
 
-      // Add movie to watchlist
-      return tx.watchlistEntry.create({
-        data: {
-          userId: auth.user.uid,
-          movieId: validatedData.movieId,
-          title: validatedData.title,
-          posterPath: validatedData.posterPath,
-          status: validatedData.status,
-        },
+        // Add movie to watchlist
+        return tx.watchlistEntry.create({
+          data: {
+            userId: auth.user.uid,
+            movieId: validatedData.movieId,
+            title: validatedData.title,
+            posterPath: validatedData.posterPath,
+            status: validatedData.status,
+          },
+        })
       })
-    })
+    )
 
     return successResponse(entry)
   } catch (error) {
