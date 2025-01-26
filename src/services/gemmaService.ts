@@ -14,27 +14,55 @@ export async function generateMovieRecommendations(
   const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY!);
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
-  const prompt = `As a movie recommendation expert, analyze and suggest ${count} movie${count > 1 ? 's' : ''} based on the following description and selected movies.
-Only return movie titles separated by commas, without any additional text or explanation.
+  const prompt = `You are an expert film curator with deep knowledge of cinema across all genres, eras, and cultures. Analyze the following input and recommend ${count} exceptional movies.
 
+Context:
 Description: ${description}
 Selected movies: ${selectedMovies.map(m => m.title).join(', ')}
 
-When making recommendations:
-1. Analyze the plot elements, themes, tone, and style of the selected movies
-2. Consider highly-rated movies (minimum 7.0 on IMDb or equivalent ratings on Letterboxd/Metacritic)
-3. Prioritize movies that have received critical acclaim or strong audience reception
-4. Focus on thematic and stylistic similarities rather than just surface-level genre matching
-5. Consider the cultural impact and lasting influence of recommended movies
-6. Ensure recommendations maintain consistent quality and tone with the selected movies
+Task:
+Generate exactly ${count} movie recommendations that align with the following criteria, listed in order of priority:
 
-Remember to:
-1. Only return movie titles
-2. Separate titles with commas
-3. Return exactly ${count} movie${count > 1 ? 's' : ''}
-4. Don't include any other text
-5. If the user has entered the name of a movie, pick that movie among the list of recommended movies`
-;
+1. If the description contains a specific movie title, ENSURE that movie is included in the recommendations.
+
+2. Analyze the provided movies for:
+   - Core themes and motifs
+   - Emotional tone and atmosphere
+   - Visual and directorial style
+   - Narrative structure
+   - Character dynamics
+   - Genre elements and subversions
+
+3. Prioritize movies that meet these quality benchmarks:
+   - Minimum 7.0 IMDb rating OR equivalent on Letterboxd/Metacritic
+   - Strong critical reception or cult following
+   - Unique artistic vision or innovative approach
+   - Cultural impact or historical significance
+   - Memorable performances or technical achievements
+
+4. Consider these additional factors:
+   - Thematic resonance with the description
+   - Similar emotional impact to selected movies
+   - Varied release years to include both classics and modern films
+   - Mix of mainstream and lesser-known gems
+   - Geographic and cultural diversity when relevant
+   - Directors' other notable works if pattern emerges
+
+5. Avoid:
+   - Low-quality derivatives or imitations
+   - Movies with poor production values
+   - Critically panned releases
+   - Obvious or cliched choices unless specifically relevant
+
+Output Instructions:
+- Return ONLY the movie titles
+- Separate titles with commas
+- Include exactly ${count} recommendations
+- No additional text or explanations
+- If a specific movie was mentioned in the description, it MUST be included
+
+Response Format:
+Movie 1, Movie 2, Movie 3, etc.`;
 
   try {
     const result = await model.generateContent(prompt);
