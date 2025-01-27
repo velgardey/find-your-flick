@@ -1,57 +1,76 @@
 # Find Your Flick 🎬
 
-A modern movie recommendation engine that helps you discover your next favorite film. Built with an elegant UI and powered by cutting-edge technology, Find Your Flick makes movie exploration a delightful experience.
+> **[Visit Find Your Flick](https://find-your-flick.vercel.app)** - Your AI-powered movie companion for perfect film recommendations!
 
-![Next.js](https://img.shields.io/badge/Next.js-13-black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
-![Tailwind](https://img.shields.io/badge/Tailwind-3-38bdf8)
-![Prisma](https://img.shields.io/badge/Prisma-5-2D3748)
+<div align="center">
+  <img src="https://img.shields.io/badge/Next.js-13-black" alt="Next.js" />
+  <img src="https://img.shields.io/badge/TypeScript-5-blue" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Tailwind-3-38bdf8" alt="Tailwind" />
+  <img src="https://img.shields.io/badge/Firebase-11-orange" alt="Firebase" />
+  <img src="https://img.shields.io/badge/Prisma-5-2D3748" alt="Prisma" />
+</div>
+
+Find Your Flick is a cutting-edge movie discovery platform that combines the power of AI with social features to help you find your next favorite movie. Whether you're a casual viewer or a film enthusiast, our platform makes movie exploration engaging and personalized.
 
 ## ✨ Features
 
-- **Personalized Movie Recommendations**: Get tailored movie suggestions based on your watching history and preferences
-- **Social Movie Experience**: 
-  - Connect with friends and share movie recommendations
-  - See what your friends are watching
-  - Send and receive movie suggestions
-- **Smart Search**: Find movies quickly with our intelligent search functionality
-- **Watchlist Management**: 
-  - Keep track of movies you want to watch
-  - Organize your watched movies
-  - Rate and review films
-- **Beautiful UI/UX**:
-  - Modern, responsive design
-  - Smooth animations and transitions
-  - Dark mode optimized interface
+### 🤖 AI-Powered Movie Discovery
+- Get personalized movie recommendations using our advanced AI algorithm
+- Chat with our AI assistant to find movies based on your mood, preferences, or specific criteria
+- Discover hidden gems that match your taste profile
+
+### 📋 Personal Watchlist Management
+- Create and manage your movie watchlist
+- Mark movies as watched, plan to watch, or currently watching
+- Rate and review films you've seen
+- Track your watching history
+
+### 👥 Social Features
+- Follow other movie enthusiasts
+- Share movie recommendations with friends
+- See what movies your friends are watching
+- Engage in discussions about your favorite films
+
+### 🎨 Modern User Experience
+- Beautiful, responsive design that works on all devices
+- Dark mode by default for comfortable viewing
+- Smooth animations powered by Framer Motion
+- Real-time search and filtering capabilities
+- Streaming service availability information
 
 ## 🛠️ Tech Stack
 
-- **Frontend**:
-  - Next.js 13 (App Router)
-  - TypeScript
-  - Tailwind CSS
-  - Framer Motion
-  - Headless UI
-  - React Icons
+### Frontend
+- **Next.js 13** with App Router for modern React development
+- **TypeScript** for type safety
+- **Tailwind CSS** for styling
+- **Framer Motion** for smooth animations
+- **Headless UI** for accessible components
+- **React Icons** for beautiful icons
 
-- **Backend**:
-  - Next.js API Routes
-  - Prisma ORM
-  - PostgreSQL
-  - Authentication (NextAuth.js)
+### Backend & Database
+- **Firebase** for authentication
+- **Prisma** with PostgreSQL for data management
+- **Supabase** for real-time features
+- **TMDB API** for movie data
 
-- **Development Tools**:
-  - ESLint
-  - Prettier
-  - Husky (Git Hooks)
+### AI & Machine Learning
+- **Google Generative AI** for smart recommendations
+- **Custom recommendation algorithms**
+
+### Development Tools
+- **ESLint** & **TypeScript** for code quality
+- **PNPM** for fast, efficient package management
+- **Vercel** for deployment and hosting
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-
 - Node.js 18+
-- PostgreSQL
-- npm or yarn
+- PNPM package manager
+- PostgreSQL database
+- Firebase account
+- TMDB API key
 
 ### Installation
 
@@ -63,9 +82,7 @@ cd find-your-flick
 
 2. Install dependencies:
 ```bash
-npm install
-# or
-yarn install
+pnpm install
 ```
 
 3. Set up environment variables:
@@ -76,42 +93,65 @@ cp .env.example .env
 4. Update the `.env` file with your credentials:
 ```env
 DATABASE_URL="postgresql://user:password@localhost:5432/findyourflick"
-NEXTAUTH_SECRET="your-secret-here"
-TMDB_API_KEY="your-tmdb-api-key"
+NEXT_PUBLIC_TMDB_API_KEY="your-tmdb-api-key"
+NEXT_PUBLIC_FIREBASE_API_KEY="your-firebase-api-key"
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="your-firebase-auth-domain"
+NEXT_PUBLIC_FIREBASE_PROJECT_ID="your-firebase-project-id"
 ```
 
 5. Run database migrations:
 ```bash
-npx prisma migrate dev
+pnpm prisma migrate dev
 ```
 
 6. Start the development server:
 ```bash
-npm run dev
-# or
-yarn dev
+pnpm dev
 ```
 
 Visit `http://localhost:3000` to see the application running!
 
-## 📝 Contributing
+## 🌟 Key Features in Detail
 
+### Movie Search and Discovery
+- Advanced search functionality with real-time suggestions
+- Detailed movie information including streaming availability
+- Trailer playback support
+- Comprehensive movie details including cast, ratings, and release info
+
+### Watchlist Management
+- Multiple watch status options (Watching, Completed, Plan to Watch)
+- Search and filter your watchlist
+- Quick actions to update watch status
+- Progress tracking
+
+### User Experience
+- Responsive design for all screen sizes
+- Beautiful animations and transitions
+- Intuitive navigation
+- Fast and efficient performance
+
+## 📱 Mobile Experience
+Find Your Flick is fully optimized for mobile devices with:
+- Touch-friendly interface
+- Native-like animations
+- Optimized performance
+- Responsive images and layouts
+
+## 🔒 Security Features
+- Secure authentication with Firebase
+- Protected API routes
+- Environment variable protection
+- Data encryption
+
+## 🤝 Contributing
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+## 📄 License
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 📜 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [TMDB](https://www.themoviedb.org/) for providing the movie database API
-- All the amazing contributors and users of Find Your Flick
+## 🌐 Live Demo
+Visit [Find Your Flick](https://find-your-flick.vercel.app) to try it out!
 
 ---
 
