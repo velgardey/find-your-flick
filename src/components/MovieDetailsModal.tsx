@@ -49,6 +49,12 @@ const normalizeProviderName = (name: string): string => {
     'Apple TV Plus': 'Apple TV',
     'JioCinema': 'Jio Cinema',
     'Jio Cinema': 'Jio Cinema',
+    'YouTube Movies': 'YouTube',
+    'Google Play Movies': 'Google Play',
+    'Play Movies': 'Google Play',
+    'Google TV': 'Google Play',
+    'Tata Play': 'Tata Play',
+    'YouTube Premium': 'YouTube',
   };
   return nameMap[name] || name;
 };
@@ -77,6 +83,18 @@ const STREAMING_URLS = {
     `https://www.sunnxt.com/search?q=${encodeURIComponent(title)}`,
   'Mubi': (title: string) => 
     `https://mubi.com/en/in/search/${encodeURIComponent(title.toLowerCase())}`,
+  'YouTube': (title: string) => 
+    `https://www.youtube.com/results?search_query=${encodeURIComponent(title + ' movie')}`,
+  'Google Play': (title: string) => 
+    `https://play.google.com/store/search?q=${encodeURIComponent(title + ' movie')}&c=movies`,
+  'Tata Play': (title: string) => 
+    `https://watch.tataplay.com/search?q=${encodeURIComponent(title)}`,
+  'BookMyShow Stream': (title: string) => 
+    `https://in.bookmyshow.com/stream/search/${encodeURIComponent(title.toLowerCase())}`,
+  'Eros Now': (title: string) => 
+    `https://erosnow.com/search?q=${encodeURIComponent(title)}`,
+  'MX Player': (title: string) => 
+    `https://www.mxplayer.in/search?q=${encodeURIComponent(title)}`,
 };
 
 interface MovieDetailsModalProps {
@@ -173,43 +191,56 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
           {providers.map((provider) => {
             const normalizedName = normalizeProviderName(provider.provider_name);
             const streamingUrl = STREAMING_URLS[normalizedName as keyof typeof STREAMING_URLS];
+            const isConfigured = !!streamingUrl;
             
-            if (!streamingUrl) {
-              console.log('Unmatched provider:', provider.provider_name, normalizedName);
-              return null;
-            }
-
-            const url = streamingUrl(movie?.title || '');
-            console.log(`Generated URL for ${normalizedName}:`, url); // Debug log
-
             return (
-              <motion.a
+              <motion.div
                 key={provider.provider_name}
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="relative w-12 h-12 rounded-xl overflow-hidden tooltip-trigger group transform transition-transform duration-200 hover:scale-110 active:scale-95 cursor-pointer"
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={(e) => {
-                  if (!movie?.title) {
-                    e.preventDefault();
-                    return;
-                  }
-                  // Log click events for debugging
-                  console.log(`Clicked ${normalizedName} link:`, url);
-                }}
+                className={`relative w-12 h-12 rounded-xl overflow-hidden tooltip-trigger group transform transition-all duration-200 ${isConfigured ? 'hover:scale-110 hover:ring-2 hover:ring-white/20 hover:shadow-lg active:scale-95 cursor-pointer' : 'opacity-50 cursor-not-allowed hover:opacity-70'}`}
+                whileHover={isConfigured ? { y: -2 } : undefined}
+                whileTap={isConfigured ? { scale: 0.95 } : undefined}
               >
-                <Image
-                  src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
-                  alt={provider.provider_name}
-                  fill
-                  className="object-cover"
-                />
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                  {provider.provider_name}
+                {isConfigured ? (
+                  <motion.a
+                    href={streamingUrl(movie?.title || '')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full h-full"
+                    onClick={(e) => {
+                      if (!movie?.title) {
+                        e.preventDefault();
+                        return;
+                      }
+                      console.log(`Clicked ${normalizedName} link:`, streamingUrl(movie.title));
+                    }}
+                  >
+                    <Image
+                      src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+                      alt={provider.provider_name}
+                      fill
+                      className="object-cover transition-transform duration-200 group-hover:scale-110"
+                    />
+                  </motion.a>
+                ) : (
+                  <Image
+                    src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+                    alt={provider.provider_name}
+                    fill
+                    className="object-cover transition-transform duration-200 group-hover:scale-105"
+                  />
+                )}
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 pointer-events-none">
+                  <div className="bg-black/90 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/10 shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-200 transform -translate-y-2 group-hover:translate-y-0">
+                    <div className="text-xs font-medium whitespace-nowrap text-white/90">
+                      {provider.provider_name}
+                      {!isConfigured && (
+                        <span className="text-white/50 ml-1">(Not configured)</span>
+                      )}
+                    </div>
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 transform rotate-45 w-2 h-2 bg-black/90 border-r border-b border-white/10"></div>
+                  </div>
                 </div>
-              </motion.a>
+              </motion.div>
             );
           })}
         </div>
@@ -357,7 +388,7 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
                         )}
                       </div>
                       <motion.a
-                        href={`https://www.cineby.app/search?q=${encodeURIComponent(movie.title)}`}
+                        href={`https://www.cineby.app/movie/${movie.id}?play=true`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transform transition-all duration-200 active:scale-95 select-none touch-manipulation"
