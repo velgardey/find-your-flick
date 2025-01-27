@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useWatchlist } from '@/contexts/WatchlistContext'
 import { WatchStatus } from '@/lib/prismaTypes'
 import Image from 'next/image'
-import { LuStar, LuPencil, LuTrash2, LuSearch, LuChevronDown } from 'react-icons/lu'
+import { LuStar, LuPencil, LuTrash2, LuChevronDown } from 'react-icons/lu'
 import { motion, AnimatePresence } from 'framer-motion'
 import MovieDetailsModal from '@/components/MovieDetailsModal'
 
@@ -23,7 +23,6 @@ export default function WatchlistPage() {
   const [editNote, setEditNote] = useState('')
   const [editRating, setEditRating] = useState<number | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [openStatusDropdown, setOpenStatusDropdown] = useState<string | null>(null)
   const [touchedMovieId, setTouchedMovieId] = useState<string | null>(null)
   const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null)

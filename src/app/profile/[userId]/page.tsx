@@ -7,7 +7,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { fetchWithAuth } from '@/lib/api';
 import WatchlistButton from '@/components/WatchlistButton';
 import MovieDetailsModal from '@/components/MovieDetailsModal';
-import { LuSearch } from 'react-icons/lu';
 
 interface UserProfile {
   id: string;

@@ -28,6 +28,7 @@ interface MovieVideo {
 interface Provider {
   provider_name: string;
   logo_path: string;
+  provider_id: number;
 }
 
 interface StreamingData {
@@ -35,6 +36,48 @@ interface StreamingData {
   rent?: Provider[];
   buy?: Provider[];
 }
+
+// Helper function to normalize provider names
+const normalizeProviderName = (name: string): string => {
+  const nameMap: { [key: string]: string } = {
+    'Disney+': 'Disney Plus',
+    'Disney+ Hotstar': 'Disney Plus',
+    'Hotstar': 'Disney Plus',
+    'Prime Video': 'Amazon Prime Video',
+    'Amazon Video': 'Amazon Prime Video',
+    'Apple TV+': 'Apple TV',
+    'Apple TV Plus': 'Apple TV',
+    'JioCinema': 'Jio Cinema',
+    'Jio Cinema': 'Jio Cinema',
+  };
+  return nameMap[name] || name;
+};
+
+// Updated streaming service URLs with verified working patterns for India
+const STREAMING_URLS = {
+  'Netflix': (title: string) => 
+    `https://www.netflix.com/in/browse?q=${encodeURIComponent(title)}`,
+  'Amazon Prime Video': (title: string) => 
+    `https://www.primevideo.com/region/in/search/ref=atv_sr_sug_4?phrase=${encodeURIComponent(title)}&ie=UTF8`,
+  'Disney Plus': (title: string) => 
+    `https://www.hotstar.com/in/search?q=${encodeURIComponent(title)}&utm_source=search`,
+  'SonyLIV': (title: string) => 
+    `https://www.sonyliv.com/search?searchTerm=${encodeURIComponent(title)}`,
+  'Zee5': (title: string) => 
+    `https://www.zee5.com/search?q=${encodeURIComponent(title)}`,
+  'Voot': (title: string) => 
+    `https://www.voot.com/search?q=${encodeURIComponent(title)}`,
+  'Jio Cinema': (title: string) => 
+    `https://www.jiocinema.com/search/${encodeURIComponent(title.toLowerCase())}`,
+  'Apple TV': (title: string) => 
+    `https://tv.apple.com/in/search?term=${encodeURIComponent(title)}`,
+  'Aha': (title: string) => 
+    `https://www.aha.video/list/search?q=${encodeURIComponent(title)}`,
+  'Sun NXT': (title: string) => 
+    `https://www.sunnxt.com/search?q=${encodeURIComponent(title)}`,
+  'Mubi': (title: string) => 
+    `https://mubi.com/en/in/search/${encodeURIComponent(title.toLowerCase())}`,
+};
 
 interface MovieDetailsModalProps {
   movieId: number | null;
@@ -72,7 +115,7 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
         );
         const videosData = await videosResponse.json();
 
-        // Fetch streaming providers
+        // Fetch India-specific streaming providers
         const providersResponse = await fetch(
           `https://api.themoviedb.org/3/movie/${movieId}/watch/providers?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}`
         );
@@ -81,7 +124,7 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
         if (isMounted) {
           setMovie(movieData);
           setVideos(videosData.results?.filter((v: MovieVideo) => v.site === 'YouTube' && v.type === 'Trailer') || []);
-          setStreamingData(providersData.results?.US || null);
+          setStreamingData(providersData.results?.IN || null); // Use IN for India-specific data
         }
       } catch (error) {
         console.error('Error fetching movie data:', error);
@@ -127,22 +170,48 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
       <div className="mb-4">
         <h4 className="text-sm text-gray-400 mb-2">{title}</h4>
         <div className="flex flex-wrap gap-2">
-          {providers.map((provider) => (
-            <div
-              key={provider.provider_name}
-              className="relative w-8 h-8 rounded-lg overflow-hidden tooltip-trigger group"
-            >
-              <Image
-                src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
-                alt={provider.provider_name}
-                fill
-                className="object-cover"
-              />
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                {provider.provider_name}
-              </div>
-            </div>
-          ))}
+          {providers.map((provider) => {
+            const normalizedName = normalizeProviderName(provider.provider_name);
+            const streamingUrl = STREAMING_URLS[normalizedName as keyof typeof STREAMING_URLS];
+            
+            if (!streamingUrl) {
+              console.log('Unmatched provider:', provider.provider_name, normalizedName);
+              return null;
+            }
+
+            const url = streamingUrl(movie?.title || '');
+            console.log(`Generated URL for ${normalizedName}:`, url); // Debug log
+
+            return (
+              <motion.a
+                key={provider.provider_name}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative w-12 h-12 rounded-xl overflow-hidden tooltip-trigger group transform transition-transform duration-200 hover:scale-110 active:scale-95 cursor-pointer"
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={(e) => {
+                  if (!movie?.title) {
+                    e.preventDefault();
+                    return;
+                  }
+                  // Log click events for debugging
+                  console.log(`Clicked ${normalizedName} link:`, url);
+                }}
+              >
+                <Image
+                  src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+                  alt={provider.provider_name}
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                  {provider.provider_name}
+                </div>
+              </motion.a>
+            );
+          })}
         </div>
       </div>
     );
@@ -156,6 +225,7 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
         className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md overflow-hidden"
         role="dialog"
       >
@@ -164,18 +234,21 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
           initial={{ y: "100%", opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
-          transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="relative w-full sm:max-w-5xl h-[85vh] sm:h-[85vh] sm:max-h-[85vh] rounded-t-[20px] sm:rounded-2xl bg-black/90 overflow-hidden"
+          transition={{ type: "spring", damping: 30, stiffness: 300 }}
+          className="relative w-full sm:max-w-5xl h-[85vh] sm:h-[85vh] sm:max-h-[85vh] rounded-t-[20px] sm:rounded-2xl bg-black/90 overflow-hidden shadow-2xl border border-white/10"
         >
           {/* Close Button */}
-          <div className="absolute top-0 right-0 z-50 p-4">
-            <button
-              onClick={onClose}
-              className="text-white/80 hover:text-white p-2 rounded-full bg-black/20 backdrop-blur-sm hover:bg-black/40 transition-colors"
-            >
-              <LuX className="w-6 h-6" />
-            </button>
-          </div>
+          <motion.button
+            onClick={onClose}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="absolute top-4 right-4 z-50 group"
+          >
+            <div className="relative p-2 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/60 transition-all duration-200 border border-white/10">
+              <LuX className="w-5 h-5 text-white/80 group-hover:text-white transition-colors" />
+            </div>
+          </motion.button>
 
           {/* Full Background Backdrop */}
           {movie?.backdrop_path ? (
@@ -211,10 +284,20 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
                 </div>
               </div>
             ) : movie ? (
-              <div className="p-4 sm:p-6 space-y-6">
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="p-4 sm:p-6 space-y-6"
+              >
                 {/* Video Section */}
                 {videos[0] && (
-                  <div className="relative w-full bg-black">
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="relative w-full bg-black rounded-xl overflow-hidden"
+                  >
                     <div className="sm:container sm:mx-auto">
                       <div className="relative w-full aspect-[4/3] sm:aspect-[16/9] lg:aspect-[2.4/1]">
                         <iframe
@@ -225,13 +308,18 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
                         />
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
 
                 {/* Movie Details */}
                 <div className="flex flex-col sm:flex-row gap-6">
                   {/* Poster */}
-                  <div className="relative w-[120px] sm:w-[200px] flex-shrink-0 mx-auto sm:mx-0">
+                  <motion.div 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="relative w-[120px] sm:w-[200px] flex-shrink-0 mx-auto sm:mx-0"
+                  >
                     <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-black/30">
                       {movie.poster_path ? (
                         <RetryImage
@@ -251,70 +339,107 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
                         </div>
                       )}
                     </div>
-                  </div>
+                  </motion.div>
 
                   {/* Details */}
-                  <div className="flex-1 space-y-3 sm:space-y-6">
-                    {/* Title and Tagline */}
-                    <div>
-                      <h2 className="text-2xl sm:text-4xl font-bold text-white">{movie.title}</h2>
-                      {movie.tagline && (
-                        <p className="text-sm sm:text-base text-gray-400 italic mt-2">{movie.tagline}</p>
-                      )}
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="flex-1 space-y-4 sm:space-y-6"
+                  >
+                    {/* Title and Play Button */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                      <div className="flex-1">
+                        <h2 className="text-2xl sm:text-4xl font-bold text-white tracking-tight">{movie.title}</h2>
+                        {movie.tagline && (
+                          <p className="text-sm sm:text-base text-gray-400 italic mt-2 font-medium">{movie.tagline}</p>
+                        )}
+                      </div>
+                      <motion.a
+                        href={`https://www.cineby.app/search?q=${encodeURIComponent(movie.title)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transform transition-all duration-200 active:scale-95 select-none touch-manipulation"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5 }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                        </svg>
+                        <span>Play Movie</span>
+                      </motion.a>
                     </div>
 
                     {/* Movie Stats */}
                     <div className="flex flex-wrap gap-3 sm:gap-4 text-sm">
                       {movie.vote_average > 0 && (
-                        <div className="flex items-center gap-1 bg-black/30 rounded-lg px-3 py-2 touch-manipulation">
-                          <LuStar className="w-4 h-4 text-yellow-500" />
-                          <span>{movie.vote_average.toFixed(1)}</span>
-                        </div>
+                        <motion.div 
+                          whileHover={{ scale: 1.05 }}
+                          className="flex items-center gap-2 bg-yellow-500/10 text-yellow-500 rounded-lg px-3.5 py-2 border border-yellow-500/20 transition-colors hover:bg-yellow-500/20"
+                        >
+                          <LuStar className="w-4 h-4" />
+                          <span className="font-medium">{movie.vote_average.toFixed(1)}</span>
+                        </motion.div>
                       )}
                       {movie.release_date && (
-                        <div className="flex items-center gap-1 bg-black/30 rounded-lg px-3 py-2 touch-manipulation">
+                        <motion.div 
+                          whileHover={{ scale: 1.05 }}
+                          className="flex items-center gap-2 bg-blue-500/10 text-blue-400 rounded-lg px-3.5 py-2 border border-blue-500/20 transition-colors hover:bg-blue-500/20"
+                        >
                           <LuCalendar className="w-4 h-4" />
-                          <span>{new Date(movie.release_date).getFullYear()}</span>
-                        </div>
+                          <span className="font-medium">{new Date(movie.release_date).getFullYear()}</span>
+                        </motion.div>
                       )}
                       {movie.runtime > 0 && (
-                        <div className="flex items-center gap-1 bg-black/30 rounded-lg px-3 py-2 touch-manipulation">
+                        <motion.div 
+                          whileHover={{ scale: 1.05 }}
+                          className="flex items-center gap-2 bg-green-500/10 text-green-400 rounded-lg px-3.5 py-2 border border-green-500/20 transition-colors hover:bg-green-500/20"
+                        >
                           <LuClock className="w-4 h-4" />
-                          <span>{`${movie.runtime}m`}</span>
-                        </div>
+                          <span className="font-medium">{`${movie.runtime}m`}</span>
+                        </motion.div>
                       )}
                       {movie.original_language && (
-                        <div className="flex items-center gap-1 bg-black/30 rounded-lg px-3 py-2 touch-manipulation">
+                        <motion.div 
+                          whileHover={{ scale: 1.05 }}
+                          className="flex items-center gap-2 bg-purple-500/10 text-purple-400 rounded-lg px-3.5 py-2 border border-purple-500/20 transition-colors hover:bg-purple-500/20"
+                        >
                           <LuLanguages className="w-4 h-4" />
-                          <span>{movie.original_language.toUpperCase()}</span>
-                        </div>
+                          <span className="font-medium">{movie.original_language.toUpperCase()}</span>
+                        </motion.div>
                       )}
                     </div>
 
                     {/* Genres */}
                     <div className="flex flex-wrap gap-2">
                       {movie.genres.map((genre) => (
-                        <span
+                        <motion.span
                           key={genre.id}
-                          className="text-sm bg-white/10 text-white px-3 py-1.5 rounded-lg touch-manipulation"
+                          whileHover={{ scale: 1.05 }}
+                          className="text-sm bg-white/5 text-white/90 px-3.5 py-1.5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors font-medium"
                         >
                           {genre.name}
-                        </span>
+                        </motion.span>
                       ))}
                     </div>
 
                     {/* Overview */}
                     <p className="text-sm sm:text-base text-gray-300 leading-relaxed">{movie.overview}</p>
 
-                    {/* Streaming Providers */}
-                    <div className="space-y-4">
+                    {/* Streaming Providers with updated styling */}
+                    <div className="space-y-4 bg-black/30 p-4 rounded-xl border border-white/10">
+                      <h3 className="text-lg font-semibold text-white mb-4">Watch Now</h3>
                       {renderProviders(streamingData?.flatrate, 'Stream')}
                       {renderProviders(streamingData?.rent, 'Rent')}
                       {renderProviders(streamingData?.buy, 'Buy')}
                     </div>
-                  </div>
+                  </motion.div>
                 </div>
-              </div>
+              </motion.div>
             ) : (
               <div className="flex items-center justify-center h-full">
                 <p className="text-gray-400">Movie details not found</p>
