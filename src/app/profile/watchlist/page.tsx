@@ -106,52 +106,42 @@ export default function WatchlistPage() {
         <div className="flex flex-col gap-8">
           <div className="flex flex-col gap-6">
             <h1 className="text-3xl font-bold">My Watchlist</h1>
-            <div className="flex items-center gap-2 overflow-x-auto pb-2">
-              <button
-                onClick={() => setSelectedStatus('ALL')}
-                className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
-                  selectedStatus === 'ALL'
-                    ? 'bg-white/20 text-white'
-                    : 'bg-white/10 hover:bg-white/20 text-gray-300'
-                }`}
-              >
-                All
-              </button>
-              {Object.entries(watchStatusLabels).map(([status, label]) => (
-                <button
-                  key={status}
-                  onClick={() => setSelectedStatus(status as WatchStatus)}
-                  className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
-                    selectedStatus === status
-                      ? 'bg-white/20 text-white'
-                      : 'bg-white/10 hover:bg-white/20 text-gray-300'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-              <div className="relative flex items-center">
-                <button
-                  onClick={() => setIsSearchOpen(!isSearchOpen)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    isSearchOpen ? 'bg-white/20' : 'bg-white/10 hover:bg-white/20'
-                  }`}
-                >
-                  <LuSearch className="w-5 h-5" />
-                </button>
-                <div className={`absolute right-0 top-0 h-full flex items-center transition-all duration-300 ${
-                  isSearchOpen ? 'w-64 opacity-100 ml-2' : 'w-0 opacity-0'
-                }`}>
+            <div className="relative w-full">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="relative flex-1">
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={handleSearch}
                     placeholder="Search movies..."
-                    className={`w-full h-full px-4 py-2 bg-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 text-white placeholder-gray-400 ${
-                      isSearchOpen ? 'block' : 'hidden'
-                    }`}
+                    className="w-full px-4 py-2 bg-black/80 backdrop-blur-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 text-white placeholder-gray-400 border border-white/10"
                   />
                 </div>
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40">
+                <button
+                  onClick={() => setSelectedStatus('ALL')}
+                  className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
+                    selectedStatus === 'ALL'
+                      ? 'bg-white/20 text-white'
+                      : 'bg-white/10 hover:bg-white/20 text-gray-300'
+                  }`}
+                >
+                  All
+                </button>
+                {Object.entries(watchStatusLabels).map(([status, label]) => (
+                  <button
+                    key={status}
+                    onClick={() => setSelectedStatus(status as WatchStatus)}
+                    className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
+                      selectedStatus === status
+                        ? 'bg-white/20 text-white'
+                        : 'bg-white/10 hover:bg-white/20 text-gray-300'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -167,9 +157,7 @@ export default function WatchlistPage() {
                 className="movie-card relative group"
               >
                 <div
-                  onClick={(e) => {
-                    handleMovieClick(entry.movieId, entry.id, e);
-                  }}
+                  onClick={(e) => handleMovieClick(entry.movieId, entry.id, e)}
                   className="relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer"
                 >
                   {entry.posterPath ? (
@@ -179,7 +167,7 @@ export default function WatchlistPage() {
                       fill
                       className="object-cover"
                       placeholder="blur"
-                      blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                      blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
@@ -191,19 +179,17 @@ export default function WatchlistPage() {
                       <span className="text-gray-400 text-sm text-center px-4">No poster available</span>
                     </div>
                   )}
-                  <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent opacity-0 ${
-                    touchedMovieId === entry.id ? 'opacity-100' : 'group-hover:opacity-100'
-                  } transition-opacity`}>
-                    <div className="absolute bottom-0 left-0 right-0 p-3">
-                      <h3 className="text-sm font-medium truncate">{entry.title}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        {entry.rating && (
-                          <div className="flex items-center gap-1 text-xs text-yellow-400">
-                            <LuStar className="w-3 h-3" />
-                            <span>{entry.rating}/10</span>
-                          </div>
-                        )}
-                      </div>
+                  <div className={`absolute inset-0 bg-black/60 flex flex-col justify-end p-4 transition-opacity duration-200 ${
+                    touchedMovieId === entry.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}>
+                    <h3 className="text-sm font-medium truncate">{entry.title}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      {entry.rating && (
+                        <div className="flex items-center gap-1 text-xs text-yellow-400">
+                          <LuStar className="w-3 h-3" />
+                          <span>{entry.rating}/10</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

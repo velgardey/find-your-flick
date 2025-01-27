@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { fetchWithAuth } from '@/lib/api';
 import WatchlistButton from '@/components/WatchlistButton';
 import MovieDetailsModal from '@/components/MovieDetailsModal';
+import { LuSearch } from 'react-icons/lu';
 
 interface UserProfile {
   id: string;
@@ -39,6 +40,65 @@ export default function UserProfile({ params }: PageProps) {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [touchedMovieId, setTouchedMovieId] = useState<string | null>(null);
+
+  const watchStatusLabels: Record<string, string> = {
+    PLAN_TO_WATCH: 'Plan to Watch',
+    WATCHING: 'Watching',
+    WATCHED: 'Watched',
+    ON_HOLD: 'On Hold',
+    DROPPED: 'Dropped',
+  };
+
+  const handleCardTouch = (movieId: string, event: React.MouseEvent) => {
+    if (window.matchMedia('(hover: hover)').matches) return;
+    
+    event.preventDefault();
+    setTouchedMovieId(touchedMovieId === movieId ? null : movieId);
+  };
+
+  const handleMovieClick = (movieId: number, entryId: string, event: React.MouseEvent) => {
+    if (!window.matchMedia('(hover: hover)').matches) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (touchedMovieId !== entryId) {
+        handleCardTouch(entryId, event);
+        return;
+      }
+    }
+    setSelectedMovieId(movieId);
+  };
+
+  useEffect(() => {
+    if (!touchedMovieId) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.movie-card')) {
+        setTouchedMovieId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [touchedMovieId]);
+
+  useEffect(() => {
+    if (!isSearchOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.search-container')) {
+        setIsSearchOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isSearchOpen]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -93,6 +153,12 @@ export default function UserProfile({ params }: PageProps) {
     );
   }
 
+  const filteredWatchlist = watchlist
+    .filter(movie => selectedStatus === 'ALL' || movie.status === selectedStatus)
+    .filter(movie => 
+      !searchQuery || movie.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
   return (
     <div className="min-h-screen pt-24 px-4">
       <div className="max-w-4xl mx-auto">
@@ -141,24 +207,63 @@ export default function UserProfile({ params }: PageProps) {
 
             <div className="mb-8">
               <h3 className="text-xl font-bold text-white mb-6">Watchlist</h3>
+              <div className="flex flex-col gap-4">
+                <div className="relative w-full search-container">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search movies..."
+                    className="w-full px-4 py-2 bg-black/80 backdrop-blur-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 text-white placeholder-gray-400 border border-white/10"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40">
+                  <button
+                    onClick={() => setSelectedStatus('ALL')}
+                    className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
+                      selectedStatus === 'ALL'
+                        ? 'bg-white/20 text-white'
+                        : 'bg-white/10 hover:bg-white/20 text-gray-300'
+                    }`}
+                  >
+                    All
+                  </button>
+                  {Object.entries(watchStatusLabels).map(([status, label]) => (
+                    <button
+                      key={status}
+                      onClick={() => setSelectedStatus(status)}
+                      className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
+                        selectedStatus === status
+                          ? 'bg-white/20 text-white'
+                          : 'bg-white/10 hover:bg-white/20 text-gray-300'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {watchlist.length === 0 ? (
                 <p className="text-center text-gray-400 py-12">
                   No movies in watchlist yet
                 </p>
               ) : (
                 <AnimatePresence mode="popLayout">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {watchlist.map((movie) => (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4">
+                    {filteredWatchlist.map(movie => (
                       <motion.div
                         key={movie.id}
+                        layout
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
-                        className="relative group"
+                        className="movie-card relative group"
                       >
-                        <div 
-                          className="aspect-[2/3] relative rounded-xl overflow-hidden cursor-pointer"
-                          onClick={() => setSelectedMovieId(movie.movieId)}
+                        <div
+                          onClick={(e) => handleMovieClick(movie.movieId, movie.id, e)}
+                          className="relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer"
                         >
                           {movie.posterPath ? (
                             <Image
@@ -166,8 +271,6 @@ export default function UserProfile({ params }: PageProps) {
                               alt={movie.title}
                               fill
                               className="object-cover"
-                              placeholder="blur"
-                              blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = 'none';
@@ -179,7 +282,9 @@ export default function UserProfile({ params }: PageProps) {
                               <span className="text-gray-400 text-sm text-center px-4">No poster available</span>
                             </div>
                           )}
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
+                          <div className={`absolute inset-0 bg-black/60 flex flex-col justify-end p-4 transition-opacity duration-200 ${
+                            touchedMovieId === movie.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                          }`}>
                             <h4 className="text-white font-medium mb-2">
                               {movie.title}
                             </h4>
@@ -191,14 +296,18 @@ export default function UserProfile({ params }: PageProps) {
                                 Rating: {movie.rating}/10
                               </div>
                             )}
-                            <div onClick={(e) => e.stopPropagation()}>
+                            <div onClick={(e) => e.stopPropagation()} className={`mt-2 ${
+                              !window.matchMedia('(hover: hover)').matches && touchedMovieId !== movie.id 
+                                ? 'pointer-events-none' 
+                                : ''
+                            }`}>
                               <WatchlistButton
                                 movie={{
                                   id: movie.movieId,
                                   title: movie.title,
                                   poster_path: movie.posterPath || '',
                                 }}
-                                position="top"
+                                position="bottom"
                               />
                             </div>
                           </div>

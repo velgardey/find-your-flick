@@ -7,9 +7,9 @@ import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LuSearch, LuInfo } from 'react-icons/lu';
-import WatchlistStatusDropdown from './WatchlistStatusDropdown';
 import MovieDetailsModal from './MovieDetailsModal';
 import { fetchWithRetry } from '@/lib/fetchWithRetry';
+import WatchlistButton from './WatchlistButton';
 
 const watchStatusLabels: Record<WatchStatus, string> = {
   PLAN_TO_WATCH: 'Plan to Watch',
@@ -128,13 +128,23 @@ export default function UserProfile() {
     !searchQuery || entry.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Add touch handling functions
   const handleCardTouch = (movieId: string, event: React.MouseEvent) => {
-    // Only handle touch events, not mouse events
     if (window.matchMedia('(hover: hover)').matches) return;
     
     event.preventDefault();
     setTouchedMovieId(touchedMovieId === movieId ? null : movieId);
+  };
+
+  const handleMovieClick = (movieId: number, entryId: string, event: React.MouseEvent) => {
+    if (!window.matchMedia('(hover: hover)').matches) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (touchedMovieId !== entryId) {
+        handleCardTouch(entryId, event);
+        return;
+      }
+    }
+    setSelectedMovieId(movieId);
   };
 
   // Close touch overlay when clicking outside
@@ -151,6 +161,21 @@ export default function UserProfile() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [touchedMovieId]);
+
+  // Add click outside handling for search dropdown
+  useEffect(() => {
+    if (!isSearchOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.search-container')) {
+        setIsSearchOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isSearchOpen]);
 
   if (!user) return null;
 
@@ -252,13 +277,44 @@ export default function UserProfile() {
             className="mt-4 overflow-hidden"
           >
             <div className="p-6 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 hover:border-white/20 transition-colors">
-              <div className="flex flex-wrap items-center gap-2 mb-4">
-                <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+              <div className="flex flex-col gap-4">
+                <div className="relative w-full search-container">
+                  <button
+                    onClick={() => setIsSearchOpen(!isSearchOpen)}
+                    className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                      isSearchOpen ? 'bg-white/20' : 'bg-white/10 hover:bg-white/20'
+                    }`}
+                  >
+                    <LuSearch className="w-4 h-4" />
+                    <span className="text-gray-400">{isSearchOpen ? 'Close search' : 'Search movies...'}</span>
+                  </button>
+                  <AnimatePresence>
+                    {isSearchOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute inset-x-0 top-full mt-2 z-10"
+                      >
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Search movies..."
+                          className="w-full px-4 py-2 bg-black/80 backdrop-blur-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 text-white placeholder-gray-400 border border-white/10"
+                          autoFocus
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40">
                   <motion.button
                     onClick={() => setSelectedStatus('ALL')}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className={`px-3 py-1 rounded-lg transition-all ${
+                    className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
                       selectedStatus === 'ALL'
                         ? 'bg-white/20 text-white'
                         : 'bg-white/10 hover:bg-white/20 text-gray-300'
@@ -272,7 +328,7 @@ export default function UserProfile() {
                       onClick={() => setSelectedStatus(status as WatchStatus)}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      className={`px-3 py-1 rounded-lg transition-all ${
+                      className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
                         selectedStatus === status
                           ? 'bg-white/20 text-white'
                           : 'bg-white/10 hover:bg-white/20 text-gray-300'
@@ -281,42 +337,6 @@ export default function UserProfile() {
                       {label}
                     </motion.button>
                   ))}
-                </div>
-                <div className="relative flex items-center">
-                  <motion.button
-                    onClick={() => setIsSearchOpen(!isSearchOpen)}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    className={`p-2 rounded-lg transition-all ${
-                      isSearchOpen ? 'bg-white/20' : 'bg-white/10 hover:bg-white/20'
-                    }`}
-                  >
-                    <LuSearch className="w-4 h-4" />
-                  </motion.button>
-                  <motion.div 
-                    initial={false}
-                    animate={isSearchOpen ? { 
-                      opacity: 1, 
-                      y: 0,
-                      scale: 1,
-                      pointerEvents: "auto" 
-                    } : { 
-                      opacity: 0, 
-                      y: 10,
-                      scale: 0.95,
-                      pointerEvents: "none" 
-                    }}
-                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                    className="absolute right-0 bottom-full mb-2 z-10"
-                  >
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search movies..."
-                      className="w-[250px] sm:w-[300px] px-3 py-2 bg-black/80 backdrop-blur-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 text-white placeholder-gray-400 border border-white/10 shadow-xl transition-all"
-                    />
-                  </motion.div>
                 </div>
               </div>
 
@@ -345,63 +365,73 @@ export default function UserProfile() {
                   variants={container}
                   initial="hidden"
                   animate="show"
-                  className="grid grid-cols-2 gap-4"
+                  className="grid grid-cols-2 gap-4 mt-4"
                 >
-                  {searchFilteredWatchlist.map((movie) => (
+                  {searchFilteredWatchlist.map(movie => (
                     <motion.div
                       key={movie.id}
                       variants={item}
-                      layoutId={movie.id}
-                      className="movie-card relative aspect-[2/3] rounded-lg overflow-hidden group cursor-pointer"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={(e) => handleCardTouch(movie.id, e)}
+                      className="movie-card relative group"
                     >
-                      {movie.posterPath ? (
-                        <Image
-                          src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`}
-                          alt={movie.title}
-                          fill
-                          className="object-cover transition-transform duration-300 group-hover:scale-105"
-                          placeholder="blur"
-                          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            target.parentElement?.classList.add('bg-gray-800');
-                          }}
-                        />
-                      ) : (
-                        <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
-                          <span className="text-gray-400 text-sm text-center px-4">No poster available</span>
-                        </div>
-                      )}
-                      {/* Desktop hover overlay */}
-                      <div 
-                        className={`absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-4 opacity-0 transition-all duration-200 ${
-                          touchedMovieId === movie.id ? 'opacity-100' : 'group-hover:opacity-100'
-                        }`}
-                      >
-                        <p className="text-sm font-medium text-center text-white mb-4">{movie.title}</p>
-                        <div className="w-full max-w-[200px] space-y-2">
-                          <motion.button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedMovieId(movie.movieId);
+                      <div className="relative aspect-[2/3] rounded-lg overflow-hidden">
+                        {movie.posterPath ? (
+                          <Image
+                            src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`}
+                            alt={movie.title}
+                            fill
+                            className="object-cover transition-transform duration-300 group-hover:scale-105"
+                            placeholder="blur"
+                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              target.parentElement?.classList.add('bg-gray-800');
                             }}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg bg-black/40 hover:bg-black/60 transition-colors text-sm"
-                          >
-                            <LuInfo className="w-4 h-4" />
-                            <span>View Details</span>
-                          </motion.button>
-                          <WatchlistStatusDropdown 
-                            entryId={movie.id} 
-                            currentStatus={movie.status}
-                            isEnabled={true}
-                            movieId={movie.movieId}
                           />
+                        ) : (
+                          <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
+                            <span className="text-gray-400 text-sm text-center px-4">No poster available</span>
+                          </div>
+                        )}
+                        <div 
+                          onClick={(e) => handleMovieClick(movie.movieId, movie.id, e)}
+                          className={`absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-4 transition-opacity duration-200 ${
+                            touchedMovieId === movie.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                          }`}
+                        >
+                          <p className="text-sm font-medium text-center text-white mb-4">{movie.title}</p>
+                          <div className="w-full max-w-[200px] space-y-2">
+                            <motion.button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedMovieId(movie.movieId);
+                              }}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg bg-black/40 hover:bg-black/60 transition-colors text-sm ${
+                                !window.matchMedia('(hover: hover)').matches && touchedMovieId !== movie.id 
+                                  ? 'pointer-events-none' 
+                                  : ''
+                              }`}
+                            >
+                              <LuInfo className="w-4 h-4" />
+                              <span>View Details</span>
+                            </motion.button>
+                            <div onClick={(e) => e.stopPropagation()} className={
+                              !window.matchMedia('(hover: hover)').matches && touchedMovieId !== movie.id 
+                                ? 'pointer-events-none' 
+                                : ''
+                            }>
+                              <WatchlistButton
+                                movie={{
+                                  id: movie.movieId,
+                                  title: movie.title,
+                                  poster_path: movie.posterPath || '',
+                                }}
+                                position="bottom"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </motion.div>
