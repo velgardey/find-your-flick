@@ -44,6 +44,7 @@ export default function UserProfile({ params }: PageProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [touchedMovieId, setTouchedMovieId] = useState<string | null>(null);
+  const [openStatusDropdown, setOpenStatusDropdown] = useState<string | null>(null);
 
   const watchStatusLabels: Record<string, string> = {
     PLAN_TO_WATCH: 'Plan to Watch',
@@ -99,6 +100,20 @@ export default function UserProfile({ params }: PageProps) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isSearchOpen]);
+
+  useEffect(() => {
+    if (!openStatusDropdown) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.status-dropdown')) {
+        setOpenStatusDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openStatusDropdown]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -288,27 +303,29 @@ export default function UserProfile({ params }: PageProps) {
                             <h4 className="text-white font-medium mb-2">
                               {movie.title}
                             </h4>
-                            <p className="text-gray-300 text-sm mb-3">
-                              {movie.status.replace(/_/g, ' ')}
-                            </p>
-                            {movie.rating && (
-                              <div className="text-yellow-400 text-sm mb-3">
-                                Rating: {movie.rating}/10
+                            <div className="status-dropdown relative">
+                              <p className="text-gray-300 text-sm mb-3">
+                                {movie.status.replace(/_/g, ' ')}
+                              </p>
+                              {movie.rating && (
+                                <div className="text-yellow-400 text-sm mb-3">
+                                  Rating: {movie.rating}/10
+                                </div>
+                              )}
+                              <div onClick={(e) => e.stopPropagation()} className={`mt-2 ${
+                                !window.matchMedia('(hover: hover)').matches && touchedMovieId !== movie.id 
+                                  ? 'pointer-events-none' 
+                                  : ''
+                              }`}>
+                                <WatchlistButton
+                                  movie={{
+                                    id: movie.movieId,
+                                    title: movie.title,
+                                    poster_path: movie.posterPath || '',
+                                  }}
+                                  position="bottom"
+                                />
                               </div>
-                            )}
-                            <div onClick={(e) => e.stopPropagation()} className={`mt-2 ${
-                              !window.matchMedia('(hover: hover)').matches && touchedMovieId !== movie.id 
-                                ? 'pointer-events-none' 
-                                : ''
-                            }`}>
-                              <WatchlistButton
-                                movie={{
-                                  id: movie.movieId,
-                                  title: movie.title,
-                                  poster_path: movie.posterPath || '',
-                                }}
-                                position="bottom"
-                              />
                             </div>
                           </div>
                         </div>
