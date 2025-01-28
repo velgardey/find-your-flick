@@ -1,6 +1,6 @@
 # Find Your Flick 🎬
 
-> **[Visit Find Your Flick](https://myflick.live)** - Your AI-powered movie companion for perfect film recommendations!
+> **[Visit Find Your Flick](https://find-your-flick.vercel.app)** - Your AI-powered movie companion for perfect film recommendations!
 
 <div align="center">
   <img src="https://img.shields.io/badge/Next.js-13-black" alt="Next.js" />
@@ -151,7 +151,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 🌐 Live Demo
-Visit [Find Your Flick](https://myflick.live) to try it out!
+Visit [Find Your Flick](https://find-your-flick.vercel.app) to try it out!
 
 ---
 
