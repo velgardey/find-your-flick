@@ -101,9 +101,10 @@ const STREAMING_URLS = {
 interface MovieDetailsModalProps {
   movieId: number | null;
   onClose: () => void;
+  layoutId?: string;
 }
 
-export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModalProps) {
+export default function MovieDetailsModal({ movieId, onClose, layoutId }: MovieDetailsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [movie, setMovie] = useState<MovieDetails | null>(null);
   const [videos, setVideos] = useState<MovieVideo[]>([]);
@@ -391,6 +392,7 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 }}
                     className="relative w-[120px] sm:w-[200px] flex-shrink-0 mx-auto sm:mx-0"
+                    layoutId={layoutId}
                   >
                     <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-black/30">
                       {movie.poster_path ? (
