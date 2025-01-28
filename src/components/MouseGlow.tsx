@@ -13,6 +13,17 @@ export default function MouseGlow({ onMediaChange }: MouseGlowProps) {
   useEffect(() => {
     const fetchRandomMedia = async () => {
       try {
+        // Check if we already have a backdrop stored in this session
+        const storedBackdrop = localStorage.getItem('session_backdrop');
+        const storedMediaInfo = localStorage.getItem('session_media_info');
+
+        if (storedBackdrop && storedMediaInfo) {
+          setBackgroundImage(storedBackdrop);
+          const { id, type } = JSON.parse(storedMediaInfo);
+          onMediaChange?.(id, type);
+          return;
+        }
+
         const isMovie = Math.random() > 0.5;
         const response = await fetch(
           `https://api.themoviedb.org/3/${isMovie ? 'movie' : 'tv'}/popular?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=en-US&page=${Math.floor(Math.random() * 5) + 1}`
@@ -26,7 +37,14 @@ export default function MouseGlow({ onMediaChange }: MouseGlowProps) {
         const randomMedia = data.results[Math.floor(Math.random() * data.results.length)];
         
         if (randomMedia.backdrop_path) {
-          setBackgroundImage(`https://image.tmdb.org/t/p/original${randomMedia.backdrop_path}`);
+          const backdropUrl = `https://image.tmdb.org/t/p/original${randomMedia.backdrop_path}`;
+          setBackgroundImage(backdropUrl);
+          // Store the backdrop URL and media info in localStorage
+          localStorage.setItem('session_backdrop', backdropUrl);
+          localStorage.setItem('session_media_info', JSON.stringify({
+            id: randomMedia.id,
+            type: isMovie ? 'movie' : 'tv'
+          }));
           onMediaChange?.(randomMedia.id, isMovie ? 'movie' : 'tv');
         }
       } catch (error) {
@@ -35,7 +53,7 @@ export default function MouseGlow({ onMediaChange }: MouseGlowProps) {
     };
 
     fetchRandomMedia();
-  }, [onMediaChange]);
+  }, []); // Remove onMediaChange from dependencies since we handle it inside fetchRandomMedia
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
