@@ -101,7 +101,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    try {
+      try {
       const token = await user.getIdToken()
       const url = searchQuery 
         ? `/api/watchlist?search=${encodeURIComponent(searchQuery)}`
@@ -118,10 +118,10 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         if (response.status === 401) {
           setWatchlist([])
           return
-        }
-        throw new Error('Failed to fetch watchlist')
       }
-      
+        throw new Error('Failed to fetch watchlist')
+    }
+
       const responseData = await response.json()
       
       // Validate and transform the data
@@ -258,7 +258,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       if (!isWatchlistEntry(responseData.data)) {
         throw new Error('Invalid response data')
       }
-      
+
       setWatchlist((prev) =>
         prev.map((entry) => (entry.id === entryId ? responseData.data : entry))
       )
@@ -303,7 +303,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
 
       if (!response.ok) throw new Error('Failed to remove from watchlist')
       const responseData = await response.json()
-      
+
       if (!responseData.data?.success) {
         throw new Error('Failed to remove from watchlist')
       }

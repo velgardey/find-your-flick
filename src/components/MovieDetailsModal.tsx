@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { LuX, LuStar, LuCalendar, LuClock, LuLanguages } from 'react-icons/lu';
 import { motion, AnimatePresence } from 'framer-motion';
 import RetryImage from './ui/RetryImage';
+import { ErrorBoundary } from 'react-error-boundary';
 
 interface MovieDetails {
   id: number;
@@ -111,6 +112,7 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
 
   useEffect(() => {
     let isMounted = true;
+    const controller = new AbortController();
 
     const fetchMovieData = async () => {
       if (!movieId) return;
@@ -123,28 +125,44 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
       try {
         // Fetch movie details
         const movieResponse = await fetch(
-          `https://api.themoviedb.org/3/movie/${movieId}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=en-US`
+          `/api/tmdb?path=/movie/${movieId}?language=en-US`,
+          { signal: controller.signal }
         );
         const movieData = await movieResponse.json();
 
+        if (isMounted) {
+          setMovie(movieData);
+        }
+
         // Fetch videos
         const videosResponse = await fetch(
-          `https://api.themoviedb.org/3/movie/${movieId}/videos?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=en-US`
+          `/api/tmdb?path=/movie/${movieId}/videos?language=en-US`,
+          { signal: controller.signal }
         );
         const videosData = await videosResponse.json();
 
-        // Fetch India-specific streaming providers
-        const providersResponse = await fetch(
-          `https://api.themoviedb.org/3/movie/${movieId}/watch/providers?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}`
+        if (isMounted) {
+          setVideos(videosData.results?.filter((video: MovieVideo) => 
+            video.site.toLowerCase() === 'youtube' && 
+            ['Trailer', 'Teaser'].includes(video.type)
+          ) || []);
+        }
+
+        // Fetch streaming data
+        const streamingResponse = await fetch(
+          `/api/tmdb?path=/movie/${movieId}/watch/providers`,
+          { signal: controller.signal }
         );
-        const providersData = await providersResponse.json();
+        const streamingData = await streamingResponse.json();
 
         if (isMounted) {
-          setMovie(movieData);
-          setVideos(videosData.results?.filter((v: MovieVideo) => v.site === 'YouTube' && v.type === 'Trailer') || []);
-          setStreamingData(providersData.results?.IN || null); // Use IN for India-specific data
+          setStreamingData(streamingData.results?.IN || null);
         }
       } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('Fetch aborted');
+          return;
+        }
         console.error('Error fetching movie data:', error);
       } finally {
         if (isMounted) {
@@ -157,9 +175,11 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
 
     return () => {
       isMounted = false;
+      controller.abort();
       setMovie(null);
       setVideos([]);
       setStreamingData(null);
+      setIsLoading(false);
     };
   }, [movieId]);
 
@@ -219,6 +239,17 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
                       alt={provider.provider_name}
                       fill
                       className="object-cover transition-transform duration-200 group-hover:scale-110"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        if (target.parentElement) {
+                          target.parentElement.style.backgroundColor = '#1a1a1a';
+                          const fallback = document.createElement('div');
+                          fallback.className = 'absolute inset-0 flex items-center justify-center text-white/50 text-xs text-center p-1';
+                          fallback.textContent = provider.provider_name.slice(0, 2).toUpperCase();
+                          target.parentElement.appendChild(fallback);
+                        }
+                      }}
                     />
                   </motion.a>
                 ) : (
@@ -331,12 +362,22 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
                   >
                     <div className="sm:container sm:mx-auto">
                       <div className="relative w-full aspect-[4/3] sm:aspect-[16/9] lg:aspect-[2.4/1]">
-                        <iframe
-                          src={`https://www.youtube-nocookie.com/embed/${videos[0].key}?rel=0&modestbranding=1&playsinline=1`}
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          className="absolute inset-0 w-full h-full"
-                        />
+                        <ErrorBoundary fallback={
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                            <p className="text-white/70">Failed to load video player</p>
+                          </div>
+                        }>
+                          <iframe
+                            src={`https://www.youtube-nocookie.com/embed/${videos[0].key}?rel=0&modestbranding=1&playsinline=1`}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            className="absolute inset-0 w-full h-full"
+                            onError={(e) => {
+                              console.error('YouTube player failed to load:', e);
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        </ErrorBoundary>
                       </div>
                     </div>
                   </motion.div>
@@ -426,11 +467,11 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
                         </motion.div>
                       )}
                       {movie.runtime > 0 && (
-                        <motion.div 
-                          whileHover={{ scale: 1.05 }}
-                          className="flex items-center gap-2 bg-green-500/10 text-green-400 rounded-lg px-3.5 py-2 border border-green-500/20 transition-colors hover:bg-green-500/20"
-                        >
-                          <LuClock className="w-4 h-4" />
+                          <motion.div 
+                            whileHover={{ scale: 1.05 }}
+                            className="flex items-center gap-2 bg-green-500/10 text-green-400 rounded-lg px-3.5 py-2 border border-green-500/20 transition-colors hover:bg-green-500/20"
+                          >
+                            <LuClock className="w-4 h-4" />
                           <span className="font-medium">{`${movie.runtime}m`}</span>
                         </motion.div>
                       )}

@@ -107,9 +107,9 @@ export default function Dropdown({
   }, [isOpen, onClose]);
 
   const dropdownContent = (
-    <AnimatePresence>
+      <AnimatePresence>
       {isOpen && mounted && (
-        <motion.div
+          <motion.div
           ref={dropdownRef}
           initial={{ opacity: 0, y: position === 'top' ? 10 : -10, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -117,11 +117,11 @@ export default function Dropdown({
           transition={{ type: "spring", stiffness: 300, damping: 25 }}
           className={`py-1 bg-black/90 backdrop-blur-xl rounded-lg shadow-lg border border-white/10 overflow-y-auto scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] ${className}`}
           style={dropdownStyle}
-        >
-          {children}
-        </motion.div>
-      )}
-    </AnimatePresence>
+          >
+              {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
   );
 
   return (

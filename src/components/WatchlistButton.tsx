@@ -34,8 +34,8 @@ export default function WatchlistButton({ movie, position = 'bottom' }: Watchlis
   const { 
     isInWatchlist, 
     getWatchlistEntry, 
-    addToWatchlist, 
-    updateWatchlistEntry, 
+    addToWatchlist,
+    updateWatchlistEntry,
     removeFromWatchlist,
     loadingStates,
     hasError,
@@ -144,35 +144,35 @@ export default function WatchlistButton({ movie, position = 'bottom' }: Watchlis
   )
 
   return (
-    <Dropdown
+      <Dropdown
       isOpen={isDropdownOpen && !isLoading && !hasError}
       onClose={() => setIsDropdownOpen(false)}
-      trigger={trigger}
+        trigger={trigger}
       className="py-2"
       position={position}
-    >
-      {Object.entries(watchStatusLabels).map(([status, label]) => (
-        <motion.button
-          key={status}
-          onClick={() => handleStatusSelect(status as WatchStatus)}
+      >
+        {Object.entries(watchStatusLabels).map(([status, label]) => (
+          <motion.button
+            key={status}
+            onClick={() => handleStatusSelect(status as WatchStatus)}
           className={`w-full px-4 py-2 text-left hover:bg-white/10 transition-colors ${
             watchlistEntry?.status === status ? 'text-white' : 'text-gray-300'
-          }`}
-          whileHover={{ x: 4 }}
-        >
-          {label}
-        </motion.button>
-      ))}
-      {isInList && (
-        <motion.button
-          onClick={handleRemove}
+            }`}
+            whileHover={{ x: 4 }}
+          >
+            {label}
+          </motion.button>
+        ))}
+        {isInList && (
+          <motion.button
+            onClick={handleRemove}
           className="w-full px-4 py-2 text-left text-red-400 hover:bg-white/10 transition-colors flex items-center gap-2"
-          whileHover={{ x: 4 }}
-        >
-          <LuTrash2 className="w-4 h-4" />
+            whileHover={{ x: 4 }}
+          >
+              <LuTrash2 className="w-4 h-4" />
           Remove from Watchlist
-        </motion.button>
-      )}
-    </Dropdown>
+          </motion.button>
+        )}
+      </Dropdown>
   )
 } 
