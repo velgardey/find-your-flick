@@ -33,6 +33,15 @@ export default function UserProfile() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
   const [touchedMovieId, setTouchedMovieId] = useState<string | null>(null);
+  const [sortOption, setSortOption] = useState<string>('newest');
+  const [isSortOpen, setIsSortOpen] = useState(false);
+
+  const sortOptions = {
+    newest: 'Newest First',
+    oldest: 'Oldest First',
+    aToZ: 'A to Z',
+    zToA: 'Z to A',
+  };
 
   const container = {
     hidden: { opacity: 0 },
@@ -124,9 +133,24 @@ export default function UserProfile() {
     ? watchlist
     : watchlist.filter(entry => entry.status === selectedStatus);
 
-  const searchFilteredWatchlist = filteredWatchlist.filter(entry =>
-    !searchQuery || entry.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const searchFilteredWatchlist = filteredWatchlist
+    .filter(entry =>
+      !searchQuery || entry.title.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      switch (sortOption) {
+        case 'newest':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'oldest':
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'aToZ':
+          return a.title.localeCompare(b.title);
+        case 'zToA':
+          return b.title.localeCompare(a.title);
+        default:
+          return 0;
+      }
+    });
 
   const handleCardTouch = (movieId: string, event: React.MouseEvent) => {
     if (window.matchMedia('(hover: hover)').matches) return;
@@ -176,6 +200,21 @@ export default function UserProfile() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isSearchOpen]);
+
+  // Add click outside handler for sort dropdown
+  useEffect(() => {
+    if (!isSortOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.sort-dropdown')) {
+        setIsSortOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isSortOpen]);
 
   if (!user) return null;
 
@@ -230,8 +269,8 @@ export default function UserProfile() {
                 onClick={updateProfile}
                 disabled={loading}
                 whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg disabled:opacity-50 transition-colors"
+                whileTap={{ scale: 0.95 }}
+                className="h-10 bg-white/10 hover:bg-white/20 text-white px-3 rounded-lg disabled:opacity-50 transition-all active:scale-95 touch-manipulation text-sm"
               >
                 {loading ? 'Saving...' : 'Save'}
               </motion.button>
@@ -247,11 +286,23 @@ export default function UserProfile() {
               </motion.span>
               <motion.button
                 onClick={() => setIsEditing(true)}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                className="opacity-0 group-hover:opacity-100 transition-all p-1 hover:bg-white/10 rounded absolute -right-8"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.95 }}
+                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all active:scale-95 touch-manipulation"
               >
-                ✏️
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                  />
+                </svg>
               </motion.button>
             </div>
           )}
@@ -278,35 +329,91 @@ export default function UserProfile() {
           >
             <div className="p-6 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 hover:border-white/20 transition-colors">
               <div className="flex flex-col gap-4">
-                <div className="relative w-full search-container">
-                  <button
-                    onClick={() => setIsSearchOpen(!isSearchOpen)}
-                    className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                      isSearchOpen ? 'bg-white/20' : 'bg-white/10 hover:bg-white/20'
-                    }`}
-                  >
-                    <LuSearch className="w-4 h-4" />
-                    <span className="text-gray-400">{isSearchOpen ? 'Close search' : 'Search movies...'}</span>
-                  </button>
-                  <AnimatePresence>
-                    {isSearchOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="absolute inset-x-0 top-full mt-2 z-10"
+                <div className="flex items-center gap-4">
+                  <div className="relative w-full search-container">
+                    <button
+                      onClick={() => setIsSearchOpen(!isSearchOpen)}
+                      className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                        isSearchOpen ? 'bg-white/20' : 'bg-white/10 hover:bg-white/20'
+                      }`}
+                    >
+                      <LuSearch className="w-4 h-4" />
+                      <span className="text-gray-400">{isSearchOpen ? 'Close search' : 'Search movies...'}</span>
+                    </button>
+                    <AnimatePresence>
+                      {isSearchOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="absolute inset-x-0 top-full mt-2 z-10"
+                        >
+                          <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search movies..."
+                            className="w-full px-4 py-2 bg-black/80 backdrop-blur-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 text-white placeholder-gray-400 border border-white/10"
+                            autoFocus
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  <div className="relative sort-dropdown">
+                    <motion.button
+                      onClick={() => setIsSortOpen(!isSortOpen)}
+                      className="h-10 px-3 bg-black/80 backdrop-blur-xl rounded-lg border border-white/10 hover:border-white/20 text-white flex items-center gap-2 transition-all active:scale-95 touch-manipulation"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                       >
-                        <input
-                          type="text"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Search movies..."
-                          className="w-full px-4 py-2 bg-black/80 backdrop-blur-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 text-white placeholder-gray-400 border border-white/10"
-                          autoFocus
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
                         />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                      </svg>
+                      <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px]">
+                        {sortOptions[sortOption as keyof typeof sortOptions]}
+                      </span>
+                    </motion.button>
+
+                    <AnimatePresence>
+                      {isSortOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="absolute right-0 mt-2 w-44 bg-black/90 backdrop-blur-xl rounded-lg shadow-lg border border-white/10 overflow-hidden z-50"
+                        >
+                          {Object.entries(sortOptions).map(([key, label]) => (
+                            <motion.button
+                              key={key}
+                              onClick={() => {
+                                setSortOption(key);
+                                setIsSortOpen(false);
+                              }}
+                              className={`w-full h-11 px-3 text-left hover:bg-white/10 transition-colors flex items-center ${
+                                sortOption === key ? 'text-white bg-white/10' : 'text-gray-300'
+                              }`}
+                              whileHover={{ x: 4 }}
+                              whileTap={{ scale: 0.98 }}
+                            >
+                              <span className="text-sm">{label}</span>
+                            </motion.button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40">
@@ -381,7 +488,7 @@ export default function UserProfile() {
                             fill
                             className="object-cover transition-transform duration-300 group-hover:scale-105"
                             placeholder="blur"
-                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               target.style.display = 'none';

@@ -44,6 +44,15 @@ export default function UserProfile({ params }: PageProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [touchedMovieId, setTouchedMovieId] = useState<string | null>(null);
   const [openStatusDropdown, setOpenStatusDropdown] = useState<string | null>(null);
+  const [sortOption, setSortOption] = useState<string>('newest');
+  const [isSortOpen, setIsSortOpen] = useState(false);
+
+  const sortOptions = {
+    newest: 'Newest First',
+    oldest: 'Oldest First',
+    aToZ: 'A to Z',
+    zToA: 'Z to A',
+  };
 
   const watchStatusLabels: Record<string, string> = {
     PLAN_TO_WATCH: 'Plan to Watch',
@@ -115,6 +124,20 @@ export default function UserProfile({ params }: PageProps) {
   }, [openStatusDropdown]);
 
   useEffect(() => {
+    if (!isSortOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.sort-dropdown')) {
+        setIsSortOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isSortOpen]);
+
+  useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
 
@@ -171,7 +194,21 @@ export default function UserProfile({ params }: PageProps) {
     .filter(movie => selectedStatus === 'ALL' || movie.status === selectedStatus)
     .filter(movie => 
       !searchQuery || movie.title.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    )
+    .sort((a, b) => {
+      switch (sortOption) {
+        case 'newest':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'oldest':
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'aToZ':
+          return a.title.localeCompare(b.title);
+        case 'zToA':
+          return b.title.localeCompare(a.title);
+        default:
+          return 0;
+      }
+    });
 
   return (
     <div className="min-h-screen pt-24 px-4">
@@ -222,14 +259,70 @@ export default function UserProfile({ params }: PageProps) {
             <div className="mb-8">
               <h3 className="text-xl font-bold text-white mb-6">Watchlist</h3>
               <div className="flex flex-col gap-4">
-                <div className="relative w-full search-container">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search movies..."
-                    className="w-full px-4 py-2 bg-black/80 backdrop-blur-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 text-white placeholder-gray-400 border border-white/10"
-                  />
+                <div className="flex items-center gap-4">
+                  <div className="relative w-full search-container">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search movies..."
+                      className="w-full px-4 py-2 bg-black/80 backdrop-blur-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 text-white placeholder-gray-400 border border-white/10"
+                    />
+                  </div>
+                  
+                  <div className="relative sort-dropdown">
+                    <motion.button
+                      onClick={() => setIsSortOpen(!isSortOpen)}
+                      className="h-10 px-3 bg-black/80 backdrop-blur-xl rounded-lg border border-white/10 hover:border-white/20 text-white flex items-center gap-2 transition-all active:scale-95 touch-manipulation"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
+                        />
+                      </svg>
+                      <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px]">
+                        {sortOptions[sortOption as keyof typeof sortOptions]}
+                      </span>
+                    </motion.button>
+
+                    <AnimatePresence>
+                      {isSortOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="absolute right-0 mt-2 w-44 bg-black/90 backdrop-blur-xl rounded-lg shadow-lg border border-white/10 overflow-hidden z-50"
+                        >
+                          {Object.entries(sortOptions).map(([key, label]) => (
+                            <motion.button
+                              key={key}
+                              onClick={() => {
+                                setSortOption(key);
+                                setIsSortOpen(false);
+                              }}
+                              className={`w-full h-11 px-3 text-left hover:bg-white/10 transition-colors flex items-center ${
+                                sortOption === key ? 'text-white bg-white/10' : 'text-gray-300'
+                              }`}
+                              whileHover={{ x: 4 }}
+                              whileTap={{ scale: 0.98 }}
+                            >
+                              <span className="text-sm">{label}</span>
+                            </motion.button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40">

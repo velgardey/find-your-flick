@@ -13,6 +13,7 @@ interface WatchlistEntry {
   status: WatchStatus
   rating: number | null
   notes: string | null
+  createdAt: string
 }
 
 interface LoadingStates {
@@ -61,7 +62,8 @@ function isWatchlistEntry(item: unknown): item is WatchlistEntry {
     (entry.posterPath === null || typeof entry.posterPath === 'string') &&
     typeof entry.status === 'string' &&
     (entry.rating === null || typeof entry.rating === 'number') &&
-    (entry.notes === null || typeof entry.notes === 'string')
+    (entry.notes === null || typeof entry.notes === 'string') &&
+    typeof entry.createdAt === 'string'
   )
 }
 
@@ -174,6 +176,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       status,
       rating: null,
       notes: null,
+      createdAt: new Date().toISOString(),
     }
 
     setWatchlist((prev) => [...prev, optimisticEntry])
