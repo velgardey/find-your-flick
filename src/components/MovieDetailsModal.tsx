@@ -462,12 +462,14 @@ export default function MovieDetailsModal({ movieId, onClose }: MovieDetailsModa
                     <p className="text-sm sm:text-base text-gray-300 leading-relaxed">{movie.overview}</p>
 
                     {/* Streaming Providers with updated styling */}
-                    <div className="space-y-4 bg-black/30 p-4 rounded-xl border border-white/10">
-                      <h3 className="text-lg font-semibold text-white mb-4">Watch Now</h3>
-                      {renderProviders(streamingData?.flatrate, 'Stream')}
-                      {renderProviders(streamingData?.rent, 'Rent')}
-                      {renderProviders(streamingData?.buy, 'Buy')}
-                    </div>
+                    {(streamingData?.flatrate?.length || streamingData?.rent?.length || streamingData?.buy?.length) && (
+                      <div className="space-y-4 bg-black/30 p-4 rounded-xl border border-white/10">
+                        <h3 className="text-lg font-semibold text-white mb-4">Watch Now</h3>
+                        {renderProviders(streamingData?.flatrate, 'Stream')}
+                        {renderProviders(streamingData?.rent, 'Rent')}
+                        {renderProviders(streamingData?.buy, 'Buy')}
+                      </div>
+                    )}
                   </motion.div>
                 </div>
               </motion.div>
