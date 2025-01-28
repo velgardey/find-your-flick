@@ -9,15 +9,16 @@ import { WatchStatus } from '@/lib/prismaTypes'
 import Dropdown from './ui/Dropdown'
 import { motion } from 'framer-motion'
 
-interface Movie {
-  id: number
-  title: string
-  poster_path: string
+interface Media {
+  id: number;
+  title: string;
+  poster_path: string;
+  media_type: 'movie' | 'tv';
 }
 
 interface WatchlistButtonProps {
-  movie: Movie
-  position?: 'top' | 'bottom'
+  media: Media;
+  position?: 'top' | 'bottom';
 }
 
 const watchStatusLabels: Record<WatchStatus, string> = {
@@ -28,7 +29,7 @@ const watchStatusLabels: Record<WatchStatus, string> = {
   DROPPED: 'Dropped',
 }
 
-export default function WatchlistButton({ movie, position = 'bottom' }: WatchlistButtonProps) {
+export default function WatchlistButton({ media, position = 'bottom' }: WatchlistButtonProps) {
   const { user } = useAuth()
   const router = useRouter()
   const { 
@@ -43,13 +44,13 @@ export default function WatchlistButton({ movie, position = 'bottom' }: Watchlis
   } = useWatchlist()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
-  const watchlistEntry = getWatchlistEntry(movie.id)
-  const isInList = isInWatchlist(movie.id)
+  const watchlistEntry = getWatchlistEntry(media.id)
+  const isInList = isInWatchlist(media.id)
 
   const isLoading = 
-    loadingStates.adding.includes(movie.id) ||
+    loadingStates.adding.includes(media.id) ||
     (watchlistEntry && loadingStates.updating.includes(watchlistEntry.id)) ||
-    loadingStates.removing.includes(movie.id)
+    loadingStates.removing.includes(media.id)
 
   const handleStatusSelect = async (status: WatchStatus) => {
     if (!user) {
@@ -62,7 +63,7 @@ export default function WatchlistButton({ movie, position = 'bottom' }: Watchlis
       if (isInList && watchlistEntry) {
         await updateWatchlistEntry(watchlistEntry.id, { status })
       } else {
-        await addToWatchlist(movie, status)
+        await addToWatchlist(media, status)
       }
     } catch (error) {
       console.error('Error updating watchlist:', error)
@@ -80,7 +81,7 @@ export default function WatchlistButton({ movie, position = 'bottom' }: Watchlis
     if (!isInList) return
 
     try {
-      await removeFromWatchlist(movie.id)
+      await removeFromWatchlist(media.id)
     } catch (error) {
       console.error('Error removing from watchlist:', error)
     }

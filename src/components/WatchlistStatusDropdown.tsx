@@ -7,10 +7,10 @@ import { LuChevronDown } from 'react-icons/lu'
 import Dropdown from './ui/Dropdown'
 
 interface WatchlistStatusDropdownProps {
-  entryId: string
-  currentStatus: WatchStatus
-  isEnabled?: boolean
-  movieId: number
+  mediaId: number;
+  status: WatchStatus;
+  onStatusChange: (status: WatchStatus) => void;
+  onRemove: () => void;
 }
 
 const watchStatusLabels: Record<WatchStatus, string> = {
@@ -21,31 +21,24 @@ const watchStatusLabels: Record<WatchStatus, string> = {
   DROPPED: 'Dropped',
 }
 
-export default function WatchlistStatusDropdown({ 
-  entryId, 
-  currentStatus,
-  isEnabled = true,
-  movieId,
+export default function WatchlistStatusDropdown({
+  mediaId,
+  status,
+  onStatusChange,
+  onRemove
 }: WatchlistStatusDropdownProps) {
-  const { updateWatchlistEntry, removeFromWatchlist } = useWatchlist()
+  const { removeFromWatchlist } = useWatchlist()
   const [isOpen, setIsOpen] = useState(false)
 
-  const handleStatusSelect = async (status: WatchStatus) => {
-    if (!isEnabled) return
-    
-    try {
-      await updateWatchlistEntry(entryId, { status })
-    } catch (error) {
-      console.error('Error updating watchlist status:', error)
-    }
+  const handleStatusChange = async (newStatus: WatchStatus) => {
+    onStatusChange(newStatus)
     setIsOpen(false)
   }
 
   const handleRemove = async () => {
-    if (!isEnabled) return
-    
     try {
-      await removeFromWatchlist(movieId)
+      await removeFromWatchlist(mediaId)
+      onRemove()
     } catch (error) {
       console.error('Error removing from watchlist:', error)
     }
@@ -54,18 +47,18 @@ export default function WatchlistStatusDropdown({
 
   const trigger = (
     <button
-      onClick={() => isEnabled && setIsOpen(!isOpen)}
+      onClick={() => setIsOpen(!isOpen)}
       className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm
-        ${isEnabled ? 'bg-black/40 hover:bg-black/60' : 'bg-black/20 cursor-not-allowed'}`}
+        ${'bg-black/40 hover:bg-black/60'}`}
     >
-      <span>{watchStatusLabels[currentStatus]}</span>
+      <span>{watchStatusLabels[status]}</span>
       <LuChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
     </button>
   )
 
   return (
     <Dropdown
-      isOpen={isOpen && isEnabled}
+      isOpen={isOpen}
       onClose={() => setIsOpen(false)}
       trigger={trigger}
     >
@@ -74,10 +67,10 @@ export default function WatchlistStatusDropdown({
           key={status}
           onClick={(e) => {
             e.stopPropagation()
-            handleStatusSelect(status as WatchStatus)
+            handleStatusChange(status as WatchStatus)
           }}
           className={`w-full px-3 py-1.5 text-left text-sm hover:bg-white/10 transition-colors ${
-            currentStatus === status ? 'text-white' : 'text-gray-300'
+            status === status ? 'text-white' : 'text-gray-300'
           }`}
         >
           {label}

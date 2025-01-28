@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchWithAuth } from '@/lib/api';
-import MovieDetailsModal from '@/components/MovieDetailsModal';
+import MediaDetailsModal from '@/components/MediaDetailsModal';
 import WatchlistButton from '@/components/WatchlistButton';
 import withAuth from '@/components/withAuth';
 
@@ -28,7 +28,8 @@ function Feed() {
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
+  const [selectedMediaId, setSelectedMediaId] = useState<number | null>(null);
+  const [selectedMediaType, setSelectedMediaType] = useState<'movie' | 'tv'>('movie');
   const { user } = useAuth();
 
   useEffect(() => {
@@ -51,6 +52,11 @@ function Feed() {
 
     fetchFeedItems();
   }, [user]);
+
+  const handleMovieClick = (mediaId: number, mediaType: 'movie' | 'tv') => {
+    setSelectedMediaId(mediaId);
+    setSelectedMediaType(mediaType);
+  };
 
   if (error) {
     return (
@@ -118,7 +124,7 @@ function Feed() {
                         className="object-cover transform scale-105 group-hover:scale-110 transition-all duration-500"
                         priority={false}
                         placeholder="blur"
-                        blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                        blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
                         style={{
                           opacity: 0,
                         }}
@@ -142,8 +148,13 @@ function Feed() {
                         <Link href={`/profile/${item.userId}`} className="font-semibold text-white hover:text-blue-400 transition-colors duration-300">
                           {item.userDisplayName}
                         </Link>
-                        <span className="text-gray-500 text-sm font-medium">
-                          {format(new Date(item.createdAt), 'MMM d, yyyy')}
+                        <span className="text-gray-500 text-sm font-medium group relative">
+                          <span className="hover:text-gray-300 transition-colors cursor-help">
+                            {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+                          </span>
+                          <span className="absolute left-1/2 -translate-x-1/2 -top-8 px-2 py-1 bg-black/90 backdrop-blur-sm rounded-lg text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-white/10">
+                            {format(new Date(item.createdAt), 'MMM d, yyyy h:mm a')}
+                          </span>
                         </span>
                       </div>
                       <p className="text-gray-300 mt-1 font-medium">
@@ -164,7 +175,7 @@ function Feed() {
                       >
                         <div 
                           className="relative overflow-hidden rounded-lg transition-transform duration-300 group-hover/poster:scale-105 shadow-md cursor-pointer shrink-0"
-                          onClick={() => setSelectedMovieId(item.movieId)}
+                          onClick={() => handleMovieClick(item.movieId, 'movie')}
                         >
                           {item.moviePosterPath ? (
                             <>
@@ -197,17 +208,18 @@ function Feed() {
                         <div className="flex-1 min-w-0 text-center sm:text-left">
                           <h3 
                             className="text-white text-lg font-semibold group-hover/poster:text-blue-400 transition-colors cursor-pointer line-clamp-2"
-                            onClick={() => setSelectedMovieId(item.movieId)}
+                            onClick={() => handleMovieClick(item.movieId, 'movie')}
                           >
                             {item.movieTitle}
                           </h3>
                           <p className="text-gray-400 mt-1 text-sm mb-3">Click to view details</p>
                           <div onClick={(e) => e.stopPropagation()}>
                             <WatchlistButton
-                              movie={{
+                              media={{
                                 id: item.movieId,
                                 title: item.movieTitle,
                                 poster_path: item.moviePosterPath || '',
+                                media_type: 'movie'
                               }}
                               position="bottom"
                             />
@@ -223,12 +235,11 @@ function Feed() {
         )}
       </div>
 
-      {selectedMovieId && (
-        <MovieDetailsModal
-          movieId={selectedMovieId}
-          onClose={() => setSelectedMovieId(null)}
-        />
-      )}
+      <MediaDetailsModal
+        mediaId={selectedMediaId}
+        mediaType={selectedMediaType}
+        onClose={() => setSelectedMediaId(null)}
+      />
     </div>
   );
 }

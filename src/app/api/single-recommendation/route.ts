@@ -1,57 +1,60 @@
 import { NextResponse } from 'next/server';
 import { generateMediaRecommendations } from '@/services/gemmaService';
-import { fetchWithRetry } from '@/lib/fetchWithRetry';
+import { fetchWithRetry } from '@/lib/retryUtils';
 
-interface Movie {
+interface Media {
   id: number;
-  title: string;
+  title: string;  // movie.title or tvShow.name
+  name?: string;  // for TV shows
   poster_path: string;
+  media_type: 'movie' | 'tv';
 }
 
 interface TMDBResponse {
-  results: Movie[];
+  results: Media[];
 }
 
 export async function POST(request: Request) {
   try {
-    const { description, selectedMovies, excludeMovieId, currentRecommendations } = await request.json();
+    const { description, selectedMedia, excludeMediaId, currentRecommendations, mediaType } = await request.json();
     
-    if (!description || !selectedMovies || !Array.isArray(selectedMovies)) {
+    if (!description || !selectedMedia || !Array.isArray(selectedMedia) || !mediaType || !['movie', 'tv'].includes(mediaType)) {
       return NextResponse.json(
         { error: 'Invalid request parameters' },
         { status: 400 }
       );
     }
 
-    // Get multiple recommendations to increase chances of finding a different movie
-    const movieTitles = await generateMediaRecommendations(
+    // Get multiple recommendations to increase chances of finding a different media
+    const mediaTitles = await generateMediaRecommendations(
       description, 
-      selectedMovies,
-      15
+      selectedMedia,
+      15,
+      mediaType
     );
 
-    if (!movieTitles.length) {
+    if (!mediaTitles.length) {
       return NextResponse.json(
         { error: 'No recommendations generated' },
         { status: 404 }
       );
     }
     
-    // Create a Set of IDs to exclude (current recommendations + the movie being replaced)
+    // Create a Set of IDs to exclude (current recommendations + the media being replaced)
     const excludeIds = new Set([
-      excludeMovieId,
-      ...(currentRecommendations || []).map((m: Movie) => m.id)
+      excludeMediaId,
+      ...(currentRecommendations || []).map((m: Media) => m.id)
     ]);
     
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
     try {
-      // Try each title until we find a different movie
-      for (const title of movieTitles) {
+      // Try each title until we find a different media
+      for (const title of mediaTitles) {
         try {
           const response = await fetchWithRetry(
-            `/api/tmdb?path=/search/movie?query=${encodeURIComponent(title)}&include_adult=false&language=en-US&page=1`,
+            `/api/tmdb?path=/search/${mediaType}?query=${encodeURIComponent(title)}&include_adult=false&language=en-US&page=1`,
             { signal: controller.signal },
             {
               maxRetries: 2,
@@ -61,29 +64,36 @@ export async function POST(request: Request) {
           );
           
           if (!response.ok) {
-            console.warn(`Failed to search for movie "${title}":`, response.status);
+            console.warn(`Failed to search for ${mediaType} "${title}":`, response.status);
             continue;
           }
           
           const data: TMDBResponse = await response.json();
           
-          // Find the first movie that's not in our exclude set
-          const newMovie = data.results?.find(movie => !excludeIds.has(movie.id));
+          // Transform the results to include media_type and normalize title/name
+          const results = data.results.map(item => ({
+            ...item,
+            title: item.title || item.name,
+            media_type: mediaType
+          }));
           
-          if (newMovie && newMovie.id !== excludeMovieId) {
-            return NextResponse.json(newMovie);
+          // Find the first media that's not in our exclude set
+          const newMedia = results.find(media => !excludeIds.has(media.id));
+          
+          if (newMedia && newMedia.id !== excludeMediaId) {
+            return NextResponse.json(newMedia);
           }
         } catch (error) {
           if (error instanceof Error && error.name === 'AbortError') {
             throw new Error('Request timed out');
           }
-          console.warn(`Error searching for movie "${title}":`, error);
+          console.warn(`Error searching for ${mediaType} "${title}":`, error);
           continue;
         }
       }
       
       return NextResponse.json(
-        { error: 'Could not find a unique movie recommendation' },
+        { error: `Could not find a unique ${mediaType} recommendation` },
         { status: 404 }
       );
     } finally {

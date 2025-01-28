@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 
 interface WatchlistEntry {
   id: string;
-  movieId: number;
+  mediaId: number;
   title: string;
   posterPath: string | null;
   status: 'PLAN_TO_WATCH' | 'WATCHING' | 'WATCHED' | 'ON_HOLD' | 'DROPPED';
@@ -60,7 +60,7 @@ export async function GET(
         ],
         select: {
           id: true,
-          movieId: true,
+          mediaId: true,
           title: true,
           posterPath: true,
           status: true,

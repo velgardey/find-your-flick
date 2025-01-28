@@ -3,32 +3,41 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useAuth } from './AuthContext'
 import { WatchStatus } from '@/lib/prismaTypes'
-import { fetchWithRetry } from '@/lib/fetchWithRetry'
+import { fetchWithRetry } from '@/lib/retryUtils'
 
 interface WatchlistEntry {
   id: string
-  movieId: number
+  mediaId: number
+  mediaType: 'movie' | 'tv'
   title: string
   posterPath: string | null
   status: WatchStatus
   rating: number | null
   notes: string | null
+  // TV show specific fields
+  currentSeason?: number
+  currentEpisode?: number
+  totalSeasons?: number
+  totalEpisodes?: number
+  nextAirDate?: string
+  showStatus?: string
   createdAt: string
+  updatedAt: string
 }
 
 interface LoadingStates {
-  adding: number[]      // movieIds that are being added
+  adding: number[]      // mediaIds that are being added
   updating: string[]    // entryIds that are being updated
-  removing: number[]    // movieIds that are being removed
+  removing: number[]    // mediaIds that are being removed
 }
 
 interface WatchlistContextType {
   watchlist: WatchlistEntry[]
-  addToWatchlist: (movie: { id: number; title: string; poster_path: string }, status: WatchStatus) => Promise<void>
+  addToWatchlist: (media: { id: number; title: string; poster_path: string; media_type: 'movie' | 'tv' }, status: WatchStatus) => Promise<void>
   updateWatchlistEntry: (entryId: string, updates: Partial<WatchlistEntry>) => Promise<void>
-  removeFromWatchlist: (movieId: number) => Promise<void>
-  isInWatchlist: (movieId: number) => boolean
-  getWatchlistEntry: (movieId: number) => WatchlistEntry | undefined
+  removeFromWatchlist: (mediaId: number) => Promise<void>
+  isInWatchlist: (mediaId: number) => boolean
+  getWatchlistEntry: (mediaId: number) => WatchlistEntry | undefined
   isLoading: boolean
   loadingStates: LoadingStates
   fetchWatchlist: (searchQuery?: string) => Promise<void>
@@ -57,13 +66,22 @@ function isWatchlistEntry(item: unknown): item is WatchlistEntry {
   
   return (
     typeof entry.id === 'string' &&
-    typeof entry.movieId === 'number' &&
+    typeof entry.mediaId === 'number' &&
+    typeof entry.mediaType === 'string' &&
+    (entry.mediaType === 'movie' || entry.mediaType === 'tv') &&
     typeof entry.title === 'string' &&
     (entry.posterPath === null || typeof entry.posterPath === 'string') &&
     typeof entry.status === 'string' &&
     (entry.rating === null || typeof entry.rating === 'number') &&
     (entry.notes === null || typeof entry.notes === 'string') &&
-    typeof entry.createdAt === 'string'
+    typeof entry.createdAt === 'string' &&
+    typeof entry.updatedAt === 'string' &&
+    (entry.currentSeason === undefined || typeof entry.currentSeason === 'number') &&
+    (entry.currentEpisode === undefined || typeof entry.currentEpisode === 'number') &&
+    (entry.totalSeasons === undefined || typeof entry.totalSeasons === 'number') &&
+    (entry.totalEpisodes === undefined || typeof entry.totalEpisodes === 'number') &&
+    (entry.nextAirDate === undefined || typeof entry.nextAirDate === 'string') &&
+    (entry.showStatus === undefined || typeof entry.showStatus === 'string')
   )
 }
 
@@ -157,7 +175,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   }
 
   const addToWatchlist = async (
-    movie: { id: number; title: string; poster_path: string },
+    media: { id: number; title: string; poster_path: string; media_type: 'movie' | 'tv' },
     status: WatchStatus
   ) => {
     if (!user) throw new Error('User must be logged in')
@@ -165,18 +183,26 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     // Set loading state
     setLoadingStates(prev => ({
       ...prev,
-      adding: [...prev.adding, movie.id]
+      adding: [...prev.adding, media.id]
     }))
 
     const optimisticEntry: WatchlistEntry = {
       id: `temp-${Date.now()}`,
-      movieId: movie.id,
-      title: movie.title,
-      posterPath: movie.poster_path,
+      mediaId: media.id,
+      mediaType: media.media_type,
+      title: media.title,
+      posterPath: media.poster_path,
       status,
       rating: null,
       notes: null,
+      currentSeason: undefined,
+      currentEpisode: undefined,
+      totalSeasons: undefined,
+      totalEpisodes: undefined,
+      nextAirDate: undefined,
+      showStatus: undefined,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     }
 
     setWatchlist((prev) => [...prev, optimisticEntry])
@@ -190,9 +216,10 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          movieId: movie.id,
-          title: movie.title,
-          posterPath: movie.poster_path,
+          mediaId: media.id,
+          mediaType: media.media_type,
+          title: media.title,
+          posterPath: media.poster_path,
           status,
         }),
       })
@@ -215,12 +242,12 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       )
       console.error('Error adding to watchlist:', error)
       setHasError(true)
-      setLastFailedOperation(() => () => addToWatchlist(movie, status))
+      setLastFailedOperation(() => () => addToWatchlist(media, status))
       throw error
     } finally {
       setLoadingStates(prev => ({
         ...prev,
-        adding: prev.adding.filter(id => id !== movie.id)
+        adding: prev.adding.filter(id => id !== media.id)
       }))
     }
   }
@@ -279,22 +306,23 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const removeFromWatchlist = async (movieId: number) => {
+  const removeFromWatchlist = async (mediaId: number) => {
     if (!user) throw new Error('User must be logged in')
 
     setLoadingStates(prev => ({
       ...prev,
-      removing: [...prev.removing, movieId]
+      removing: [...prev.removing, mediaId]
     }))
 
-    const entryToRemove = watchlist.find(entry => entry.movieId === movieId)
-    if (!entryToRemove) return
+    const entry = watchlist.find(e => e.mediaId === mediaId)
+    if (!entry) return
 
-    setWatchlist((prev) => prev.filter((entry) => entry.movieId !== movieId))
+    const optimisticWatchlist = watchlist.filter(e => e.mediaId !== mediaId)
+    setWatchlist(optimisticWatchlist)
 
     try {
       const token = await user.getIdToken()
-      const response = await fetchWithRetry(`/api/watchlist?movieId=${movieId}`, {
+      const response = await fetchWithRetry(`/api/watchlist/${entry.id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -302,32 +330,27 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       })
 
       if (!response.ok) throw new Error('Failed to remove from watchlist')
-      const responseData = await response.json()
-
-      if (!responseData.data?.success) {
-        throw new Error('Failed to remove from watchlist')
-      }
       setHasError(false)
     } catch (error) {
-      setWatchlist((prev) => [...prev, entryToRemove])
+      setWatchlist(watchlist)
       console.error('Error removing from watchlist:', error)
       setHasError(true)
-      setLastFailedOperation(() => () => removeFromWatchlist(movieId))
+      setLastFailedOperation(() => () => removeFromWatchlist(mediaId))
       throw error
     } finally {
       setLoadingStates(prev => ({
         ...prev,
-        removing: prev.removing.filter(id => id !== movieId)
+        removing: prev.removing.filter(id => id !== mediaId)
       }))
     }
   }
 
-  const isInWatchlist = useCallback((movieId: number) => {
-    return Array.isArray(watchlist) && watchlist.some((entry) => entry.movieId === movieId)
+  const isInWatchlist = useCallback((mediaId: number) => {
+    return watchlist.some((entry) => entry.mediaId === mediaId)
   }, [watchlist])
 
-  const getWatchlistEntry = useCallback((movieId: number) => {
-    return Array.isArray(watchlist) ? watchlist.find((entry) => entry.movieId === movieId) : undefined
+  const getWatchlistEntry = useCallback((mediaId: number) => {
+    return watchlist.find((entry) => entry.mediaId === mediaId)
   }, [watchlist])
 
   return (

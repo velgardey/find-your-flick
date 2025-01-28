@@ -1,32 +1,41 @@
 'use client'
 import { useEffect, useState } from 'react';
 
-export default function MouseGlow({ onMovieChange }: { onMovieChange?: (movieId: number) => void }) {
+interface MouseGlowProps {
+  onMediaChange?: (mediaId: number, mediaType: 'movie' | 'tv') => void;
+}
+
+export default function MouseGlow({ onMediaChange }: MouseGlowProps) {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [backgroundImage, setBackgroundImage] = useState('');
   const [isTouching, setIsTouching] = useState(false);
 
   useEffect(() => {
-    const fetchRandomMovieBackdrop = async () => {
+    const fetchRandomMedia = async () => {
       try {
+        const isMovie = Math.random() > 0.5;
         const response = await fetch(
-          `https://api.themoviedb.org/3/movie/popular?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=en-US&page=${Math.floor(Math.random() * 5) + 1}`
+          `https://api.themoviedb.org/3/${isMovie ? 'movie' : 'tv'}/popular?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=en-US&page=${Math.floor(Math.random() * 5) + 1}`
         );
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch random ${isMovie ? 'movie' : 'TV show'} backdrop`);
+        }
+
         const data = await response.json();
+        const randomMedia = data.results[Math.floor(Math.random() * data.results.length)];
         
-        const randomMovie = data.results[Math.floor(Math.random() * data.results.length)];
-        
-        if (randomMovie.backdrop_path) {
-          setBackgroundImage(`https://image.tmdb.org/t/p/original${randomMovie.backdrop_path}`);
-          onMovieChange?.(randomMovie.id);
+        if (randomMedia.backdrop_path) {
+          setBackgroundImage(`https://image.tmdb.org/t/p/original${randomMedia.backdrop_path}`);
+          onMediaChange?.(randomMedia.id, isMovie ? 'movie' : 'tv');
         }
       } catch (error) {
-        console.error('Error fetching random movie backdrop:', error);
+        console.error('Error fetching random media backdrop:', error);
       }
     };
 
-    fetchRandomMovieBackdrop();
-  }, [onMovieChange]);
+    fetchRandomMedia();
+  }, [onMediaChange]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {

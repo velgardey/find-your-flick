@@ -7,8 +7,8 @@ import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LuSearch, LuInfo } from 'react-icons/lu';
-import MovieDetailsModal from './MovieDetailsModal';
-import { fetchWithRetry } from '@/lib/fetchWithRetry';
+import MediaDetailsModal from '@/components/MediaDetailsModal';
+import { fetchWithRetry } from '@/lib/retryUtils';
 import WatchlistButton from './WatchlistButton';
 
 const watchStatusLabels: Record<WatchStatus, string> = {
@@ -31,8 +31,9 @@ export default function UserProfile() {
   const [selectedStatus, setSelectedStatus] = useState<WatchStatus | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
-  const [touchedMovieId, setTouchedMovieId] = useState<string | null>(null);
+  const [selectedMediaId, setSelectedMediaId] = useState<number | null>(null);
+  const [selectedMediaType, setSelectedMediaType] = useState<'movie' | 'tv'>('movie');
+  const [touchedItemId, setTouchedItemId] = useState<string | null>(null);
   const [sortOption, setSortOption] = useState<string>('newest');
   const [isSortOpen, setIsSortOpen] = useState(false);
 
@@ -152,39 +153,40 @@ export default function UserProfile() {
       }
     });
 
-  const handleCardTouch = (movieId: string, event: React.MouseEvent) => {
+  const handleCardTouch = (itemId: string, event: React.MouseEvent) => {
     if (window.matchMedia('(hover: hover)').matches) return;
     
     event.preventDefault();
-    setTouchedMovieId(touchedMovieId === movieId ? null : movieId);
+    setTouchedItemId(touchedItemId === itemId ? null : itemId);
   };
 
-  const handleMovieClick = (movieId: number, entryId: string, event: React.MouseEvent) => {
+  const handleMediaClick = (mediaId: number, mediaType: 'movie' | 'tv', entryId: string, event: React.MouseEvent) => {
     if (!window.matchMedia('(hover: hover)').matches) {
       event.preventDefault();
       event.stopPropagation();
-      if (touchedMovieId !== entryId) {
+      if (touchedItemId !== entryId) {
         handleCardTouch(entryId, event);
         return;
       }
     }
-    setSelectedMovieId(movieId);
+    setSelectedMediaId(mediaId);
+    setSelectedMediaType(mediaType);
   };
 
   // Close touch overlay when clicking outside
   useEffect(() => {
-    if (!touchedMovieId) return;
+    if (!touchedItemId) return;
 
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('.movie-card')) {
-        setTouchedMovieId(null);
+      if (!target.closest('.media-card')) {
+        setTouchedItemId(null);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [touchedMovieId]);
+  }, [touchedItemId]);
 
   // Add click outside handling for search dropdown
   useEffect(() => {
@@ -338,7 +340,7 @@ export default function UserProfile() {
                       }`}
                     >
                       <LuSearch className="w-4 h-4" />
-                      <span className="text-gray-400">{isSearchOpen ? 'Close search' : 'Search movies...'}</span>
+                      <span className="text-gray-400">{isSearchOpen ? 'Close search' : 'Search your watchlist...'}</span>
                     </button>
                     <AnimatePresence>
                       {isSearchOpen && (
@@ -352,7 +354,7 @@ export default function UserProfile() {
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search movies..."
+                            placeholder="Search your watchlist..."
                             className="w-full px-4 py-2 bg-black/80 backdrop-blur-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 text-white placeholder-gray-400 border border-white/10"
                             autoFocus
                           />
@@ -462,10 +464,10 @@ export default function UserProfile() {
                   className="text-center text-gray-400 py-8"
                 >
                   {searchQuery 
-                    ? 'No movies found matching your search.'
+                    ? 'No items found matching your search.'
                     : selectedStatus === 'ALL' 
-                      ? 'No movies in your watchlist yet.'
-                      : `No movies in ${watchStatusLabels[selectedStatus as WatchStatus].toLowerCase()}.`}
+                      ? 'No items in your watchlist yet.'
+                      : `No items in ${watchStatusLabels[selectedStatus as WatchStatus].toLowerCase()}.`}
                 </motion.p>
               ) : (
                 <motion.div 
@@ -474,21 +476,21 @@ export default function UserProfile() {
                   animate="show"
                   className="grid grid-cols-2 gap-4 mt-4"
                 >
-                  {searchFilteredWatchlist.map(movie => (
+                  {searchFilteredWatchlist.map(media => (
                     <motion.div
-                      key={movie.id}
+                      key={media.id}
                       variants={item}
-                      className="movie-card relative group"
+                      className="media-card relative group"
                     >
                       <div className="relative aspect-[2/3] rounded-lg overflow-hidden">
-                        {movie.posterPath ? (
+                        {media.posterPath ? (
                           <Image
-                            src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`}
-                            alt={movie.title}
+                            src={`https://image.tmdb.org/t/p/w500${media.posterPath}`}
+                            alt={media.title}
                             fill
                             className="object-cover transition-transform duration-300 group-hover:scale-105"
                             placeholder="blur"
-                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               target.style.display = 'none';
@@ -501,22 +503,23 @@ export default function UserProfile() {
                           </div>
                         )}
                         <div 
-                          onClick={(e) => handleMovieClick(movie.movieId, movie.id, e)}
+                          onClick={(e) => handleMediaClick(media.mediaId, media.mediaType, media.id, e)}
                           className={`absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-4 transition-opacity duration-200 ${
-                            touchedMovieId === movie.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                            touchedItemId === media.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                           }`}
                         >
-                          <p className="text-sm font-medium text-center text-white mb-4">{movie.title}</p>
+                          <p className="text-sm font-medium text-center text-white mb-4">{media.title}</p>
                           <div className="w-full max-w-[200px] space-y-2">
                             <motion.button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedMovieId(movie.movieId);
+                                setSelectedMediaId(media.mediaId);
+                                setSelectedMediaType(media.mediaType);
                               }}
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
                               className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg bg-black/40 hover:bg-black/60 transition-colors text-sm ${
-                                !window.matchMedia('(hover: hover)').matches && touchedMovieId !== movie.id 
+                                !window.matchMedia('(hover: hover)').matches && touchedItemId !== media.id 
                                   ? 'pointer-events-none' 
                                   : ''
                               }`}
@@ -525,15 +528,16 @@ export default function UserProfile() {
                               <span>View Details</span>
                             </motion.button>
                             <div onClick={(e) => e.stopPropagation()} className={
-                              !window.matchMedia('(hover: hover)').matches && touchedMovieId !== movie.id 
+                              !window.matchMedia('(hover: hover)').matches && touchedItemId !== media.id 
                                 ? 'pointer-events-none' 
                                 : ''
                             }>
                               <WatchlistButton
-                                movie={{
-                                  id: movie.movieId,
-                                  title: movie.title,
-                                  poster_path: movie.posterPath || '',
+                                media={{
+                                  id: media.mediaId,
+                                  title: media.title,
+                                  poster_path: media.posterPath || '',
+                                  media_type: media.mediaType
                                 }}
                                 position="bottom"
                               />
@@ -550,10 +554,11 @@ export default function UserProfile() {
         )}
       </AnimatePresence>
 
-      {selectedMovieId && (
-        <MovieDetailsModal
-          movieId={selectedMovieId}
-          onClose={() => setSelectedMovieId(null)}
+      {selectedMediaId && (
+        <MediaDetailsModal
+          mediaId={selectedMediaId}
+          mediaType={selectedMediaType}
+          onClose={() => setSelectedMediaId(null)}
         />
       )}
     </div>

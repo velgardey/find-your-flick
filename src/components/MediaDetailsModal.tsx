@@ -5,38 +5,9 @@ import { LuX, LuStar, LuCalendar, LuClock, LuLanguages } from 'react-icons/lu';
 import { motion, AnimatePresence } from 'framer-motion';
 import RetryImage from './ui/RetryImage';
 import { ErrorBoundary } from 'react-error-boundary';
-
-interface MovieDetails {
-  id: number;
-  title: string;
-  poster_path: string;
-  backdrop_path: string;
-  overview: string;
-  release_date: string;
-  runtime: number;
-  vote_average: number;
-  genres: { id: number; name: string }[];
-  original_language: string;
-  tagline: string;
-}
-
-interface MovieVideo {
-  key: string;
-  site: string;
-  type: string;
-}
-
-interface Provider {
-  provider_name: string;
-  logo_path: string;
-  provider_id: number;
-}
-
-interface StreamingData {
-  flatrate?: Provider[];
-  rent?: Provider[];
-  buy?: Provider[];
-}
+import TVShowProgress from './TVShowProgress';
+import { useWatchlist } from '@/contexts/WatchlistContext';
+import { MovieDetails, TVShowDetails, MediaDetails, Provider, StreamingData, MediaVideo } from '@/types/media';
 
 // Helper function to normalize provider names
 const normalizeProviderName = (name: string): string => {
@@ -46,104 +17,171 @@ const normalizeProviderName = (name: string): string => {
     'Hotstar': 'Disney Plus',
     'Prime Video': 'Amazon Prime Video',
     'Amazon Video': 'Amazon Prime Video',
+    'Amazon Prime': 'Amazon Prime Video',
     'Apple TV+': 'Apple TV',
     'Apple TV Plus': 'Apple TV',
+    'Apple iTunes': 'Apple TV',
+    'iTunes': 'Apple TV',
     'JioCinema': 'Jio Cinema',
     'Jio Cinema': 'Jio Cinema',
     'YouTube Movies': 'YouTube',
+    'YouTube Premium': 'YouTube',
     'Google Play Movies': 'Google Play',
     'Play Movies': 'Google Play',
     'Google TV': 'Google Play',
+    'Google Play Movies & TV': 'Google Play',
     'Tata Play': 'Tata Play',
-    'YouTube Premium': 'YouTube',
+    'SonyLIV': 'SonyLIV',
+    'Sony Liv': 'SonyLIV',
+    'Sony LIV': 'SonyLIV',
+    'Zee5': 'Zee5',
+    'ZEE5': 'Zee5',
+    'Voot': 'Voot',
+    'Voot Select': 'Voot',
+    'Sun Nxt': 'Sun NXT',
+    'SunNXT': 'Sun NXT',
+    'SUNNXT': 'Sun NXT',
+    'MUBI': 'Mubi',
+    'Eros Now': 'Eros Now',
+    'ErosNow': 'Eros Now',
+    'MX Player': 'MX Player',
+    'MXPlayer': 'MX Player',
+    'BookMyShow': 'BookMyShow Stream',
+    'BookMyShow Stream': 'BookMyShow Stream',
+    'Aha': 'Aha',
+    'ahaTV': 'Aha',
+    'aha': 'Aha'
   };
   return nameMap[name] || name;
 };
 
 // Updated streaming service URLs with verified working patterns for India
-const STREAMING_URLS = {
-  'Netflix': (title: string) => 
-    `https://www.netflix.com/in/browse?q=${encodeURIComponent(title)}`,
-  'Amazon Prime Video': (title: string) => 
+const STREAMING_URLS: { [key: string]: (title: string, mediaType: 'movie' | 'tv') => string } = {
+  'Netflix': (title) => 
+    `https://www.netflix.com/in/search?q=${encodeURIComponent(title)}`,
+  'Amazon Prime Video': (title) => 
     `https://www.primevideo.com/region/in/search/ref=atv_sr_sug_4?phrase=${encodeURIComponent(title)}&ie=UTF8`,
-  'Disney Plus': (title: string) => 
+  'Disney Plus': (title) => 
     `https://www.hotstar.com/in/search?q=${encodeURIComponent(title)}&utm_source=search`,
-  'SonyLIV': (title: string) => 
+  'SonyLIV': (title) => 
     `https://www.sonyliv.com/search?searchTerm=${encodeURIComponent(title)}`,
-  'Zee5': (title: string) => 
+  'Zee5': (title) => 
     `https://www.zee5.com/search?q=${encodeURIComponent(title)}`,
-  'Voot': (title: string) => 
+  'Voot': (title) => 
     `https://www.voot.com/search?q=${encodeURIComponent(title)}`,
-  'Jio Cinema': (title: string) => 
+  'Jio Cinema': (title) => 
     `https://www.jiocinema.com/search/${encodeURIComponent(title.toLowerCase())}`,
-  'Apple TV': (title: string) => 
+  'Apple TV': (title) => 
     `https://tv.apple.com/in/search?term=${encodeURIComponent(title)}`,
-  'Aha': (title: string) => 
+  'Aha': (title) => 
     `https://www.aha.video/list/search?q=${encodeURIComponent(title)}`,
-  'Sun NXT': (title: string) => 
+  'Sun NXT': (title) => 
     `https://www.sunnxt.com/search?q=${encodeURIComponent(title)}`,
-  'Mubi': (title: string) => 
+  'Mubi': (title) => 
     `https://mubi.com/en/in/search/${encodeURIComponent(title.toLowerCase())}`,
-  'YouTube': (title: string) => 
-    `https://www.youtube.com/results?search_query=${encodeURIComponent(title + ' movie')}`,
-  'Google Play': (title: string) => 
-    `https://play.google.com/store/search?q=${encodeURIComponent(title + ' movie')}&c=movies`,
-  'Tata Play': (title: string) => 
+  'YouTube': (title, mediaType) => 
+    `https://www.youtube.com/results?search_query=${encodeURIComponent(title + ' ' + (mediaType === 'tv' ? 'tv series' : mediaType))}`,
+  'Google Play': (title, mediaType) => 
+    `https://play.google.com/store/search?q=${encodeURIComponent(title + ' ' + (mediaType === 'tv' ? 'tv show' : mediaType))}&c=${mediaType === 'tv' ? 'tv' : 'movies'}`,
+  'Tata Play': (title) => 
     `https://watch.tataplay.com/search?q=${encodeURIComponent(title)}`,
-  'BookMyShow Stream': (title: string) => 
+  'BookMyShow Stream': (title) => 
     `https://in.bookmyshow.com/stream/search/${encodeURIComponent(title.toLowerCase())}`,
-  'Eros Now': (title: string) => 
+  'Eros Now': (title) => 
     `https://erosnow.com/search?q=${encodeURIComponent(title)}`,
-  'MX Player': (title: string) => 
+  'MX Player': (title) => 
     `https://www.mxplayer.in/search?q=${encodeURIComponent(title)}`,
 };
 
-interface MovieDetailsModalProps {
-  movieId: number | null;
+interface MediaDetailsModalProps {
+  mediaId: number | null;
+  mediaType: 'movie' | 'tv';
   onClose: () => void;
   layoutId?: string;
 }
 
-export default function MovieDetailsModal({ movieId, onClose, layoutId }: MovieDetailsModalProps) {
+const getMediaDate = (media: MediaDetails | null): string | null => {
+  if (!media) return null;
+  switch (media.media_type) {
+    case 'movie': {
+      const movieMedia = media as MovieDetails;
+      return movieMedia.release_date || null;
+    }
+    case 'tv': {
+      const tvMedia = media as TVShowDetails;
+      return tvMedia.first_air_date || null;
+    }
+    default:
+      return null;
+  }
+};
+
+const getMediaDuration = (media: MediaDetails | null): string => {
+  if (!media) return 'N/A';
+  switch (media.media_type) {
+    case 'movie': {
+      const movieMedia = media as MovieDetails;
+      return movieMedia.runtime ? `${movieMedia.runtime} minutes` : 'N/A';
+    }
+    case 'tv': {
+      const tvMedia = media as TVShowDetails;
+      if (!tvMedia.episode_run_time?.length) return 'N/A';
+      const avgDuration = Math.round(
+        tvMedia.episode_run_time.reduce((a, b) => a + b, 0) / tvMedia.episode_run_time.length
+      );
+      return `${avgDuration} minutes per episode`;
+    }
+    default:
+      return 'N/A';
+  }
+};
+
+export default function MediaDetailsModal({ mediaId, mediaType, onClose, layoutId }: MediaDetailsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
-  const [movie, setMovie] = useState<MovieDetails | null>(null);
-  const [videos, setVideos] = useState<MovieVideo[]>([]);
+  const [media, setMedia] = useState<MediaDetails | null>(null);
+  const [videos, setVideos] = useState<MediaVideo[]>([]);
   const [streamingData, setStreamingData] = useState<StreamingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { getWatchlistEntry } = useWatchlist();
+  const watchlistEntry = mediaId ? getWatchlistEntry(mediaId) : undefined;
 
   useEffect(() => {
     let isMounted = true;
     const controller = new AbortController();
 
-    const fetchMovieData = async () => {
-      if (!movieId) return;
+    const fetchMediaData = async () => {
+      if (!mediaId) return;
       
       setIsLoading(true);
-      setMovie(null);
+      setMedia(null);
       setVideos([]);
       setStreamingData(null);
       
       try {
-        // Fetch movie details
-        const movieResponse = await fetch(
-          `/api/tmdb?path=/movie/${movieId}?language=en-US`,
+        // Fetch media details
+        const mediaResponse = await fetch(
+          `/api/tmdb?path=/${mediaType}/${mediaId}?language=en-US`,
           { signal: controller.signal }
         );
-        const movieData = await movieResponse.json();
+        const mediaData = await mediaResponse.json();
 
         if (isMounted) {
-          setMovie(movieData);
+          setMedia({
+            ...mediaData,
+            title: mediaData.title || mediaData.name,
+            media_type: mediaType
+          });
         }
 
         // Fetch videos
         const videosResponse = await fetch(
-          `/api/tmdb?path=/movie/${movieId}/videos?language=en-US`,
+          `/api/tmdb?path=/${mediaType}/${mediaId}/videos?language=en-US`,
           { signal: controller.signal }
         );
         const videosData = await videosResponse.json();
 
         if (isMounted) {
-          setVideos(videosData.results?.filter((video: MovieVideo) => 
+          setVideos(videosData.results?.filter((video: MediaVideo) => 
             video.site.toLowerCase() === 'youtube' && 
             ['Trailer', 'Teaser'].includes(video.type)
           ) || []);
@@ -151,7 +189,7 @@ export default function MovieDetailsModal({ movieId, onClose, layoutId }: MovieD
 
         // Fetch streaming data
         const streamingResponse = await fetch(
-          `/api/tmdb?path=/movie/${movieId}/watch/providers`,
+          `/api/tmdb?path=/${mediaType}/${mediaId}/watch/providers`,
           { signal: controller.signal }
         );
         const streamingData = await streamingResponse.json();
@@ -164,7 +202,7 @@ export default function MovieDetailsModal({ movieId, onClose, layoutId }: MovieD
           console.log('Fetch aborted');
           return;
         }
-        console.error('Error fetching movie data:', error);
+        console.error('Error fetching media data:', error);
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -172,17 +210,17 @@ export default function MovieDetailsModal({ movieId, onClose, layoutId }: MovieD
       }
     };
 
-    fetchMovieData();
+    fetchMediaData();
 
     return () => {
       isMounted = false;
       controller.abort();
-      setMovie(null);
+      setMedia(null);
       setVideos([]);
       setStreamingData(null);
       setIsLoading(false);
     };
-  }, [movieId]);
+  }, [mediaId, mediaType]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -191,7 +229,7 @@ export default function MovieDetailsModal({ movieId, onClose, layoutId }: MovieD
       }
     };
 
-    if (movieId) {
+    if (mediaId) {
       document.addEventListener('mousedown', handleClickOutside);
       document.body.style.overflow = 'hidden';
     }
@@ -200,7 +238,7 @@ export default function MovieDetailsModal({ movieId, onClose, layoutId }: MovieD
       document.removeEventListener('mousedown', handleClickOutside);
       document.body.style.overflow = 'unset';
     };
-  }, [movieId, onClose]);
+  }, [mediaId, onClose]);
 
   const renderProviders = (providers: Provider[] | undefined, title: string) => {
     if (!providers?.length) return null;
@@ -223,16 +261,16 @@ export default function MovieDetailsModal({ movieId, onClose, layoutId }: MovieD
               >
                 {isConfigured ? (
                   <motion.a
-                    href={streamingUrl(movie?.title || '')}
+                    href={streamingUrl(media?.title || '', media?.media_type || 'movie')}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="block w-full h-full"
                     onClick={(e) => {
-                      if (!movie?.title) {
+                      if (!media?.title) {
                         e.preventDefault();
                         return;
                       }
-                      console.log(`Clicked ${normalizedName} link:`, streamingUrl(movie.title));
+                      console.log(`Clicked ${normalizedName} link:`, streamingUrl(media.title, media.media_type));
                     }}
                   >
                     <Image
@@ -280,7 +318,7 @@ export default function MovieDetailsModal({ movieId, onClose, layoutId }: MovieD
     );
   };
 
-  if (!movieId) return null;
+  if (!mediaId) return null;
 
   return (
     <AnimatePresence>
@@ -314,12 +352,12 @@ export default function MovieDetailsModal({ movieId, onClose, layoutId }: MovieD
           </motion.button>
 
           {/* Full Background Backdrop */}
-          {movie?.backdrop_path ? (
+          {media?.backdrop_path ? (
             <div className="absolute inset-0 z-0">
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent z-10" />
               <RetryImage
-                src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
-                alt={movie.title}
+                src={`https://image.tmdb.org/t/p/original${media.backdrop_path}`}
+                alt={media.title}
                 className="object-cover opacity-40"
                 sizes="100vw"
                 quality={85}
@@ -346,7 +384,7 @@ export default function MovieDetailsModal({ movieId, onClose, layoutId }: MovieD
                   </div>
                 </div>
               </div>
-            ) : movie ? (
+            ) : media ? (
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -384,7 +422,7 @@ export default function MovieDetailsModal({ movieId, onClose, layoutId }: MovieD
                   </motion.div>
                 )}
 
-                {/* Movie Details */}
+                {/* Media Details */}
                 <div className="flex flex-col sm:flex-row gap-6">
                   {/* Poster */}
                   <motion.div 
@@ -395,10 +433,10 @@ export default function MovieDetailsModal({ movieId, onClose, layoutId }: MovieD
                     layoutId={layoutId}
                   >
                     <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-black/30">
-                      {movie.poster_path ? (
+                      {media.poster_path ? (
                         <RetryImage
-                          src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
-                          alt={movie.title}
+                          src={`https://image.tmdb.org/t/p/w500${media.poster_path}`}
+                          alt={media.title}
                           className="object-cover"
                           sizes="(max-width: 640px) 120px, 200px"
                           quality={85}
@@ -425,72 +463,119 @@ export default function MovieDetailsModal({ movieId, onClose, layoutId }: MovieD
                     {/* Title and Play Button */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                       <div className="flex-1">
-                        <h2 className="text-2xl sm:text-4xl font-bold text-white tracking-tight">{movie.title}</h2>
-                        {movie.tagline && (
-                          <p className="text-sm sm:text-base text-gray-400 italic mt-2 font-medium">{movie.tagline}</p>
+                        <h2 className="text-2xl sm:text-4xl font-bold text-white tracking-tight">{media.title}</h2>
+                        {media.tagline && (
+                          <p className="text-sm sm:text-base text-gray-400 italic mt-2 font-medium">{media.tagline}</p>
                         )}
                       </div>
-                      <motion.a
-                        href={`https://www.cineby.app/movie/${movie.id}?play=true`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transform transition-all duration-200 active:scale-95 select-none touch-manipulation"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5 }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                        </svg>
-                        <span>Play Movie</span>
-                      </motion.a>
+                      {mediaType === 'movie' && (
+                        <motion.a
+                          href={`https://www.cineby.app/${mediaType}/${media.id}?play=true`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transform transition-all duration-200 active:scale-95 select-none touch-manipulation"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.5 }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                          </svg>
+                          <span>Play Movie</span>
+                        </motion.a>
+                      )}
+                      {mediaType === 'tv' && (
+                        <motion.a
+                          href={`https://www.cineby.app/${mediaType}/${media.id}?play=true`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transform transition-all duration-200 active:scale-95 select-none touch-manipulation"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.5 }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                          </svg>
+                          <span>Play TV Show</span>
+                        </motion.a>
+                      )}
                     </div>
 
-                    {/* Movie Stats */}
+                    {/* Media Stats */}
                     <div className="flex flex-wrap gap-3 sm:gap-4 text-sm">
-                      {movie.vote_average > 0 && (
+                      {media.vote_average > 0 && (
                         <motion.div 
                           whileHover={{ scale: 1.05 }}
                           className="flex items-center gap-2 bg-yellow-500/10 text-yellow-500 rounded-lg px-3.5 py-2 border border-yellow-500/20 transition-colors hover:bg-yellow-500/20"
                         >
                           <LuStar className="w-4 h-4" />
-                          <span className="font-medium">{movie.vote_average.toFixed(1)}</span>
+                          <span className="font-medium">{media.vote_average.toFixed(1)}</span>
                         </motion.div>
                       )}
-                      {movie.release_date && (
+                      {getMediaDate(media) && (
                         <motion.div 
                           whileHover={{ scale: 1.05 }}
                           className="flex items-center gap-2 bg-blue-500/10 text-blue-400 rounded-lg px-3.5 py-2 border border-blue-500/20 transition-colors hover:bg-blue-500/20"
                         >
                           <LuCalendar className="w-4 h-4" />
-                          <span className="font-medium">{new Date(movie.release_date).getFullYear()}</span>
+                          <span className="font-medium">
+                            {new Date(getMediaDate(media)!).getFullYear()}
+                          </span>
                         </motion.div>
                       )}
-                      {movie.runtime > 0 && (
-                          <motion.div 
-                            whileHover={{ scale: 1.05 }}
-                            className="flex items-center gap-2 bg-green-500/10 text-green-400 rounded-lg px-3.5 py-2 border border-green-500/20 transition-colors hover:bg-green-500/20"
-                          >
-                            <LuClock className="w-4 h-4" />
-                          <span className="font-medium">{`${movie.runtime}m`}</span>
+                      {getMediaDuration(media) !== 'N/A' && (
+                        <motion.div 
+                          whileHover={{ scale: 1.05 }}
+                          className="flex items-center gap-2 bg-green-500/10 text-green-400 rounded-lg px-3.5 py-2 border border-green-500/20 transition-colors hover:bg-green-500/20"
+                        >
+                          <LuClock className="w-4 h-4" />
+                          <span className="font-medium">{getMediaDuration(media)}</span>
                         </motion.div>
                       )}
-                      {movie.original_language && (
+                      {media.original_language && (
                         <motion.div 
                           whileHover={{ scale: 1.05 }}
                           className="flex items-center gap-2 bg-purple-500/10 text-purple-400 rounded-lg px-3.5 py-2 border border-purple-500/20 transition-colors hover:bg-purple-500/20"
                         >
                           <LuLanguages className="w-4 h-4" />
-                          <span className="font-medium">{movie.original_language.toUpperCase()}</span>
+                          <span className="font-medium">{media.original_language.toUpperCase()}</span>
                         </motion.div>
                       )}
                     </div>
 
+                    {/* TV Show Specific Info */}
+                    {mediaType === 'tv' && (
+                      <div className="flex flex-wrap gap-4 text-sm">
+                        {(media as TVShowDetails).number_of_seasons && (
+                          <div className="text-white">
+                            <span className="text-gray-400">Seasons:</span>{' '}
+                            {(media as TVShowDetails).number_of_seasons}
+                          </div>
+                        )}
+                        {(media as TVShowDetails).number_of_episodes && (
+                          <div className="text-white">
+                            <span className="text-gray-400">Episodes:</span>{' '}
+                            {(media as TVShowDetails).number_of_episodes}
+                          </div>
+                        )}
+                        {(media as TVShowDetails).status && (
+                          <div className="text-white">
+                            <span className="text-gray-400">Status:</span>{' '}
+                            {(media as TVShowDetails).status}
+                            {(media as TVShowDetails).in_production && ' (In Production)'}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* Genres */}
                     <div className="flex flex-wrap gap-2">
-                      {movie.genres.map((genre) => (
+                      {media.genres.map((genre) => (
                         <motion.span
                           key={genre.id}
                           whileHover={{ scale: 1.05 }}
@@ -502,9 +587,17 @@ export default function MovieDetailsModal({ movieId, onClose, layoutId }: MovieD
                     </div>
 
                     {/* Overview */}
-                    <p className="text-sm sm:text-base text-gray-300 leading-relaxed">{movie.overview}</p>
+                    <p className="text-sm sm:text-base text-gray-300 leading-relaxed">{media.overview}</p>
 
-                    {/* Streaming Providers with updated styling */}
+                    {/* TV Show Progress */}
+                    {mediaType === 'tv' && (
+                      <TVShowProgress 
+                        show={media as TVShowDetails} 
+                        watchlistEntry={watchlistEntry}
+                      />
+                    )}
+
+                    {/* Streaming Providers */}
                     {(streamingData?.flatrate?.length || streamingData?.rent?.length || streamingData?.buy?.length) && (
                       <div className="space-y-4 bg-black/30 p-4 rounded-xl border border-white/10">
                         <h3 className="text-lg font-semibold text-white mb-4">Watch Now</h3>
@@ -518,7 +611,7 @@ export default function MovieDetailsModal({ movieId, onClose, layoutId }: MovieD
               </motion.div>
             ) : (
               <div className="flex items-center justify-center h-full">
-                <p className="text-gray-400">Movie details not found</p>
+                <p className="text-gray-400">Media details not found</p>
               </div>
             )}
           </div>

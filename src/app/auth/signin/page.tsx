@@ -48,9 +48,9 @@ export default function SignInPage() {
             transition={{ delay: 0.1 }}
             className="text-center mb-8"
           >
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-3">Welcome Back!</h1>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">Welcome Back</h2>
             <p className="text-gray-400 text-sm sm:text-base">
-              Sign in to access your personalized movie experience
+              Sign in to access your personalized movie and TV show experience
             </p>
           </motion.div>
 

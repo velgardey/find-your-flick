@@ -2,11 +2,11 @@ import { prisma, withPrismaRetry } from '@/lib/prisma'
 import { authenticateRequest } from '@/lib/authMiddleware'
 import { 
   successResponse, 
-  handleApiError, 
-  badRequestResponse 
+  handleApiError
 } from '@/lib/apiResponse'
 import { watchlistCreateSchema } from '@/lib/validationSchemas'
 import { Prisma } from '@prisma/client'
+import { NextRequest } from 'next/server'
 
 // GET /api/watchlist - Get user's watchlist
 export async function GET(request: Request) {
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
   }
 }
 
-// POST /api/watchlist - Add movie to watchlist
+// POST /api/watchlist - Add media to watchlist
 export async function POST(request: Request) {
   try {
     const auth = await authenticateRequest(request)
@@ -62,14 +62,15 @@ export async function POST(request: Request) {
         },
       })
 
-        // Add movie to watchlist
+        // Add media to watchlist
       return tx.watchlistEntry.create({
         data: {
           userId: auth.user.uid,
-            movieId: validatedData.movieId,
+          mediaId: validatedData.mediaId,
+          mediaType: validatedData.mediaType,
           title: validatedData.title,
           posterPath: validatedData.posterPath,
-            status: validatedData.status,
+          status: validatedData.status,
         },
       })
     })
@@ -81,23 +82,24 @@ export async function POST(request: Request) {
   }
 }
 
-// DELETE /api/watchlist - Remove movie from watchlist
-export async function DELETE(request: Request) {
+type DeleteParams = {
+  params: Promise<{
+    entryId: string
+  }>
+}
+
+// DELETE /api/watchlist/:entryId - Remove media from watchlist
+export async function DELETE(request: NextRequest, { params }: DeleteParams) {
   try {
     const auth = await authenticateRequest(request)
     if (!auth.success) return auth.response
-    
-    const { searchParams } = new URL(request.url)
-    const movieId = searchParams.get('movieId')
 
-    if (!movieId || isNaN(parseInt(movieId))) {
-      return badRequestResponse('Valid movie ID is required')
-    }
+    const { entryId } = await params
 
     await prisma.watchlistEntry.deleteMany({
       where: {
+        id: entryId,
         userId: auth.user.uid,
-        movieId: parseInt(movieId),
       },
     })
 

@@ -17,6 +17,9 @@ const defaultRetryOptions: RetryOptions = {
   maxDelay: 5000,
   shouldRetry: (error: Error | Response) => {
     // Retry on network errors or 5xx server errors
+    if (error instanceof Response) {
+      return error.status >= 500;
+    }
     if ((error as ErrorWithResponse)?.response?.status) {
       return (error as ErrorWithResponse).response!.status >= 500;
     }

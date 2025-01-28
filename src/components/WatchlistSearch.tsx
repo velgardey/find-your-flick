@@ -23,8 +23,8 @@ export default function WatchlistSearch({ onSearch }: WatchlistSearchProps) {
           type="text"
           value={searchQuery}
           onChange={handleSearch}
-          placeholder="Search movies in your watchlist..."
-          className="w-full h-12 px-4 py-2 pl-12 bg-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 text-white placeholder-gray-400 text-lg"
+          placeholder="Search movies and TV shows in your watchlist..."
+          className="w-full px-4 py-2 bg-black/80 backdrop-blur-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 text-white placeholder-gray-400 border border-white/10"
         />
         <LuSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
       </div>

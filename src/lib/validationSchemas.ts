@@ -8,7 +8,8 @@ export const watchlistUpdateSchema = z.object({
 });
 
 export const watchlistCreateSchema = z.object({
-  movieId: z.number(),
+  mediaId: z.number(),
+  mediaType: z.enum(['movie', 'tv']),
   title: z.string().min(1),
   posterPath: z.string().nullable(),
   status: z.nativeEnum(WatchStatus),

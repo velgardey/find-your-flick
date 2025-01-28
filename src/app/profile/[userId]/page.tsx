@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchWithAuth } from '@/lib/api';
 import WatchlistButton from '@/components/WatchlistButton';
-import MovieDetailsModal from '@/components/MovieDetailsModal';
+import MediaDetailsModal from '@/components/MediaDetailsModal';
 import withAuth from '@/components/withAuth';
 
 interface UserProfile {
@@ -16,9 +16,10 @@ interface UserProfile {
   email: string;
 }
 
-interface WatchlistMovie {
+interface WatchlistEntry {
   id: string;
-  movieId: number;
+  mediaId: number;
+  mediaType: 'movie' | 'tv';
   title: string;
   posterPath: string | null;
   status: string;
@@ -35,11 +36,12 @@ interface PageProps {
 
 function UserProfile({ params }: PageProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [watchlist, setWatchlist] = useState<WatchlistMovie[]>([]);
+  const [watchlist, setWatchlist] = useState<WatchlistEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
+  const [selectedMediaId, setSelectedMediaId] = useState<number | null>(null);
+  const [selectedMediaType, setSelectedMediaType] = useState<'movie' | 'tv'>('movie');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -70,7 +72,7 @@ function UserProfile({ params }: PageProps) {
     setTouchedMovieId(touchedMovieId === movieId ? null : movieId);
   };
 
-  const handleMovieClick = (movieId: number, entryId: string, event: React.MouseEvent) => {
+  const handleMovieClick = (mediaId: number, mediaType: 'movie' | 'tv', entryId: string, event: React.MouseEvent) => {
     if (!window.matchMedia('(hover: hover)').matches) {
       event.preventDefault();
       event.stopPropagation();
@@ -79,7 +81,8 @@ function UserProfile({ params }: PageProps) {
         return;
       }
     }
-    setSelectedMovieId(movieId);
+    setSelectedMediaId(mediaId);
+    setSelectedMediaType(mediaType);
   };
 
   useEffect(() => {
@@ -370,7 +373,7 @@ function UserProfile({ params }: PageProps) {
                         className="movie-card relative group"
                       >
                         <div
-                          onClick={(e) => handleMovieClick(movie.movieId, movie.id, e)}
+                          onClick={(e) => handleMovieClick(movie.mediaId, movie.mediaType, movie.id, e)}
                           className="relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer"
                         >
                           {movie.posterPath ? (
@@ -411,10 +414,11 @@ function UserProfile({ params }: PageProps) {
                                   : ''
                               }`}>
                                 <WatchlistButton
-                                  movie={{
-                                    id: movie.movieId,
+                                  media={{
+                                    id: movie.mediaId,
                                     title: movie.title,
                                     poster_path: movie.posterPath || '',
+                                    media_type: movie.mediaType
                                   }}
                                   position="bottom"
                                 />
@@ -432,10 +436,11 @@ function UserProfile({ params }: PageProps) {
         ) : null}
       </div>
 
-      {selectedMovieId && (
-        <MovieDetailsModal
-          movieId={selectedMovieId}
-          onClose={() => setSelectedMovieId(null)}
+      {selectedMediaId && (
+        <MediaDetailsModal
+          mediaId={selectedMediaId}
+          mediaType={selectedMediaType}
+          onClose={() => setSelectedMediaId(null)}
         />
       )}
     </div>
