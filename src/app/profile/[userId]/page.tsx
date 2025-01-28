@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { fetchWithAuth } from '@/lib/api';
 import WatchlistButton from '@/components/WatchlistButton';
 import MovieDetailsModal from '@/components/MovieDetailsModal';
+import withAuth from '@/components/withAuth';
 
 interface UserProfile {
   id: string;
@@ -32,7 +33,7 @@ interface PageProps {
   }>;
 }
 
-export default function UserProfile({ params }: PageProps) {
+function UserProfile({ params }: PageProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [watchlist, setWatchlist] = useState<WatchlistMovie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -439,4 +440,6 @@ export default function UserProfile({ params }: PageProps) {
       )}
     </div>
   );
-} 
+}
+
+export default withAuth(UserProfile); 

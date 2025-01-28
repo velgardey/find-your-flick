@@ -44,10 +44,8 @@ export default function Navbar() {
   const handleNavigation = (href: string, isProtected: boolean, e: React.MouseEvent) => {
     if (isProtected && !user) {
       e.preventDefault();
-      const shouldSignIn = window.confirm('You need to sign in to access this feature. Would you like to sign in now?');
-      if (shouldSignIn) {
-        handleSignIn();
-      }
+      localStorage.setItem('redirectPath', href);
+      router.replace('/auth/error');
     }
   };
 

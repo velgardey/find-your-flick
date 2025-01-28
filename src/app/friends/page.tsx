@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { LuCopy, LuCheck, LuUserPlus } from 'react-icons/lu';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchWithAuth } from '@/lib/api';
-import { withAuth } from '@/components/withAuth';
+import withAuth from '@/components/withAuth';
 
 interface Friend {
   id: string;
@@ -50,7 +50,9 @@ function Friends() {
         setError(null);
       } catch (error) {
         console.error('Error fetching friends:', error);
-        setError(error instanceof Error ? error.message : 'Failed to load friends');
+        if (error instanceof Error && error.name !== 'AuthenticationError') {
+          setError(error.message || 'Failed to load friends');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -69,7 +71,9 @@ function Friends() {
       setError(null);
     } catch (error) {
       console.error('Error generating invite link:', error);
-      setError(error instanceof Error ? error.message : 'Failed to generate invite link');
+      if (error instanceof Error && error.name !== 'AuthenticationError') {
+        setError(error.message || 'Failed to generate invite link');
+      }
     } finally {
       setIsGeneratingLink(false);
     }
@@ -96,7 +100,9 @@ function Friends() {
       setError(null);
     } catch (error) {
       console.error('Error handling friend request:', error);
-      setError(error instanceof Error ? error.message : 'Failed to handle friend request');
+      if (error instanceof Error && error.name !== 'AuthenticationError') {
+        setError(error.message || 'Failed to handle friend request');
+      }
     }
   };
 
