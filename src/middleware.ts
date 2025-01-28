@@ -2,9 +2,14 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
+  // Skip middleware for TMDB routes
+  if (request.nextUrl.pathname.startsWith('/api/tmdb')) {
+    return NextResponse.next();
+  }
+
   // Check if the request is for an API route
   if (request.nextUrl.pathname.startsWith('/api/')) {
-    // Skip authentication for public API routes
+    // Skip authentication for auth routes
     if (request.nextUrl.pathname.startsWith('/api/auth/')) {
       return NextResponse.next();
     }
@@ -22,9 +27,12 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
+// Explicitly define which routes to apply middleware to, excluding /api/tmdb
 export const config = {
   matcher: [
-    '/api/:path*',
+    // Protected API routes
+    '/api/((?!tmdb|auth).*)',
+    // Protected pages
     '/feed',
     '/friends/:path*',
     '/profile/:path*',

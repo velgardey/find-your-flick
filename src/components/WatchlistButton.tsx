@@ -53,8 +53,9 @@ export default function WatchlistButton({ movie, position = 'bottom' }: Watchlis
 
   const handleStatusSelect = async (status: WatchStatus) => {
     if (!user) {
-      router.push('/auth')
-      return
+      localStorage.setItem('redirectPath', window.location.pathname);
+      router.replace('/auth/error');
+      return;
     }
 
     try {
@@ -70,7 +71,13 @@ export default function WatchlistButton({ movie, position = 'bottom' }: Watchlis
   }
 
   const handleRemove = async () => {
-    if (!user || !isInList) return
+    if (!user) {
+      localStorage.setItem('redirectPath', window.location.pathname);
+      router.replace('/auth/error');
+      return;
+    }
+
+    if (!isInList) return
 
     try {
       await removeFromWatchlist(movie.id)
@@ -80,9 +87,18 @@ export default function WatchlistButton({ movie, position = 'bottom' }: Watchlis
     setIsDropdownOpen(false)
   }
 
+  const handleClick = () => {
+    if (!user) {
+      localStorage.setItem('redirectPath', window.location.pathname);
+      router.replace('/auth/error');
+      return;
+    }
+    setIsDropdownOpen(!isDropdownOpen)
+  }
+
   const trigger = (
     <motion.button
-      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+      onClick={handleClick}
       className={`w-full flex items-center justify-between gap-2 px-4 py-2 rounded-lg transition-colors relative overflow-hidden ${
         isInList
           ? 'bg-white/20 hover:bg-white/30 text-white'

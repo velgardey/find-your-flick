@@ -43,7 +43,8 @@ export default function MovieSearchModal({ isOpen, onClose, onSelectMovie }: Mov
       );
 
       if (!response.ok) {
-        throw new Error('Failed to search movies');
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.details || 'Failed to search movies');
       }
 
       const data = await response.json();
@@ -52,7 +53,7 @@ export default function MovieSearchModal({ isOpen, onClose, onSelectMovie }: Mov
       console.error('Error searching movies:', error);
       setSuggestions([]);
       if (error instanceof Error) {
-        setError(error.name === 'AbortError' ? 'Search cancelled' : 'Failed to search movies');
+        setError(error.name === 'AbortError' ? 'Search cancelled' : error.message);
       } else {
         setError('An unexpected error occurred');
       }
