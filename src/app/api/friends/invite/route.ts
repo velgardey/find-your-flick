@@ -67,7 +67,10 @@ export async function POST(request: Request) {
         console.log('Found existing invite:', invite.code);
       }
 
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://find-your-flick.vercel.app';
+      // Get the base URL from the request headers or environment variable
+      const host = request.headers.get('host');
+      const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+      const baseUrl = host ? `${protocol}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || 'https://find-your-flick.vercel.app');
       const inviteLink = `${baseUrl}/friends/invite/${invite.code}`;
       console.log('Returning invite link:', { code: invite.code, userId });
 
