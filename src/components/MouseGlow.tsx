@@ -9,21 +9,18 @@ export default function MouseGlow({ onMediaChange }: MouseGlowProps) {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [backgroundImage, setBackgroundImage] = useState('');
   const [isTouching, setIsTouching] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Clear any previous session data
+    localStorage.removeItem('session_backdrop');
+    localStorage.removeItem('session_media_info');
+
+    let isMounted = true;
+
     const fetchRandomMedia = async () => {
+      setIsLoading(true);
       try {
-        // Check if we already have a backdrop stored in this session
-        const storedBackdrop = localStorage.getItem('session_backdrop');
-        const storedMediaInfo = localStorage.getItem('session_media_info');
-
-        if (storedBackdrop && storedMediaInfo) {
-          setBackgroundImage(storedBackdrop);
-          const { id, type } = JSON.parse(storedMediaInfo);
-          onMediaChange?.(id, type);
-          return;
-        }
-
         const isMovie = Math.random() > 0.5;
         const response = await fetch(
           `https://api.themoviedb.org/3/${isMovie ? 'movie' : 'tv'}/popular?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&language=en-US&page=${Math.floor(Math.random() * 5) + 1}`
@@ -36,24 +33,40 @@ export default function MouseGlow({ onMediaChange }: MouseGlowProps) {
         const data = await response.json();
         const randomMedia = data.results[Math.floor(Math.random() * data.results.length)];
         
-        if (randomMedia.backdrop_path) {
+        if (randomMedia.backdrop_path && isMounted) {
           const backdropUrl = `https://image.tmdb.org/t/p/original${randomMedia.backdrop_path}`;
-          setBackgroundImage(backdropUrl);
-          // Store the backdrop URL and media info in localStorage
-          localStorage.setItem('session_backdrop', backdropUrl);
-          localStorage.setItem('session_media_info', JSON.stringify({
-            id: randomMedia.id,
-            type: isMovie ? 'movie' : 'tv'
-          }));
-          onMediaChange?.(randomMedia.id, isMovie ? 'movie' : 'tv');
+          
+          // Preload the image before showing it
+          const img = new Image();
+          img.onload = () => {
+            if (isMounted) {
+              setBackgroundImage(backdropUrl);
+              setIsLoading(false);
+              // Store the backdrop URL and media info in localStorage
+              localStorage.setItem('session_backdrop', backdropUrl);
+              localStorage.setItem('session_media_info', JSON.stringify({
+                id: randomMedia.id,
+                type: isMovie ? 'movie' : 'tv'
+              }));
+              onMediaChange?.(randomMedia.id, isMovie ? 'movie' : 'tv');
+            }
+          };
+          img.src = backdropUrl;
         }
       } catch (error) {
         console.error('Error fetching random media backdrop:', error);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchRandomMedia();
-  }, []); // Remove onMediaChange from dependencies since we handle it inside fetchRandomMedia
+
+    return () => {
+      isMounted = false;
+    };
+  }, [onMediaChange]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -86,10 +99,16 @@ export default function MouseGlow({ onMediaChange }: MouseGlowProps) {
     };
   }, []);
 
+  if (isLoading || !backgroundImage) {
+    return (
+      <div className="fixed inset-0 isolate pointer-events-none -z-10 bg-black" />
+    );
+  }
+
   return (
-    <div className="fixed inset-0 isolate pointer-events-none">
+    <div className="fixed inset-0 isolate pointer-events-none -z-10">
       <div 
-        className="absolute inset-0 z-0"
+        className="absolute inset-0"
         style={{
           backgroundImage: `url("${backgroundImage}")`,
           backgroundSize: 'cover',
@@ -99,7 +118,7 @@ export default function MouseGlow({ onMediaChange }: MouseGlowProps) {
         }}
       />
       <div
-        className="absolute inset-0 z-10"
+        className="absolute inset-0"
         style={{
           WebkitMaskImage: `radial-gradient(circle ${isTouching ? '200px' : '450px'} at ${position.x}px ${position.y}px, 
             transparent 30%,
@@ -111,7 +130,7 @@ export default function MouseGlow({ onMediaChange }: MouseGlowProps) {
         }}
       />
       <div
-        className="absolute inset-0 z-20"
+        className="absolute inset-0"
         style={{
           backgroundImage: `url("${backgroundImage}")`,
           backgroundSize: 'cover',

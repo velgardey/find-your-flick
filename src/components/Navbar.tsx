@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState } from 'react';
-import { Dialog, Transition, Menu } from '@headlessui/react';
+import { Dialog, Menu, Transition } from '@headlessui/react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -89,64 +89,68 @@ export default function Navbar() {
                 
                 {user ? (
                   <Menu as="div" className="relative ml-3">
-                    <Menu.Button className="flex rounded-full bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800 touch-manipulation">
-                      <Image
-                        className="h-9 w-9 rounded-full"
-                        src={user.photoURL || '/default-avatar.png'}
-                        alt=""
-                        width={36}
-                        height={36}
-                        priority={true}
-                        onError={(e) => {
-                          const img = e.target as HTMLImageElement;
-                          if (img.src !== '/default-avatar.png') {
-                            img.src = '/default-avatar.png';
-                          }
-                        }}
-                      />
-                    </Menu.Button>
-                    <Transition
-                      as={Fragment}
-                      enter="transition ease-out duration-100"
-                      enterFrom="transform opacity-0 scale-95"
-                      enterTo="transform opacity-100 scale-100"
-                      leave="transition ease-in duration-75"
-                      leaveFrom="transform opacity-100 scale-100"
-                      leaveTo="transform opacity-0 scale-95"
-                    >
-                      <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-xl bg-black border border-gray-800 py-1 shadow-lg focus:outline-none">
-                        <Menu.Item>
-                          {({ active }) => (
-                            <Link
-                              href="/profile"
-                              className={`${
-                                active ? 'bg-gray-900' : ''
-                              } block px-4 py-3 text-sm text-gray-300 hover:text-white touch-manipulation`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <LuUser className="w-4 h-4" />
-                                Your Profile
-                              </div>
-                            </Link>
-                          )}
-                        </Menu.Item>
-                        <Menu.Item>
-                          {({ active }) => (
-                            <button
-                              onClick={handleSignOut}
-                              className={`${
-                                active ? 'bg-gray-900' : ''
-                              } block w-full text-left px-4 py-3 text-sm text-gray-300 hover:text-white touch-manipulation`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <LuLogOut className="w-4 h-4" />
-                                Sign out
-                              </div>
-                            </button>
-                          )}
-                        </Menu.Item>
-                      </Menu.Items>
-                    </Transition>
+                    {() => (
+                      <>
+                        <Menu.Button className="flex rounded-full bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800 touch-manipulation">
+                          <Image
+                            className="h-9 w-9 rounded-full"
+                            src={user.photoURL || '/default-avatar.png'}
+                            alt=""
+                            width={36}
+                            height={36}
+                            priority={true}
+                            onError={(e) => {
+                              const img = e.target as HTMLImageElement;
+                              if (img.src !== '/default-avatar.png') {
+                                img.src = '/default-avatar.png';
+                              }
+                            }}
+                          />
+                        </Menu.Button>
+                        <Transition
+                          as={Fragment}
+                          enter="transition ease-out duration-100"
+                          enterFrom="transform opacity-0 scale-95"
+                          enterTo="transform opacity-100 scale-100"
+                          leave="transition ease-in duration-75"
+                          leaveFrom="transform opacity-100 scale-100"
+                          leaveTo="transform opacity-0 scale-95"
+                        >
+                          <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-xl bg-black border border-gray-800 py-1 shadow-lg focus:outline-none">
+                            <Menu.Item>
+                              {({ active }: { active: boolean }) => (
+                                <Link
+                                  href="/profile"
+                                  className={`${
+                                    active ? 'bg-gray-900' : ''
+                                  } block px-4 py-3 text-sm text-gray-300 hover:text-white touch-manipulation`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <LuUser className="w-4 h-4" />
+                                    Your Profile
+                                  </div>
+                                </Link>
+                              )}
+                            </Menu.Item>
+                            <Menu.Item>
+                              {({ active }: { active: boolean }) => (
+                                <button
+                                  onClick={handleSignOut}
+                                  className={`${
+                                    active ? 'bg-gray-900' : ''
+                                  } block w-full text-left px-4 py-3 text-sm text-gray-300 hover:text-white touch-manipulation`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <LuLogOut className="w-4 h-4" />
+                                    Sign out
+                                  </div>
+                                </button>
+                              )}
+                            </Menu.Item>
+                          </Menu.Items>
+                        </Transition>
+                      </>
+                    )}
                   </Menu>
                 ) : (
                   <button
