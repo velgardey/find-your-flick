@@ -291,8 +291,8 @@ export default function UserStats({ userId }: Props) {
 
           // Process creators and TV show specific stats
           if (selectedMediaType === 'movie') {
-            const director = media.credits?.crew?.find((person) => person.job === 'Director');
-            if (director) {
+            const directors = media.credits?.crew?.filter((person) => person.job === 'Director') || [];
+            directors.forEach(director => {
               if (!creatorCounts[director.id]) {
                 creatorCounts[director.id] = {
                   id: director.id,
@@ -302,8 +302,24 @@ export default function UserStats({ userId }: Props) {
                 };
               }
               creatorCounts[director.id].count++;
-            }
+            });
           } else {
+            const creators = media.credits?.crew?.filter((person) => 
+              person.job === 'Creator' || 
+              person.job === 'Executive Producer' || 
+              person.job === 'Showrunner'
+            ) || [];
+            creators.forEach(creator => {
+              if (!creatorCounts[creator.id]) {
+                creatorCounts[creator.id] = {
+                  id: creator.id,
+                  name: creator.name,
+                  count: 0,
+                  profilePath: creator.profile_path
+                };
+              }
+              creatorCounts[creator.id].count++;
+            });
             const episodeCount = media.number_of_episodes ?? 0;
             if (episodeCount > longestShow.episodes) {
               longestShow = {
@@ -632,7 +648,14 @@ export default function UserStats({ userId }: Props) {
             >
               <h3 className="text-xl font-semibold mb-4">Time Machine</h3>
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                {Object.entries(stats.decadeCounts || {}).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([decade, count], index) => (
+                {Object.entries(stats.decadeCounts || {})
+                  .map(([decade, count]) => ({
+                    decade: decade + '0',  // Add '0' to complete the decade
+                    count: count
+                  }))
+                  .sort((a, b) => Number(b.decade) - Number(a.decade))
+                  .slice(0, 5)
+                  .map(({decade, count}, index) => (
                   <motion.div
                     key={decade}
                     initial={{ scale: 0.8, opacity: 0 }}
@@ -671,7 +694,7 @@ export default function UserStats({ userId }: Props) {
                       initial={{ scale: 0.8, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ delay: index * 0.1 }}
-                      className="flex items-center gap-4 bg-white/5 backdrop-blur-lg rounded-lg p-4 border border-white/10"
+                      className="flex items-center gap-4 bg-white/5 backdrop-blur-lg rounded-lg p-4 border border-white/10 hover:bg-white/10 transition-colors"
                     >
                       <div className="relative w-16 h-16 rounded-full overflow-hidden bg-white/10">
                         {creator.profilePath ? (
@@ -679,16 +702,18 @@ export default function UserStats({ userId }: Props) {
                             src={`https://image.tmdb.org/t/p/w185${creator.profilePath}`}
                             alt={creator.name}
                             fill
+                            sizes="64px"
                             className="object-cover"
+                            priority={index < 3}
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-2xl text-white/40">
+                          <div className="w-full h-full flex items-center justify-center text-2xl font-bold bg-gradient-to-br from-purple-500/20 to-blue-500/20 text-white/60">
                             {creator.name.charAt(0)}
                           </div>
                         )}
                       </div>
-                      <div>
-                        <div className="font-medium">{creator.name}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{creator.name}</div>
                         <div className="text-sm text-gray-400">
                           {creator.count} {creator.count === 1 ? 
                             (selectedMediaType === 'movie' ? 'movie' : 'show') : 
@@ -763,21 +788,21 @@ export default function UserStats({ userId }: Props) {
                 <h3 className="text-xl font-semibold mb-4">Fun Facts</h3>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Could have flown to Mars</span>
+                    <span className="text-gray-400">Time spent watching</span>
                     <span className="font-medium">
-                      {Math.round((currentStats.totalWatchtime / (34560000)) * 100)}% of the way
+                      {Math.round(currentStats.totalWatchtime / 1440)} days
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Could have learned</span>
+                    <span className="text-gray-400">Books you could have read</span>
                     <span className="font-medium">
-                      {Math.floor(currentStats.totalWatchtime / 480)} new languages
+                      {Math.floor(currentStats.totalWatchtime / 240)} books
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-400">Equivalent to</span>
+                    <span className="text-gray-400">Times around Earth</span>
                     <span className="font-medium">
-                      {Math.round(currentStats.totalWatchtime / 1440)} days of content
+                      {((currentStats.totalWatchtime / 1440) * 900 / 24901).toFixed(1)}x
                     </span>
                   </div>
                 </div>
