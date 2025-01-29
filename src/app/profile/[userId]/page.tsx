@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,6 +8,7 @@ import { fetchWithAuth } from '@/lib/api';
 import WatchlistButton from '@/components/WatchlistButton';
 import MediaDetailsModal from '@/components/MediaDetailsModal';
 import UserStats from '@/components/UserStats';
+import TasteMatch from '@/components/TasteMatch';
 import withAuth from '@/components/withAuth';
 
 interface UserProfile {
@@ -36,6 +37,7 @@ interface PageProps {
 }
 
 function UserProfile({ params }: PageProps) {
+  const { userId } = use(params);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [watchlist, setWatchlist] = useState<WatchlistEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -147,14 +149,21 @@ function UserProfile({ params }: PageProps) {
       if (!user) return;
 
       try {
-        const resolvedParams = await params;
         const [profileData, watchlistData] = await Promise.all([
-          fetchWithAuth(`/api/users/${resolvedParams.userId}`),
-          fetchWithAuth(`/api/users/${resolvedParams.userId}/watchlist`),
+          fetchWithAuth<UserProfile>(`/api/users/${userId}`),
+          fetchWithAuth<WatchlistEntry[]>(`/api/users/${userId}/watchlist`)
         ]);
 
-        setProfile(profileData);
-        setWatchlist(watchlistData);
+        setProfile(
+          profileData && typeof profileData === 'object' 
+            ? profileData as UserProfile 
+            : null
+        );
+        setWatchlist(
+          Array.isArray(watchlistData) 
+            ? watchlistData 
+            : []
+        );
         setError(null);
       } catch (error) {
         console.error('Error fetching user data:', error);
@@ -165,7 +174,7 @@ function UserProfile({ params }: PageProps) {
     };
 
     fetchProfile();
-  }, [params, user]);
+  }, [userId, user]);
 
   if (!user) {
     return (
@@ -247,59 +256,50 @@ function UserProfile({ params }: PageProps) {
             >
               <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 opacity-50" />
               <div className="relative flex items-center gap-6">
-                <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="relative"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full blur-lg opacity-50" />
+                {profile.photoURL ? (
                   <Image
-                    src={profile.photoURL || '/default-avatar.png'}
-                    alt={profile.displayName || 'Unknown User'}
+                    src={profile.photoURL}
+                    alt={profile.displayName || 'User'}
                     width={96}
                     height={96}
-                    className="rounded-full relative ring-2 ring-white/20"
-                    priority={true}
-                    onError={(e) => {
-                      const img = e.target as HTMLImageElement;
-                      if (img.src !== '/default-avatar.png') {
-                        img.src = '/default-avatar.png';
-                      }
-                    }}
+                    className="rounded-full"
                   />
-                </motion.div>
+                ) : (
+                  <div className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center">
+                    <span className="text-2xl text-white/60">
+                      {profile.displayName?.[0] || profile.email[0]}
+                    </span>
+                  </div>
+                )}
                 <div>
-                  <motion.h1 
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent"
-                  >
-                    {profile.displayName || 'Unknown User'}
-                  </motion.h1>
-                  <motion.p 
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="text-gray-400"
-                  >
-                    {profile.email}
-                  </motion.p>
+                  <h1 className="text-3xl font-bold">
+                    {profile.displayName || 'Anonymous User'}
+                  </h1>
+                  <p className="text-gray-400">{profile.email}</p>
                 </div>
               </div>
             </motion.div>
 
-            {/* User Stats Section with Enhanced Animation */}
+            {/* Update TasteMatch component props */}
+            {user && user.uid !== userId && (
+              <motion.div
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-12"
+              >
+                <TasteMatch userId={userId} />
+              </motion.div>
+            )}
+
+            {/* Update UserStats component props */}
             <motion.div
               layout
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="mb-12 relative"
+              className="mb-12"
             >
-              <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-blue-500/5 rounded-2xl" />
-              <UserStats userId={profile.id} />
+              <UserStats userId={userId} />
             </motion.div>
 
             {/* Watchlist Section with Enhanced UI */}
@@ -434,7 +434,7 @@ function UserProfile({ params }: PageProps) {
                           src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`}
                           alt={movie.title}
                           fill
-                          className="object-cover transition-transform duration-300 group-hover:scale-110"
+                          className="object-cover"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.style.display = 'none';
@@ -446,15 +446,9 @@ function UserProfile({ params }: PageProps) {
                           <span className="text-gray-400 text-sm text-center px-4">No poster available</span>
                         </div>
                       )}
-                      <motion.div 
-                        initial={false}
-                        animate={{
-                          opacity: touchedMovieId === movie.id ? 1 : 0
-                        }}
-                        className={`absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent flex flex-col justify-end p-4 transition-opacity duration-200 ${
-                          touchedMovieId === movie.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                        }`}
-                      >
+                      <div className={`absolute inset-0 bg-black/60 flex flex-col justify-end p-4 transition-opacity duration-200 ${
+                        touchedMovieId === movie.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      }`}>
                         <h4 className="text-white font-medium mb-2">
                           {movie.title}
                         </h4>
@@ -463,9 +457,8 @@ function UserProfile({ params }: PageProps) {
                             {movie.status.replace(/_/g, ' ')}
                           </p>
                           {movie.rating && (
-                            <div className="text-yellow-400 text-sm mb-3 flex items-center gap-1">
-                              <span>⭐</span>
-                              <span>{movie.rating}/10</span>
+                            <div className="text-yellow-400 text-sm mb-3">
+                              Rating: {movie.rating}/10
                             </div>
                           )}
                           <div onClick={(e) => e.stopPropagation()} className={`mt-2 ${
@@ -484,7 +477,7 @@ function UserProfile({ params }: PageProps) {
                             />
                           </div>
                         </div>
-                      </motion.div>
+                      </div>
                     </div>
                   </motion.div>
                 ))}

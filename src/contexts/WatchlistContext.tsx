@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useAuth } from './AuthContext'
 import { WatchStatus } from '@/lib/prismaTypes'
-import { fetchWithRetry } from '@/lib/retryUtils'
+import { fetchWithAuth } from '@/lib/api'
 
 interface WatchlistEntry {
   id: string
@@ -23,6 +23,7 @@ interface WatchlistEntry {
   showStatus?: string
   createdAt: string
   updatedAt: string
+  genres: string[]
 }
 
 interface LoadingStates {
@@ -81,7 +82,8 @@ function isWatchlistEntry(item: unknown): item is WatchlistEntry {
     (entry.totalSeasons === undefined || typeof entry.totalSeasons === 'number') &&
     (entry.totalEpisodes === undefined || typeof entry.totalEpisodes === 'number') &&
     (entry.nextAirDate === undefined || typeof entry.nextAirDate === 'string') &&
-    (entry.showStatus === undefined || typeof entry.showStatus === 'string')
+    (entry.showStatus === undefined || typeof entry.showStatus === 'string') &&
+    Array.isArray(entry.genres) && entry.genres.every(g => typeof g === 'string')
   )
 }
 
@@ -96,6 +98,12 @@ interface WatchlistResponse {
 function isWatchlistResponse(data: unknown): data is WatchlistResponse {
   if (typeof data !== 'object' || data === null) return false
   
+  // Handle direct array response
+  if (isWatchlistArray(data)) {
+    return true
+  }
+  
+  // Handle response wrapped in data property
   const response = data as Record<string, unknown>
   return 'data' in response && isWatchlistArray(response.data)
 }
@@ -119,28 +127,12 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-      try {
-      const token = await user.getIdToken()
+    try {
       const url = searchQuery 
         ? `/api/watchlist?search=${encodeURIComponent(searchQuery)}`
         : '/api/watchlist'
         
-      const response = await fetchWithRetry(url, {
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Authorization': `Bearer ${token}`,
-        },
-      })
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          setWatchlist([])
-          return
-      }
-        throw new Error('Failed to fetch watchlist')
-    }
-
-      const responseData = await response.json()
+      const responseData = await fetchWithAuth(url)
       
       // Validate and transform the data
       if (!isWatchlistResponse(responseData)) {
@@ -149,9 +141,10 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         return
       }
       
-      setWatchlist(responseData.data)
-    } catch {
-      console.error('Error fetching watchlist')
+      // Handle both direct array and wrapped response
+      setWatchlist(Array.isArray(responseData) ? responseData : responseData.data)
+    } catch (error) {
+      console.error('Error fetching watchlist:', error)
       setWatchlist([])
     } finally {
       setIsLoading(false)
@@ -186,6 +179,18 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       adding: [...prev.adding, media.id]
     }))
 
+    // Fetch media details to get genres
+    let genres: string[] = [];
+    try {
+      interface MediaDetails {
+        genres: Array<{ name: string }>;
+      }
+      const mediaDetails = await fetchWithAuth<MediaDetails>(`/api/tmdb?path=/${media.media_type}/${media.id}`);
+      genres = mediaDetails.genres?.map(g => g.name) || [];
+    } catch (error) {
+      console.error('Error fetching media details:', error);
+    }
+
     const optimisticEntry: WatchlistEntry = {
       id: `temp-${Date.now()}`,
       mediaId: media.id,
@@ -195,6 +200,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       status,
       rating: null,
       notes: null,
+      genres,
       currentSeason: undefined,
       currentEpisode: undefined,
       totalSeasons: undefined,
@@ -209,7 +215,10 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const token = await user.getIdToken()
-      const response = await fetchWithRetry('/api/watchlist', {
+      interface WatchlistResponse {
+        data: WatchlistEntry;
+      }
+      const { data: newEntry } = await fetchWithAuth<WatchlistResponse>('/api/watchlist', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -221,18 +230,17 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
           title: media.title,
           posterPath: media.poster_path,
           status,
+          genres,
         }),
-      })
+      });
 
-      if (!response.ok) throw new Error('Failed to add to watchlist')
-      const responseData = await response.json()
-      if (!isWatchlistEntry(responseData.data)) {
+      if (!isWatchlistEntry(newEntry)) {
         throw new Error('Invalid response data')
       }
 
       setWatchlist((prev) => 
         prev.map((entry) => 
-          entry.id === optimisticEntry.id ? responseData.data : entry
+          entry.id === optimisticEntry.id ? newEntry : entry
         )
       )
       setHasError(false)
@@ -243,7 +251,6 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       console.error('Error adding to watchlist:', error)
       setHasError(true)
       setLastFailedOperation(() => () => addToWatchlist(media, status))
-      throw error
     } finally {
       setLoadingStates(prev => ({
         ...prev,
@@ -260,44 +267,50 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       updating: [...prev.updating, entryId]
     }))
 
-    const currentEntry = watchlist.find(entry => entry.id === entryId)
-    if (!currentEntry) throw new Error('Entry not found')
+    // Optimistically update the UI
+    const oldEntry = watchlist.find(entry => entry.id === entryId)
+    if (!oldEntry) throw new Error('Entry not found')
 
-    setWatchlist((prev) =>
-      prev.map((entry) => (entry.id === entryId ? { ...entry, ...updates } : entry))
+    const optimisticUpdate = {
+      ...oldEntry,
+      ...updates,
+      updatedAt: new Date().toISOString()
+    }
+
+    setWatchlist(prev =>
+      prev.map(entry => entry.id === entryId ? optimisticUpdate : entry)
     )
 
     try {
       const token = await user.getIdToken()
-      const response = await fetchWithRetry(`/api/watchlist/${entryId}`, {
+      interface WatchlistResponse {
+        data: WatchlistEntry;
+      }
+      const { data: updatedEntry } = await fetchWithAuth<WatchlistResponse>(`/api/watchlist/${entryId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
-          'Cache-Control': 'no-cache',
         },
         body: JSON.stringify(updates),
-      })
+      });
 
-      if (!response.ok) throw new Error('Failed to update watchlist entry')
-      const responseData = await response.json()
-      
-      if (!isWatchlistEntry(responseData.data)) {
+      if (!isWatchlistEntry(updatedEntry)) {
         throw new Error('Invalid response data')
       }
 
-      setWatchlist((prev) =>
-        prev.map((entry) => (entry.id === entryId ? responseData.data : entry))
+      setWatchlist(prev =>
+        prev.map(entry => entry.id === entryId ? updatedEntry : entry)
       )
       setHasError(false)
     } catch (error) {
-      setWatchlist((prev) =>
-        prev.map((entry) => (entry.id === entryId ? currentEntry : entry))
+      // Revert the optimistic update
+      setWatchlist(prev =>
+        prev.map(entry => entry.id === entryId ? oldEntry : entry)
       )
       console.error('Error updating watchlist entry:', error)
       setHasError(true)
       setLastFailedOperation(() => () => updateWatchlistEntry(entryId, updates))
-      throw error
     } finally {
       setLoadingStates(prev => ({
         ...prev,
@@ -322,21 +335,19 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const token = await user.getIdToken()
-      const response = await fetchWithRetry(`/api/watchlist/${entry.id}`, {
+      await fetchWithAuth(`/api/watchlist/${entry.id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      })
-
-      if (!response.ok) throw new Error('Failed to remove from watchlist')
+      });
       setHasError(false)
     } catch (error) {
+      // Revert the optimistic delete
       setWatchlist(watchlist)
       console.error('Error removing from watchlist:', error)
       setHasError(true)
       setLastFailedOperation(() => () => removeFromWatchlist(mediaId))
-      throw error
     } finally {
       setLoadingStates(prev => ({
         ...prev,

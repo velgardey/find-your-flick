@@ -11,21 +11,32 @@ export async function POST(request: Request) {
 
     const token = authHeader.split('Bearer ')[1];
     const decodedToken = await adminAuth.verifyIdToken(token);
+    
+    // Get additional user info from Firebase Auth
+    const firebaseUser = await adminAuth.getUser(decodedToken.uid);
+
+    // Handle photoURL
+    let photoURL = firebaseUser.photoURL;
+    
+    // If no custom photo but has a display name, use Google's default avatar URL
+    if (!photoURL && firebaseUser.displayName) {
+      photoURL = `https://lh3.googleusercontent.com/a/default-user=s96-c`;
+    }
 
     // Create or update user in database
     const user = await prisma.user.upsert({
       where: { id: decodedToken.uid },
       update: {
         email: decodedToken.email!,
-        displayName: decodedToken.name,
-        photoURL: decodedToken.picture,
+        displayName: firebaseUser.displayName || decodedToken.email?.split('@')[0] || 'Anonymous User',
+        photoURL: photoURL || decodedToken.picture || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(firebaseUser.displayName || decodedToken.email || 'Anonymous')}`,
         updatedAt: new Date(),
       },
       create: {
         id: decodedToken.uid,
         email: decodedToken.email!,
-        displayName: decodedToken.name,
-        photoURL: decodedToken.picture,
+        displayName: firebaseUser.displayName || decodedToken.email?.split('@')[0] || 'Anonymous User',
+        photoURL: photoURL || decodedToken.picture || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(firebaseUser.displayName || decodedToken.email || 'Anonymous')}`,
       },
     });
 

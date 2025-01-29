@@ -487,6 +487,34 @@ export default function UserStats({ userId }: Props) {
 
     if (watchlist.length > 0) {
       calculateStats();
+    } else {
+      // Set empty stats and stop loading if watchlist is empty
+      setStats({
+        totalWatched: { movies: 0, shows: 0 },
+        totalWatchtime: { movies: 0, shows: 0 },
+        averageRating: { movies: 0, shows: 0 },
+        topGenres: { movies: [], shows: [] },
+        topDirectors: [],
+        topShowCreators: [],
+        watchingStreak: 0,
+        favoriteDecade: {
+          movies: { decade: '', count: 0 },
+          shows: { decade: '', count: 0 }
+        },
+        watchTimeByMonth: {
+          movies: [],
+          shows: []
+        },
+        completionRate: { movies: 0, shows: 0 },
+        averageEpisodesPerShow: 0,
+        totalEpisodesWatched: 0,
+        longestShow: { title: '', episodes: 0 },
+        longestBinge: 0,
+        mostInOneDay: 0,
+        averageSession: 0,
+        decadeCounts: {}
+      });
+      setIsLoading(false);
     }
   }, [userId, watchlist, selectedMediaType]);
 
@@ -526,6 +554,55 @@ export default function UserStats({ userId }: Props) {
     topGenres: stats.topGenres.shows,
     watchTimeByMonth: stats.watchTimeByMonth.shows
   };
+
+  // Add empty state when no content is watched
+  if (currentStats.totalWatched === 0) {
+    return (
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col items-center justify-center text-center p-8 space-y-6"
+      >
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ 
+            type: "spring",
+            stiffness: 260,
+            damping: 20,
+            delay: 0.2 
+          }}
+          className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center"
+        >
+          {selectedMediaType === 'movie' ? (
+            <LuFilm className="w-16 h-16 text-white/60" />
+          ) : (
+            <LuTv className="w-16 h-16 text-white/60" />
+          )}
+        </motion.div>
+        
+        <div className="space-y-3">
+          <h3 className="text-2xl font-bold">
+            No {selectedMediaType === 'movie' ? 'Movies' : 'TV Shows'} Yet
+          </h3>
+          <p className="text-gray-400 max-w-md">
+            Start building your collection by adding some {selectedMediaType === 'movie' ? 'movies' : 'TV shows'} to your watchlist.
+            Your watching stats will appear here!
+          </p>
+        </div>
+
+        <motion.a
+          href="/"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium shadow-lg hover:shadow-xl transition-shadow"
+        >
+          <LuFilm className="w-5 h-5" />
+          <span>Discover {selectedMediaType === 'movie' ? 'Movies' : 'TV Shows'}</span>
+        </motion.a>
+      </motion.div>
+    );
+  }
 
   return (
     <div className="space-y-6">

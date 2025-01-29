@@ -1,5 +1,4 @@
 import { auth } from './firebase';
-import { onAuthStateChanged } from 'firebase/auth';
 import { fetchWithRetry } from './retryUtils';
 
 export class AuthenticationError extends Error {
@@ -9,39 +8,23 @@ export class AuthenticationError extends Error {
   }
 }
 
-export async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  // First check if we have a current user
+export async function fetchWithAuth<T = unknown>(url: string, options: RequestInit = {}): Promise<T> {
+  // Wait for auth to initialize
+  await new Promise((resolve) => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      unsubscribe();
+      resolve(user);
+    });
+  });
+
   const currentUser = auth.currentUser;
   if (!currentUser) {
-    // Wait for auth state to be ready
-    try {
-      await new Promise<void>((resolve, reject) => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-          unsubscribe();
-          if (user) {
-            resolve();
-          } else {
-            reject(new AuthenticationError('Not authenticated'));
-          }
-        });
-      });
-    } catch (error) {
-      if (error instanceof AuthenticationError) {
-        throw error;
-      }
-      throw error;
-    }
-  }
-
-  // At this point, we should have a current user
-  const user = auth.currentUser;
-  if (!user) {
-    throw new AuthenticationError('Not authenticated');
+    throw new AuthenticationError('User not authenticated');
   }
 
   try {
     // Force token refresh
-    const token = await user.getIdToken(true);
+    const token = await currentUser.getIdToken(true);
     const headers = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
@@ -51,15 +34,22 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}) {
     const response = await fetchWithRetry(url, {
       ...options,
       headers,
+      credentials: 'include', // Add this to include cookies
     }, {
-      maxRetries: 3,
-      baseDelay: 1000,
-      maxDelay: 5000,
-      shouldRetry: (error) => {
-        // Don't retry on 401/403 errors
+      shouldRetry: async (error) => {
         if (error instanceof Response) {
           const status = error.status;
-          return status >= 500 || (status !== 401 && status !== 403);
+          // On 401, try to refresh token once
+          if (status === 401) {
+            try {
+              await currentUser.getIdToken(true);
+              return true; // Retry after token refresh
+            } catch (error) {
+              console.error('Token refresh failed:', error);
+              return false;
+            }
+          }
+          return status >= 500;
         }
         return true;
       }
@@ -77,6 +67,8 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}) {
   } catch (error) {
     console.error('Fetch error:', error);
     if (error instanceof AuthenticationError) {
+      // Force sign out on auth errors
+      await auth.signOut();
       throw error;
     }
     throw error;

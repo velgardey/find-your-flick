@@ -9,6 +9,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { fetchWithAuth } from '@/lib/api';
 import withAuth from '@/components/withAuth';
 
+interface InviteLinkResponse {
+  inviteLink: string;
+}
+
 interface Friend {
   id: string;
   displayName: string | null;
@@ -41,8 +45,8 @@ function Friends() {
       
       try {
         const [friendsData, requestsData] = await Promise.all([
-          fetchWithAuth('/api/friends'),
-          fetchWithAuth('/api/friends/requests')
+          fetchWithAuth<Friend[]>(`/api/users/${user.uid}/friends`),
+          fetchWithAuth<FriendRequest[]>(`/api/users/${user.uid}/friend-requests`)
         ]);
 
         setFriends(friendsData);
@@ -64,10 +68,10 @@ function Friends() {
   const generateInviteLink = async () => {
     setIsGeneratingLink(true);
     try {
-      const { inviteLink } = await fetchWithAuth('/api/friends/invite', {
+      const response = await fetchWithAuth<InviteLinkResponse>('/api/friends/invite', {
         method: 'POST',
       });
-      setInviteLink(inviteLink);
+      setInviteLink(response.inviteLink);
       setError(null);
     } catch (error) {
       console.error('Error generating invite link:', error);
@@ -87,7 +91,7 @@ function Friends() {
 
   const handleFriendRequest = async (requestId: string, action: 'accept' | 'reject') => {
     try {
-      const response = await fetchWithAuth(`/api/friends/requests/${requestId}`, {
+      const response = await fetchWithAuth<Friend>(`/api/friends/requests/${requestId}`, {
         method: 'POST',
         body: JSON.stringify({ action }),
       });

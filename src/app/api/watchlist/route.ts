@@ -12,29 +12,47 @@ import { NextRequest } from 'next/server'
 export async function GET(request: Request) {
   try {
     const auth = await authenticateRequest(request)
-    if (!auth.success) return auth.response
+    if (!auth.success) {
+      // Return empty watchlist for unauthenticated users
+      return successResponse([])
+    }
 
     // Get search query from URL params
     const { searchParams } = new URL(request.url)
     const searchQuery = searchParams.get('search')?.toLowerCase()
 
+    // First, ensure the user exists in the database
+    await withPrismaRetry(() => 
+      prisma.user.upsert({
+        where: { id: auth.user.uid },
+        update: {},
+        create: {
+          id: auth.user.uid,
+          email: auth.user.email,
+          displayName: auth.user.name,
+          photoURL: auth.user.picture,
+        },
+      })
+    )
+
     const watchlist = await withPrismaRetry(() => 
       prisma.watchlistEntry.findMany({
-      where: { 
-        userId: auth.user.uid,
-        ...(searchQuery && {
-          title: {
-            contains: searchQuery,
-            mode: 'insensitive'
-          }
-        })
-      },
-      orderBy: { updatedAt: 'desc' },
-    })
+        where: { 
+          userId: auth.user.uid,
+          ...(searchQuery && {
+            title: {
+              contains: searchQuery,
+              mode: 'insensitive'
+            }
+          })
+        },
+        orderBy: { updatedAt: 'desc' },
+      })
     )
 
     return successResponse(watchlist)
   } catch (error) {
+    console.error('Error in watchlist GET:', error)
     return handleApiError(error)
   }
 }
@@ -71,6 +89,7 @@ export async function POST(request: Request) {
           title: validatedData.title,
           posterPath: validatedData.posterPath,
           status: validatedData.status,
+          genres: validatedData.genres,
         },
       })
     })

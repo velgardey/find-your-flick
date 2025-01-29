@@ -14,6 +14,7 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const [isSigningIn, setIsSigningIn] = useState(false);
   const auth = getAuth();
   const [user] = useAuthState(auth);
 
@@ -24,11 +25,33 @@ export default function Navbar() {
   ];
 
   const handleSignIn = async () => {
+    if (isSigningIn) return; // Prevent multiple sign-in attempts
+    
+    setIsSigningIn(true);
     const provider = new GoogleAuthProvider();
+    
     try {
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error('Error signing in with Google:', error);
+      
+      // Handle specific error cases
+      if (error instanceof Error && 'code' in error) {
+        const firebaseError = error as { code: string };
+        if (firebaseError.code === 'auth/popup-closed-by-user') {
+          console.log('Sign-in popup was closed by the user');
+        } else if (firebaseError.code === 'auth/cancelled-popup-request') {
+          console.log('Previous sign-in popup was still open');
+        } else if (firebaseError.code === 'auth/popup-blocked') {
+          alert('Please allow popups for this website to sign in with Google');
+        } else {
+          alert('An error occurred during sign in. Please try again.');
+        }
+      } else {
+        alert('An error occurred during sign in. Please try again.');
+      }
+    } finally {
+      setIsSigningIn(false);
     }
   };
 

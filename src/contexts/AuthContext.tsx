@@ -38,6 +38,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Create user in Prisma database
       const token = await user.getIdToken();
+
+      // Get the photoURL from Google
+      let photoURL = user.photoURL;
+      
+      // If no custom photo but has a display name, use Google's default avatar URL
+      if (!photoURL && user.displayName) {
+        photoURL = `https://lh3.googleusercontent.com/a/default-user=s96-c`;
+      }
+
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
@@ -47,8 +56,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({
           id: user.uid,
           email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
+          displayName: user.displayName || user.email?.split('@')[0] || 'Anonymous User',
+          photoURL: photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.displayName || user.email || 'Anonymous')}`,
         }),
       });
 

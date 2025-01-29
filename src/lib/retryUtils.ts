@@ -1,8 +1,8 @@
 interface RetryOptions<E = Error | Response> {
-  maxRetries?: number;
-  baseDelay?: number;
-  maxDelay?: number;
-  shouldRetry?: (error: E) => boolean;
+  maxRetries: number;
+  baseDelay: number;
+  maxDelay: number;
+  shouldRetry: (error: E) => boolean | Promise<boolean>;
 }
 
 interface ErrorWithResponse extends Error {
@@ -69,18 +69,39 @@ export async function withRetry<T, E = Error | Response>(
 export async function fetchWithRetry(
   url: string,
   options: RequestInit = {},
-  retryOptions: RetryOptions = {}
+  retryOptions?: Partial<RetryOptions<Error | Response>>
 ): Promise<Response> {
-  return withRetry(
-    () => fetch(url, options),
-    {
-      ...retryOptions,
-      shouldRetry: (error: Error | Response) => {
-        if (error instanceof Response) {
-          return error.status >= 500;
-        }
-        return defaultRetryOptions.shouldRetry!(error);
+  const finalRetryOptions: RetryOptions<Error | Response> = {
+    ...defaultRetryOptions,
+    ...retryOptions
+  };
+
+  let lastError: Error | Response;
+  let retryCount = 0;
+
+  while (retryCount <= finalRetryOptions.maxRetries) {
+    try {
+      const response = await fetch(url, options);
+      if (!response.ok && await finalRetryOptions.shouldRetry(response)) {
+        lastError = response;
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+      return response;
+    } catch (error) {
+      const shouldRetry = await finalRetryOptions.shouldRetry(error instanceof Error ? error : new Error(String(error)));
+      if (retryCount === finalRetryOptions.maxRetries || !shouldRetry) {
+        throw error;
+      }
+      
+      const delay = Math.min(
+        finalRetryOptions.baseDelay * Math.pow(2, retryCount),
+        finalRetryOptions.maxDelay
+      );
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+      retryCount++;
     }
-  );
+  }
+
+  throw lastError!;
 } 
