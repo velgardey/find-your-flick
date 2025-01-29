@@ -461,7 +461,7 @@ function UserProfile({ params }: PageProps) {
                               Rating: {movie.rating}/10
                             </div>
                           )}
-                          <div onClick={(e) => e.stopPropagation()} className={`mt-2 ${
+                          <div onClick={(e) => e.stopPropagation()} className={`flex justify-center items-center mt-2 ${
                             !window.matchMedia('(hover: hover)').matches && touchedMovieId !== movie.id 
                               ? 'pointer-events-none' 
                               : ''
