@@ -26,14 +26,22 @@ export async function GET(request: Request) {
     );
 
     if (!tmdbResponse.ok) {
-      const errorData = await tmdbResponse.json().catch(() => ({}));
+      const errorData = await tmdbResponse.json().catch(() => ({ 
+        status_message: tmdbResponse.statusText || 'Unknown error',
+        status_code: tmdbResponse.status 
+      }));
+      
       console.error('TMDB API error:', {
         status: tmdbResponse.status,
         statusText: tmdbResponse.statusText,
         error: errorData
       });
+      
       return NextResponse.json(
-        { error: 'TMDB API error', details: errorData },
+        { 
+          error: errorData.status_message || 'TMDB API error',
+          status_code: errorData.status_code || tmdbResponse.status
+        },
         { status: tmdbResponse.status }
       );
     }

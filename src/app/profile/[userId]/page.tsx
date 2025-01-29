@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchWithAuth } from '@/lib/api';
 import WatchlistButton from '@/components/WatchlistButton';
 import MediaDetailsModal from '@/components/MediaDetailsModal';
+import UserStats from '@/components/UserStats';
 import withAuth from '@/components/withAuth';
 
 interface UserProfile {
@@ -215,8 +216,8 @@ function UserProfile({ params }: PageProps) {
     });
 
   return (
-    <div className="min-h-screen pt-24 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen pt-24 px-4 bg-gradient-to-b from-gray-900 to-black">
+      <div className="max-w-6xl mx-auto">
         {isLoading ? (
           <div className="space-y-8">
             <div className="animate-pulse flex items-center gap-6">
@@ -236,67 +237,107 @@ function UserProfile({ params }: PageProps) {
             </div>
           </div>
         ) : profile ? (
-          <>
-            <div className="flex items-center gap-6 mb-12">
-              <Image
-                src={profile.photoURL || '/default-avatar.png'}
-                alt={profile.displayName || 'Unknown User'}
-                width={96}
-                height={96}
-                className="rounded-full"
-                priority={true}
-                onError={(e) => {
-                  const img = e.target as HTMLImageElement;
-                  if (img.src !== '/default-avatar.png') {
-                    img.src = '/default-avatar.png';
-                  }
-                }}
-              />
-              <div>
-                <h2 className="text-2xl font-bold text-white">
-                  {profile.displayName || 'Unknown User'}
-                </h2>
-                <p className="text-gray-400">{profile.email}</p>
+          <LayoutGroup>
+            {/* Profile Header with Glassmorphism */}
+            <motion.div 
+              layout
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative overflow-hidden rounded-2xl mb-12 bg-white/5 backdrop-blur-lg border border-white/10 p-8"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 opacity-50" />
+              <div className="relative flex items-center gap-6">
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="relative"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full blur-lg opacity-50" />
+                  <Image
+                    src={profile.photoURL || '/default-avatar.png'}
+                    alt={profile.displayName || 'Unknown User'}
+                    width={96}
+                    height={96}
+                    className="rounded-full relative ring-2 ring-white/20"
+                    priority={true}
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      if (img.src !== '/default-avatar.png') {
+                        img.src = '/default-avatar.png';
+                      }
+                    }}
+                  />
+                </motion.div>
+                <div>
+                  <motion.h1 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent"
+                  >
+                    {profile.displayName || 'Unknown User'}
+                  </motion.h1>
+                  <motion.p 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="text-gray-400"
+                  >
+                    {profile.email}
+                  </motion.p>
+                </div>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="mb-8">
-              <h3 className="text-xl font-bold text-white mb-6">Watchlist</h3>
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="relative w-full search-container">
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search movies..."
-                      className="w-full px-4 py-2 bg-black/80 backdrop-blur-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 text-white placeholder-gray-400 border border-white/10"
-                    />
-                  </div>
+            {/* User Stats Section with Enhanced Animation */}
+            <motion.div
+              layout
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mb-12 relative"
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-blue-500/5 rounded-2xl" />
+              <UserStats userId={profile.id} />
+            </motion.div>
+
+            {/* Watchlist Section with Enhanced UI */}
+            <motion.div
+              layout
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="relative rounded-2xl bg-white/5 backdrop-blur-lg border border-white/10 p-8"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <motion.h2 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent"
+                >
+                  Watchlist
+                </motion.h2>
+                <div className="flex gap-4">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setIsSearchOpen(!isSearchOpen)}
+                    className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 backdrop-blur-lg"
+                  >
+                    <span>🔍</span>
+                    <span>Search</span>
+                  </motion.button>
                   
-                  <div className="relative sort-dropdown">
+                  <div className="relative">
                     <motion.button
-                      onClick={() => setIsSortOpen(!isSortOpen)}
-                      className="h-10 px-3 bg-black/80 backdrop-blur-xl rounded-lg border border-white/10 hover:border-white/20 text-white flex items-center gap-2 transition-all active:scale-95 touch-manipulation"
-                      whileHover={{ scale: 1.02 }}
+                      whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
+                      onClick={() => setIsSortOpen(!isSortOpen)}
+                      className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 backdrop-blur-lg"
                     >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
-                        />
-                      </svg>
-                      <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px]">
-                        {sortOptions[sortOption as keyof typeof sortOptions]}
-                      </span>
+                      <span>↕️</span>
+                      <span>Sort</span>
                     </motion.button>
 
                     <AnimatePresence>
@@ -328,121 +369,141 @@ function UserProfile({ params }: PageProps) {
                     </AnimatePresence>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40">
-                  <button
-                    onClick={() => setSelectedStatus('ALL')}
-                    className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
-                      selectedStatus === 'ALL'
-                        ? 'bg-white/20 text-white'
-                        : 'bg-white/10 hover:bg-white/20 text-gray-300'
-                    }`}
-                  >
-                    All
-                  </button>
-                  {Object.entries(watchStatusLabels).map(([status, label]) => (
-                    <button
-                      key={status}
-                      onClick={() => setSelectedStatus(status)}
-                      className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
-                        selectedStatus === status
-                          ? 'bg-white/20 text-white'
-                          : 'bg-white/10 hover:bg-white/20 text-gray-300'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
               </div>
 
-              {watchlist.length === 0 ? (
-                <p className="text-center text-gray-400 py-12">
-                  No movies in watchlist yet
-                </p>
-              ) : (
-                <AnimatePresence mode="popLayout">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4">
-                    {filteredWatchlist.map(movie => (
-                      <motion.div
-                        key={movie.id}
-                        layout
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        className="movie-card relative group"
+              <AnimatePresence>
+                {isSearchOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mb-6"
+                  >
+                    <input
+                      type="text"
+                      placeholder="Search your watchlist..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full bg-white/10 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 backdrop-blur-lg"
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <motion.div 
+                layout
+                className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide"
+              >
+                {['ALL', ...Object.keys(watchStatusLabels)].map((status) => (
+                  <motion.button
+                    key={status}
+                    onClick={() => setSelectedStatus(status)}
+                    className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors backdrop-blur-lg ${
+                      selectedStatus === status
+                        ? 'bg-white/20 text-white'
+                        : 'bg-white/10 hover:bg-white/15 text-gray-300'
+                    }`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    {status === 'ALL' ? 'All' : watchStatusLabels[status]}
+                  </motion.button>
+                ))}
+              </motion.div>
+
+              <motion.div 
+                layout
+                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+              >
+                {filteredWatchlist.map((movie, index) => (
+                  <motion.div
+                    key={movie.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="movie-card relative group"
+                  >
+                    <div
+                      onClick={(e) => handleMovieClick(movie.mediaId, movie.mediaType, movie.id, e)}
+                      className="relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer"
+                    >
+                      {movie.posterPath ? (
+                        <Image
+                          src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`}
+                          alt={movie.title}
+                          fill
+                          className="object-cover transition-transform duration-300 group-hover:scale-110"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            target.parentElement?.classList.add('bg-gray-800');
+                          }}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
+                          <span className="text-gray-400 text-sm text-center px-4">No poster available</span>
+                        </div>
+                      )}
+                      <motion.div 
+                        initial={false}
+                        animate={{
+                          opacity: touchedMovieId === movie.id ? 1 : 0
+                        }}
+                        className={`absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent flex flex-col justify-end p-4 transition-opacity duration-200 ${
+                          touchedMovieId === movie.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                        }`}
                       >
-                        <div
-                          onClick={(e) => handleMovieClick(movie.mediaId, movie.mediaType, movie.id, e)}
-                          className="relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer"
-                        >
-                          {movie.posterPath ? (
-                            <Image
-                              src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`}
-                              alt={movie.title}
-                              fill
-                              className="object-cover"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                target.parentElement?.classList.add('bg-gray-800');
-                              }}
-                            />
-                          ) : (
-                            <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
-                              <span className="text-gray-400 text-sm text-center px-4">No poster available</span>
+                        <h4 className="text-white font-medium mb-2">
+                          {movie.title}
+                        </h4>
+                        <div className="status-dropdown relative">
+                          <p className="text-gray-300 text-sm mb-3">
+                            {movie.status.replace(/_/g, ' ')}
+                          </p>
+                          {movie.rating && (
+                            <div className="text-yellow-400 text-sm mb-3 flex items-center gap-1">
+                              <span>⭐</span>
+                              <span>{movie.rating}/10</span>
                             </div>
                           )}
-                          <div className={`absolute inset-0 bg-black/60 flex flex-col justify-end p-4 transition-opacity duration-200 ${
-                            touchedMovieId === movie.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                          <div onClick={(e) => e.stopPropagation()} className={`mt-2 ${
+                            !window.matchMedia('(hover: hover)').matches && touchedMovieId !== movie.id 
+                              ? 'pointer-events-none' 
+                              : ''
                           }`}>
-                            <h4 className="text-white font-medium mb-2">
-                              {movie.title}
-                            </h4>
-                            <div className="status-dropdown relative">
-                              <p className="text-gray-300 text-sm mb-3">
-                                {movie.status.replace(/_/g, ' ')}
-                              </p>
-                              {movie.rating && (
-                                <div className="text-yellow-400 text-sm mb-3">
-                                  Rating: {movie.rating}/10
-                                </div>
-                              )}
-                              <div onClick={(e) => e.stopPropagation()} className={`mt-2 ${
-                                !window.matchMedia('(hover: hover)').matches && touchedMovieId !== movie.id 
-                                  ? 'pointer-events-none' 
-                                  : ''
-                              }`}>
-                                <WatchlistButton
-                                  media={{
-                                    id: movie.mediaId,
-                                    title: movie.title,
-                                    poster_path: movie.posterPath || '',
-                                    media_type: movie.mediaType
-                                  }}
-                                  position="bottom"
-                                />
-                              </div>
-                            </div>
+                            <WatchlistButton
+                              media={{
+                                id: movie.mediaId,
+                                title: movie.title,
+                                poster_path: movie.posterPath || '',
+                                media_type: movie.mediaType
+                              }}
+                              position="bottom"
+                            />
                           </div>
                         </div>
                       </motion.div>
-                    ))}
-                  </div>
-                </AnimatePresence>
-              )}
-            </div>
-          </>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </motion.div>
+          </LayoutGroup>
         ) : null}
       </div>
 
-      {selectedMediaId && (
-        <MediaDetailsModal
-          mediaId={selectedMediaId}
-          mediaType={selectedMediaType}
-          onClose={() => setSelectedMediaId(null)}
-        />
-      )}
+      {/* Media Details Modal with Enhanced Animation */}
+      <AnimatePresence>
+        {selectedMediaId && (
+          <MediaDetailsModal
+            mediaId={selectedMediaId}
+            mediaType={selectedMediaType}
+            onClose={() => setSelectedMediaId(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

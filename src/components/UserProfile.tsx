@@ -5,11 +5,12 @@ import { useWatchlist } from '@/contexts/WatchlistContext';
 import { WatchStatus } from '@/lib/prismaTypes';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { LuSearch, LuInfo } from 'react-icons/lu';
 import MediaDetailsModal from '@/components/MediaDetailsModal';
 import { fetchWithRetry } from '@/lib/retryUtils';
 import WatchlistButton from './WatchlistButton';
+import UserStats from './UserStats';
 
 const watchStatusLabels: Record<WatchStatus, string> = {
   PLAN_TO_WATCH: 'Plan to Watch',
@@ -27,7 +28,6 @@ export default function UserProfile() {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [showWatchlist, setShowWatchlist] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<WatchStatus | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -221,346 +221,355 @@ export default function UserProfile() {
   if (!user) return null;
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="p-6 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 hover:border-white/20 transition-colors"
-      >
-        <div className="flex flex-col items-center gap-4">
-          <motion.div 
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 200, damping: 20 }}
-            className="relative w-32 h-32"
-          >
-            <MotionImage
-              src={user.photoURL || '/default-avatar.png'}
-              alt="Profile"
-              fill
-              className="rounded-full object-cover"
-              whileHover={{ scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              priority={true}
-              sizes="(max-width: 768px) 128px, 128px"
-              onError={(e) => {
-                const img = e.target as HTMLImageElement;
-                if (img.src !== '/default-avatar.png') {
-                  img.src = '/default-avatar.png';
-                }
-              }}
-            />
-          </motion.div>
-
-          {isEditing ? (
+    <div className="max-w-6xl mx-auto space-y-8">
+      <LayoutGroup>
+        {/* Profile Card with Glassmorphism */}
+        <motion.div 
+          layout
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative overflow-hidden rounded-2xl bg-white/5 backdrop-blur-lg border border-white/10 p-8"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 opacity-50" />
+          <div className="relative flex flex-col items-center gap-4">
             <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center gap-2 w-full"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 200, damping: 20 }}
+              className="relative"
             >
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Choose a username"
-                className="bg-black/30 text-white p-2 rounded-lg text-center w-full max-w-[250px] focus:ring-2 focus:ring-white/20 focus:outline-none transition-all"
-                autoFocus
-              />
-              <motion.button
-                onClick={updateProfile}
-                disabled={loading}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.95 }}
-                className="h-10 bg-white/10 hover:bg-white/20 text-white px-3 rounded-lg disabled:opacity-50 transition-all active:scale-95 touch-manipulation text-sm"
-              >
-                {loading ? 'Saving...' : 'Save'}
-              </motion.button>
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full blur-lg opacity-50" />
+              <div className="relative w-32 h-32">
+                <MotionImage
+                  src={user.photoURL || '/default-avatar.png'}
+                  alt="Profile"
+                  fill
+                  className="rounded-full object-cover relative ring-2 ring-white/20"
+                  whileHover={{ scale: 1.05 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  priority={true}
+                  sizes="(max-width: 768px) 128px, 128px"
+                  onError={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    if (img.src !== '/default-avatar.png') {
+                      img.src = '/default-avatar.png';
+                    }
+                  }}
+                />
+              </div>
             </motion.div>
-          ) : (
-            <div className="group relative inline-flex items-center justify-center gap-2">
-              <motion.span 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-xl font-medium text-center"
+
+            {isEditing ? (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col items-center gap-2 w-full"
               >
-                {username}
-              </motion.span>
-              <motion.button
-                onClick={() => setIsEditing(true)}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.95 }}
-                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all active:scale-95 touch-manipulation"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Choose a username"
+                  className="bg-black/30 text-white p-2 rounded-lg text-center w-full max-w-[250px] focus:ring-2 focus:ring-white/20 focus:outline-none transition-all"
+                  autoFocus
+                />
+                <motion.button
+                  onClick={updateProfile}
+                  disabled={loading}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="h-10 bg-white/10 hover:bg-white/20 text-white px-3 rounded-lg disabled:opacity-50 transition-all active:scale-95 touch-manipulation text-sm"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                  />
-                </svg>
-              </motion.button>
-            </div>
-          )}
-
-          <motion.button
-            onClick={() => setShowWatchlist(!showWatchlist)}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="w-full bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-all"
-          >
-            {showWatchlist ? 'Hide Watchlist' : 'My Watchlist'}
-          </motion.button>
-        </div>
-      </motion.div>
-
-      <AnimatePresence mode="wait">
-        {showWatchlist && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="mt-4 overflow-hidden"
-          >
-            <div className="p-6 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 hover:border-white/20 transition-colors">
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="relative w-full search-container">
-                    <button
-                      onClick={() => setIsSearchOpen(!isSearchOpen)}
-                      className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                        isSearchOpen ? 'bg-white/20' : 'bg-white/10 hover:bg-white/20'
-                      }`}
-                    >
-                      <LuSearch className="w-4 h-4" />
-                      <span className="text-gray-400">{isSearchOpen ? 'Close search' : 'Search your watchlist...'}</span>
-                    </button>
-                    <AnimatePresence>
-                      {isSearchOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="absolute inset-x-0 top-full mt-2 z-10"
-                        >
-                          <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search your watchlist..."
-                            className="w-full px-4 py-2 bg-black/80 backdrop-blur-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 text-white placeholder-gray-400 border border-white/10"
-                            autoFocus
-                          />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  <div className="relative sort-dropdown">
-                    <motion.button
-                      onClick={() => setIsSortOpen(!isSortOpen)}
-                      className="h-10 px-3 bg-black/80 backdrop-blur-xl rounded-lg border border-white/10 hover:border-white/20 text-white flex items-center gap-2 transition-all active:scale-95 touch-manipulation"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
-                        />
-                      </svg>
-                      <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px]">
-                        {sortOptions[sortOption as keyof typeof sortOptions]}
-                      </span>
-                    </motion.button>
-
-                    <AnimatePresence>
-                      {isSortOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="absolute right-0 mt-2 w-44 bg-black/90 backdrop-blur-xl rounded-lg shadow-lg border border-white/10 overflow-hidden z-50"
-                        >
-                          {Object.entries(sortOptions).map(([key, label]) => (
-                            <motion.button
-                              key={key}
-                              onClick={() => {
-                                setSortOption(key);
-                                setIsSortOpen(false);
-                              }}
-                              className={`w-full h-11 px-3 text-left hover:bg-white/10 transition-colors flex items-center ${
-                                sortOption === key ? 'text-white bg-white/10' : 'text-gray-300'
-                              }`}
-                              whileHover={{ x: 4 }}
-                              whileTap={{ scale: 0.98 }}
-                            >
-                              <span className="text-sm">{label}</span>
-                            </motion.button>
-                          ))}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40">
-                  <motion.button
-                    onClick={() => setSelectedStatus('ALL')}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
-                      selectedStatus === 'ALL'
-                        ? 'bg-white/20 text-white'
-                        : 'bg-white/10 hover:bg-white/20 text-gray-300'
-                    }`}
+                  {loading ? 'Saving...' : 'Save'}
+                </motion.button>
+              </motion.div>
+            ) : (
+              <div className="group relative inline-flex items-center justify-center gap-2">
+                <motion.span 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-xl font-medium text-center bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent"
+                >
+                  {username}
+                </motion.span>
+                <motion.button
+                  onClick={() => setIsEditing(true)}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all active:scale-95 touch-manipulation"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    All
-                  </motion.button>
-                  {Object.entries(watchStatusLabels).map(([status, label]) => (
-                    <motion.button
-                      key={status}
-                      onClick={() => setSelectedStatus(status as WatchStatus)}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
-                        selectedStatus === status
-                          ? 'bg-white/20 text-white'
-                          : 'bg-white/10 hover:bg-white/20 text-gray-300'
-                      }`}
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                    />
+                  </svg>
+                </motion.button>
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* User Stats Section */}
+        <motion.div
+          layout
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="relative"
+        >
+          <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-blue-500/5 rounded-2xl" />
+          <UserStats userId={user.uid} />
+        </motion.div>
+
+        {/* Watchlist Section */}
+        <motion.div
+          layout
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="relative rounded-2xl bg-white/5 backdrop-blur-lg border border-white/10 p-8"
+        >
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-4">
+              <div className="relative w-full search-container">
+                <button
+                  onClick={() => setIsSearchOpen(!isSearchOpen)}
+                  className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                    isSearchOpen ? 'bg-white/20' : 'bg-white/10 hover:bg-white/20'
+                  }`}
+                >
+                  <LuSearch className="w-4 h-4" />
+                  <span className="text-gray-400">{isSearchOpen ? 'Close search' : 'Search your watchlist...'}</span>
+                </button>
+                <AnimatePresence>
+                  {isSearchOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute inset-x-0 top-full mt-2 z-10"
                     >
-                      {label}
-                    </motion.button>
-                  ))}
-                </div>
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search your watchlist..."
+                        className="w-full px-4 py-2 bg-black/80 backdrop-blur-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 text-white placeholder-gray-400 border border-white/10"
+                        autoFocus
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
-              {watchlistLoading ? (
-                <div className="flex justify-center py-8">
-                  <motion.div 
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full"
-                  />
-                </div>
-              ) : searchFilteredWatchlist.length === 0 ? (
-                <motion.p 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-center text-gray-400 py-8"
+              <div className="relative sort-dropdown">
+                <motion.button
+                  onClick={() => setIsSortOpen(!isSortOpen)}
+                  className="h-10 px-3 bg-black/80 backdrop-blur-xl rounded-lg border border-white/10 hover:border-white/20 text-white flex items-center gap-2 transition-all active:scale-95 touch-manipulation"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  {searchQuery 
-                    ? 'No items found matching your search.'
-                    : selectedStatus === 'ALL' 
-                      ? 'No items in your watchlist yet.'
-                      : `No items in ${watchStatusLabels[selectedStatus as WatchStatus].toLowerCase()}.`}
-                </motion.p>
-              ) : (
-                <motion.div 
-                  variants={container}
-                  initial="hidden"
-                  animate="show"
-                  className="grid grid-cols-2 gap-4 mt-4"
-                >
-                  {searchFilteredWatchlist.map(media => (
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
+                    />
+                  </svg>
+                  <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px]">
+                    {sortOptions[sortOption as keyof typeof sortOptions]}
+                  </span>
+                </motion.button>
+
+                <AnimatePresence>
+                  {isSortOpen && (
                     <motion.div
-                      key={media.id}
-                      variants={item}
-                      className="media-card relative group"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute right-0 mt-2 w-44 bg-black/90 backdrop-blur-xl rounded-lg shadow-lg border border-white/10 overflow-hidden z-50"
                     >
-                      <div className="relative aspect-[2/3] rounded-lg overflow-hidden">
-                        {media.posterPath ? (
-                          <Image
-                            src={`https://image.tmdb.org/t/p/w500${media.posterPath}`}
-                            alt={media.title}
-                            fill
-                            className="object-cover transition-transform duration-300 group-hover:scale-105"
-                            placeholder="blur"
-                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                              target.parentElement?.classList.add('bg-gray-800');
-                            }}
-                          />
-                        ) : (
-                          <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
-                            <span className="text-gray-400 text-sm text-center px-4">No poster available</span>
-                          </div>
-                        )}
-                        <div 
-                          onClick={(e) => handleMediaClick(media.mediaId, media.mediaType, media.id, e)}
-                          className={`absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-4 transition-opacity duration-200 ${
-                            touchedItemId === media.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      {Object.entries(sortOptions).map(([key, label]) => (
+                        <motion.button
+                          key={key}
+                          onClick={() => {
+                            setSortOption(key);
+                            setIsSortOpen(false);
+                          }}
+                          className={`w-full h-11 px-3 text-left hover:bg-white/10 transition-colors flex items-center ${
+                            sortOption === key ? 'text-white bg-white/10' : 'text-gray-300'
+                          }`}
+                          whileHover={{ x: 4 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <span className="text-sm">{label}</span>
+                        </motion.button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40">
+              <motion.button
+                onClick={() => setSelectedStatus('ALL')}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
+                  selectedStatus === 'ALL'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-white/10 hover:bg-white/20 text-gray-300'
+                }`}
+              >
+                All
+              </motion.button>
+              {Object.entries(watchStatusLabels).map(([status, label]) => (
+                <motion.button
+                  key={status}
+                  onClick={() => setSelectedStatus(status as WatchStatus)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
+                    selectedStatus === status
+                      ? 'bg-white/20 text-white'
+                      : 'bg-white/10 hover:bg-white/20 text-gray-300'
+                  }`}
+                >
+                  {label}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+
+          {watchlistLoading ? (
+            <div className="flex justify-center py-8">
+              <motion.div 
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full"
+              />
+            </div>
+          ) : searchFilteredWatchlist.length === 0 ? (
+            <motion.p 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center text-gray-400 py-8"
+            >
+              {searchQuery 
+                ? 'No items found matching your search.'
+                : selectedStatus === 'ALL' 
+                  ? 'No items in your watchlist yet.'
+                  : `No items in ${watchStatusLabels[selectedStatus as WatchStatus].toLowerCase()}.`}
+            </motion.p>
+          ) : (
+            <motion.div 
+              variants={container}
+              initial="hidden"
+              animate="show"
+              className="grid grid-cols-2 gap-4 mt-4"
+            >
+              {searchFilteredWatchlist.map(media => (
+                <motion.div
+                  key={media.id}
+                  variants={item}
+                  className="media-card relative group"
+                >
+                  <div className="relative aspect-[2/3] rounded-lg overflow-hidden">
+                    {media.posterPath ? (
+                      <Image
+                        src={`https://image.tmdb.org/t/p/w500${media.posterPath}`}
+                        alt={media.title}
+                        fill
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                        placeholder="blur"
+                        blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.parentElement?.classList.add('bg-gray-800');
+                        }}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
+                        <span className="text-gray-400 text-sm text-center px-4">No poster available</span>
+                      </div>
+                    )}
+                    <div 
+                      onClick={(e) => handleMediaClick(media.mediaId, media.mediaType, media.id, e)}
+                      className={`absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-4 transition-opacity duration-200 ${
+                        touchedItemId === media.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      }`}
+                    >
+                      <p className="text-sm font-medium text-center text-white mb-4">{media.title}</p>
+                      <div className="w-full max-w-[200px] space-y-2">
+                        <motion.button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedMediaId(media.mediaId);
+                            setSelectedMediaType(media.mediaType);
+                          }}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg bg-black/40 hover:bg-black/60 transition-colors text-sm ${
+                            !window.matchMedia('(hover: hover)').matches && touchedItemId !== media.id 
+                              ? 'pointer-events-none' 
+                              : ''
                           }`}
                         >
-                          <p className="text-sm font-medium text-center text-white mb-4">{media.title}</p>
-                          <div className="w-full max-w-[200px] space-y-2">
-                            <motion.button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedMediaId(media.mediaId);
-                                setSelectedMediaType(media.mediaType);
-                              }}
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg bg-black/40 hover:bg-black/60 transition-colors text-sm ${
-                                !window.matchMedia('(hover: hover)').matches && touchedItemId !== media.id 
-                                  ? 'pointer-events-none' 
-                                  : ''
-                              }`}
-                            >
-                              <LuInfo className="w-4 h-4" />
-                              <span>View Details</span>
-                            </motion.button>
-                            <div onClick={(e) => e.stopPropagation()} className={
-                              !window.matchMedia('(hover: hover)').matches && touchedItemId !== media.id 
-                                ? 'pointer-events-none' 
-                                : ''
-                            }>
-                              <WatchlistButton
-                                media={{
-                                  id: media.mediaId,
-                                  title: media.title,
-                                  poster_path: media.posterPath || '',
-                                  media_type: media.mediaType
-                                }}
-                                position="bottom"
-                              />
-                            </div>
-                          </div>
+                          <LuInfo className="w-4 h-4" />
+                          <span>View Details</span>
+                        </motion.button>
+                        <div onClick={(e) => e.stopPropagation()} className={
+                          !window.matchMedia('(hover: hover)').matches && touchedItemId !== media.id 
+                            ? 'pointer-events-none' 
+                            : ''
+                        }>
+                          <WatchlistButton
+                            media={{
+                              id: media.mediaId,
+                              title: media.title,
+                              poster_path: media.posterPath || '',
+                              media_type: media.mediaType
+                            }}
+                            position="bottom"
+                          />
                         </div>
                       </div>
-                    </motion.div>
-                  ))}
+                    </div>
+                  </div>
                 </motion.div>
-              )}
-            </div>
-          </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </motion.div>
+      </LayoutGroup>
+
+      {/* Media Details Modal */}
+      <AnimatePresence>
+        {selectedMediaId && (
+          <MediaDetailsModal
+            mediaId={selectedMediaId}
+            mediaType={selectedMediaType}
+            onClose={() => setSelectedMediaId(null)}
+          />
         )}
       </AnimatePresence>
-
-      {selectedMediaId && (
-        <MediaDetailsModal
-          mediaId={selectedMediaId}
-          mediaType={selectedMediaType}
-          onClose={() => setSelectedMediaId(null)}
-        />
-      )}
     </div>
   );
 } 
