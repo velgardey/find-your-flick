@@ -45,8 +45,8 @@ function Friends() {
       
       try {
         const [friendsData, requestsData] = await Promise.all([
-          fetchWithAuth<Friend[]>(`/api/users/${user.uid}/friends`),
-          fetchWithAuth<FriendRequest[]>(`/api/users/${user.uid}/friend-requests`)
+          fetchWithAuth<Friend[]>('/api/friends'),
+          fetchWithAuth<FriendRequest[]>('/api/friends/requests')
         ]);
 
         setFriends(friendsData);
