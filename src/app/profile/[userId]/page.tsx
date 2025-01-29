@@ -10,6 +10,11 @@ import MediaDetailsModal from '@/components/MediaDetailsModal';
 import UserStats from '@/components/UserStats';
 import TasteMatch from '@/components/TasteMatch';
 import withAuth from '@/components/withAuth';
+import { MagnifyingGlassIcon, FilmIcon, TvIcon, FunnelIcon, CalendarIcon, CheckIcon, StarIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { Menu, Transition } from '@headlessui/react';
+type MenuRenderPropArg = { open: boolean };
+import clsx from 'clsx';
+import { Fragment } from 'react';
 
 interface UserProfile {
   id: string;
@@ -50,15 +55,10 @@ function UserProfile({ params }: PageProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [touchedMovieId, setTouchedMovieId] = useState<string | null>(null);
   const [openStatusDropdown, setOpenStatusDropdown] = useState<string | null>(null);
-  const [sortOption, setSortOption] = useState<string>('newest');
   const [isSortOpen, setIsSortOpen] = useState(false);
-
-  const sortOptions = {
-    newest: 'Newest First',
-    oldest: 'Oldest First',
-    aToZ: 'A to Z',
-    zToA: 'Z to A',
-  };
+  const [showMovies, setShowMovies] = useState(true);
+  const [showShows, setShowShows] = useState(true);
+  const [sortBy, setSortBy] = useState('date');
 
   const watchStatusLabels: Record<string, string> = {
     PLAN_TO_WATCH: 'Plan to Watch',
@@ -149,6 +149,7 @@ function UserProfile({ params }: PageProps) {
       if (!user) return;
 
       try {
+        setIsLoading(true);
         const [profileData, watchlistData] = await Promise.all([
           fetchWithAuth<UserProfile>(`/api/users/${userId}`),
           fetchWithAuth<WatchlistEntry[]>(`/api/users/${userId}/watchlist`)
@@ -210,19 +211,101 @@ function UserProfile({ params }: PageProps) {
       !searchQuery || movie.title.toLowerCase().includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => {
-      switch (sortOption) {
-        case 'newest':
+      switch (sortBy) {
+        case 'date':
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        case 'oldest':
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        case 'aToZ':
+        case 'rating':
+          return (b.rating || 0) - (a.rating || 0);
+        case 'title':
           return a.title.localeCompare(b.title);
-        case 'zToA':
-          return b.title.localeCompare(a.title);
         default:
           return 0;
       }
     });
+
+  const renderMenu = ({ open }: MenuRenderPropArg) => (
+    <>
+      <Menu.Button
+        as={motion.button}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        className={clsx(
+          "px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+          open ? "bg-purple-500/20 text-purple-400" : "bg-white/5 text-gray-400 hover:bg-white/10"
+        )}
+      >
+        <FunnelIcon className="w-4 h-4" />
+      </Menu.Button>
+
+      <Transition
+        as={Fragment}
+        enter="transition ease-out duration-100"
+        enterFrom="transform opacity-0 scale-95"
+        enterTo="transform opacity-100 scale-100"
+        leave="transition ease-in duration-75"
+        leaveFrom="transform opacity-100 scale-100"
+        leaveTo="transform opacity-0 scale-95"
+      >
+        <Menu.Items className="absolute right-0 mt-2 w-48 origin-top-right rounded-lg bg-gray-900/90 backdrop-blur-sm border border-white/10 shadow-lg focus:outline-none z-10">
+          <div className="p-1">
+            <Menu.Item>
+              {({ active }) => (
+                <button
+                  onClick={() => setSortBy('date')}
+                  className={clsx(
+                    "flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-md",
+                    active ? "bg-white/10" : ""
+                  )}
+                >
+                  <CalendarIcon className="w-4 h-4" />
+                  Date Added
+                  {sortBy === 'date' && (
+                    <CheckIcon className="w-4 h-4 ml-auto" />
+                  )}
+                </button>
+              )}
+            </Menu.Item>
+
+            <Menu.Item>
+              {({ active }) => (
+                <button
+                  onClick={() => setSortBy('rating')}
+                  className={clsx(
+                    "flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-md",
+                    active ? "bg-white/10" : ""
+                  )}
+                >
+                  <StarIcon className="w-4 h-4" />
+                  Rating
+                  {sortBy === 'rating' && (
+                    <CheckIcon className="w-4 h-4 ml-auto" />
+                  )}
+                </button>
+              )}
+            </Menu.Item>
+
+            <Menu.Item>
+              {({ active }) => (
+                <button
+                  onClick={() => setSortBy('title')}
+                  className={clsx(
+                    "flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-md",
+                    active ? "bg-white/10" : ""
+                  )}
+                >
+                  <DocumentTextIcon className="w-4 h-4" />
+                  Title
+                  {sortBy === 'title' && (
+                    <CheckIcon className="w-4 h-4 ml-auto" />
+                  )}
+                </button>
+              )}
+            </Menu.Item>
+          </div>
+        </Menu.Items>
+      </Transition>
+    </>
+  );
 
   return (
     <div className="min-h-screen pt-24 px-4 bg-gradient-to-b from-gray-900 to-black">
@@ -280,7 +363,7 @@ function UserProfile({ params }: PageProps) {
               </div>
             </motion.div>
 
-            {/* Update TasteMatch component props */}
+            {/* TasteMatch component */}
             {user && user.uid !== userId && (
               <motion.div
                 layout
@@ -292,17 +375,17 @@ function UserProfile({ params }: PageProps) {
               </motion.div>
             )}
 
-            {/* Update UserStats component props */}
+            {/* UserStats component */}
             <motion.div
               layout
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="mb-12"
             >
-              <UserStats userId={userId} />
+              <UserStats />
             </motion.div>
 
-            {/* Watchlist Section with Enhanced UI */}
+            {/* Watchlist Section */}
             <motion.div
               layout
               initial={{ opacity: 0, y: 20 }}
@@ -318,55 +401,43 @@ function UserProfile({ params }: PageProps) {
                 >
                   Watchlist
                 </motion.h2>
-                <div className="flex gap-4">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setIsSearchOpen(!isSearchOpen)}
-                    className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 backdrop-blur-lg"
-                  >
-                    <span>🔍</span>
-                    <span>Search</span>
-                  </motion.button>
-                  
-                  <div className="relative">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="relative flex-1 max-w-sm">
+                    <input
+                      type="text"
+                      placeholder="Search watchlist..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500/20"
+                    />
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  </div>
+                  <div className="flex items-center gap-1">
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => setIsSortOpen(!isSortOpen)}
-                      className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 backdrop-blur-lg"
-                    >
-                      <span>↕️</span>
-                      <span>Sort</span>
-                    </motion.button>
-
-                    <AnimatePresence>
-                      {isSortOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="absolute right-0 mt-2 w-44 bg-black/90 backdrop-blur-xl rounded-lg shadow-lg border border-white/10 overflow-hidden z-50"
-                        >
-                          {Object.entries(sortOptions).map(([key, label]) => (
-                            <motion.button
-                              key={key}
-                              onClick={() => {
-                                setSortOption(key);
-                                setIsSortOpen(false);
-                              }}
-                              className={`w-full h-11 px-3 text-left hover:bg-white/10 transition-colors flex items-center ${
-                                sortOption === key ? 'text-white bg-white/10' : 'text-gray-300'
-                              }`}
-                              whileHover={{ x: 4 }}
-                              whileTap={{ scale: 0.98 }}
-                            >
-                              <span className="text-sm">{label}</span>
-                            </motion.button>
-                          ))}
-                        </motion.div>
+                      onClick={() => setShowMovies(!showMovies)}
+                      className={clsx(
+                        "px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                        showMovies ? "bg-purple-500/20 text-purple-400" : "bg-white/5 text-gray-400 hover:bg-white/10"
                       )}
-                    </AnimatePresence>
+                    >
+                      <FilmIcon className="w-4 h-4" />
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setShowShows(!showShows)}
+                      className={clsx(
+                        "px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                        showShows ? "bg-purple-500/20 text-purple-400" : "bg-white/5 text-gray-400 hover:bg-white/10"
+                      )}
+                    >
+                      <TvIcon className="w-4 h-4" />
+                    </motion.button>
+                    <Menu as="div" className="relative">
+                      {renderMenu}
+                    </Menu>
                   </div>
                 </div>
               </div>
@@ -411,83 +482,94 @@ function UserProfile({ params }: PageProps) {
                 ))}
               </motion.div>
 
-              <motion.div 
-                layout
-                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
-              >
-                {filteredWatchlist.map((movie, index) => (
-                  <motion.div
-                    key={movie.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="movie-card relative group"
-                  >
-                    <div
-                      onClick={(e) => handleMovieClick(movie.mediaId, movie.mediaType, movie.id, e)}
-                      className="relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer"
+              {filteredWatchlist.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-400 mb-4">No items in watchlist</p>
+                  {selectedStatus !== 'ALL' && (
+                    <p className="text-sm text-gray-500">
+                      Try changing the status filter or search query
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <motion.div 
+                  layout
+                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+                >
+                  {filteredWatchlist.map((movie, index) => (
+                    <motion.div
+                      key={movie.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="movie-card relative group"
                     >
-                      {movie.posterPath ? (
-                        <Image
-                          src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`}
-                          alt={movie.title}
-                          fill
-                          className="object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            target.parentElement?.classList.add('bg-gray-800');
-                          }}
-                        />
-                      ) : (
-                        <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
-                          <span className="text-gray-400 text-sm text-center px-4">No poster available</span>
-                        </div>
-                      )}
-                      <div className={`absolute inset-0 bg-black/60 flex flex-col justify-end p-4 transition-opacity duration-200 ${
-                        touchedMovieId === movie.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                      }`}>
-                        <h4 className="text-white font-medium mb-2">
-                          {movie.title}
-                        </h4>
-                        <div className="status-dropdown relative">
-                          <p className="text-gray-300 text-sm mb-3">
-                            {movie.status.replace(/_/g, ' ')}
-                          </p>
-                          {movie.rating && (
-                            <div className="text-yellow-400 text-sm mb-3">
-                              Rating: {movie.rating}/10
+                      <div
+                        onClick={(e) => handleMovieClick(movie.mediaId, movie.mediaType, movie.id, e)}
+                        className="relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer"
+                      >
+                        {movie.posterPath ? (
+                          <Image
+                            src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`}
+                            alt={movie.title}
+                            fill
+                            className="object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              target.parentElement?.classList.add('bg-gray-800');
+                            }}
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
+                            <span className="text-gray-400 text-sm text-center px-4">No poster available</span>
+                          </div>
+                        )}
+                        <div className={`absolute inset-0 bg-black/60 flex flex-col justify-end p-4 transition-opacity duration-200 ${
+                          touchedMovieId === movie.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                        }`}>
+                          <h4 className="text-white font-medium mb-2">
+                            {movie.title}
+                          </h4>
+                          <div className="status-dropdown relative">
+                            <p className="text-gray-300 text-sm mb-3">
+                              {movie.status.replace(/_/g, ' ')}
+                            </p>
+                            {movie.rating && (
+                              <div className="text-yellow-400 text-sm mb-3">
+                                Rating: {movie.rating}/10
+                              </div>
+                            )}
+                            <div onClick={(e) => e.stopPropagation()} className={`flex justify-center items-center mt-2 ${
+                              !window.matchMedia('(hover: hover)').matches && touchedMovieId !== movie.id 
+                                ? 'pointer-events-none' 
+                                : ''
+                            }`}>
+                              <WatchlistButton
+                                media={{
+                                  id: movie.mediaId,
+                                  title: movie.title,
+                                  poster_path: movie.posterPath || '',
+                                  media_type: movie.mediaType
+                                }}
+                                position="bottom"
+                              />
                             </div>
-                          )}
-                          <div onClick={(e) => e.stopPropagation()} className={`flex justify-center items-center mt-2 ${
-                            !window.matchMedia('(hover: hover)').matches && touchedMovieId !== movie.id 
-                              ? 'pointer-events-none' 
-                              : ''
-                          }`}>
-                            <WatchlistButton
-                              media={{
-                                id: movie.mediaId,
-                                title: movie.title,
-                                poster_path: movie.posterPath || '',
-                                media_type: movie.mediaType
-                              }}
-                              position="bottom"
-                            />
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </motion.div>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
             </motion.div>
           </LayoutGroup>
         ) : null}
       </div>
 
-      {/* Media Details Modal with Enhanced Animation */}
+      {/* Media Details Modal */}
       <AnimatePresence>
         {selectedMediaId && (
           <MediaDetailsModal

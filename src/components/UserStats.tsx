@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useWatchlist } from '@/contexts/WatchlistContext';
 import { LuChevronDown, LuClock, LuTrendingUp, LuActivity, LuStar, LuFilm, LuTv } from 'react-icons/lu';
 import Image from 'next/image';
+import { fetchWithAuth } from '@/lib/api';
 
 // Create motion components
 // const MotionImage = motion.create(Image);
@@ -48,51 +49,29 @@ interface MediaDetails {
 }
 
 interface UserStats {
-  totalWatched: {
-    movies: number;
-    shows: number;
-  };
-  totalWatchtime: {
-    movies: number;
-    shows: number;
-  };
-  averageRating: {
-    movies: number;
-    shows: number;
-  };
-  topGenres: {
-    movies: Genre[];
-    shows: Genre[];
-  };
+  totalMovies: number;
+  totalShows: number;
+  totalWatched: number;
+  totalWatching: number;
+  totalPlanToWatch: number;
+  totalOnHold: number;
+  totalDropped: number;
+  averageRating: number;
+  totalRated: number;
+  totalWithNotes: number;
+  totalWatchtime: number;
+  topGenres: Genre[];
   topDirectors: Director[];
   topShowCreators: Director[];
-  watchingStreak: number;
-  favoriteDecade: {
-    movies: { decade: string; count: number };
-    shows: { decade: string; count: number };
-  };
-  watchTimeByMonth: {
-    movies: { month: string; minutes: number }[];
-    shows: { month: string; minutes: number }[];
-  };
-  completionRate: {
-    movies: number;
-    shows: number;
-  };
+  completionRate: number;
+  watchTimeByMonth: Array<{ month: string; minutes: number }>;
   averageEpisodesPerShow: number;
   totalEpisodesWatched: number;
-  longestShow: {
-    title: string;
-    episodes: number;
-  };
+  longestShow: { title: string; episodes: number };
   longestBinge: number;
   mostInOneDay: number;
   averageSession: number;
   decadeCounts: Record<string, number>;
-}
-
-interface Props {
-  userId: string;
 }
 
 type MediaType = 'movie' | 'tv';
@@ -141,51 +120,88 @@ function StatCard({
   );
 }
 
-export default function UserStats({ userId }: Props) {
+interface UserStatsProps {
+  userId?: string;
+}
+
+export default function UserStats({ userId }: UserStatsProps) {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { watchlist } = useWatchlist();
   const [selectedMediaType, setSelectedMediaType] = useState<MediaType>('movie');
   const [error, setError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [otherUserWatchlist, setOtherUserWatchlist] = useState<WatchlistEntry[] | null>(null);
+
+  // Fetch other user's watchlist if userId is provided
+  useEffect(() => {
+    const fetchOtherUserWatchlist = async () => {
+      if (!userId) return;
+      
+      try {
+        const response = await fetchWithAuth(`/api/users/${userId}/watchlist`);
+        if (Array.isArray(response)) {
+          setOtherUserWatchlist(response);
+        }
+      } catch (error) {
+        console.error('Error fetching user watchlist:', error);
+        setError('Failed to load user stats');
+      }
+    };
+
+    if (userId) {
+      fetchOtherUserWatchlist();
+    }
+  }, [userId]);
 
   useEffect(() => {
     const calculateStats = async () => {
+      // Use the appropriate watchlist based on whether we're viewing another user's profile
+      const targetWatchlist = userId ? otherUserWatchlist : watchlist;
+      
+      if (!targetWatchlist) {
+        setIsLoading(false);
+        setStats(null);
+        return;
+      }
+
       try {
         setIsLoading(true);
         setError(null);
         
         // Filter watched entries by media type
-        const watchedEntries = watchlist.filter((entry) => 
+        const watchedEntries = targetWatchlist.filter((entry) => 
           entry.status === 'WATCHED' && entry.mediaType === selectedMediaType
         ) as WatchlistEntry[];
 
         if (watchedEntries.length === 0) {
-          setStats({
-            totalWatched: { movies: 0, shows: 0 },
-            totalWatchtime: { movies: 0, shows: 0 },
-            averageRating: { movies: 0, shows: 0 },
-            topGenres: { movies: [], shows: [] },
-            topDirectors: [],
-            topShowCreators: [],
-            watchingStreak: 0,
-            favoriteDecade: {
-              movies: { decade: '', count: 0 },
-              shows: { decade: '', count: 0 }
-            },
-            watchTimeByMonth: {
-              movies: [],
-              shows: []
-            },
-            completionRate: { movies: 0, shows: 0 },
-            averageEpisodesPerShow: 0,
-            totalEpisodesWatched: 0,
-            longestShow: { title: '', episodes: 0 },
-            longestBinge: 0,
-            mostInOneDay: 0,
-            averageSession: 0,
-            decadeCounts: {}
-          });
+          setStats(prevStats => ({
+            ...(prevStats || {
+              totalMovies: 0,
+              totalShows: 0,
+              totalWatched: 0,
+              totalWatching: 0,
+              totalPlanToWatch: 0,
+              totalOnHold: 0,
+              totalDropped: 0,
+              averageRating: 0,
+              totalRated: 0,
+              totalWithNotes: 0,
+              totalWatchtime: 0,
+              topGenres: [],
+              topDirectors: [],
+              topShowCreators: [],
+              completionRate: 0,
+              watchTimeByMonth: [],
+              averageEpisodesPerShow: 0,
+              totalEpisodesWatched: 0,
+              longestShow: { title: '', episodes: 0 },
+              longestBinge: 0,
+              mostInOneDay: 0,
+              averageSession: 0,
+              decadeCounts: {}
+            })
+          }));
           setIsLoading(false);
           return;
         }
@@ -221,22 +237,22 @@ export default function UserStats({ userId }: Props) {
         if (validMediaDetails.length === 0) {
           setStats(prevStats => ({
             ...(prevStats || {
-              totalWatched: { movies: 0, shows: 0 },
-              totalWatchtime: { movies: 0, shows: 0 },
-              averageRating: { movies: 0, shows: 0 },
-              topGenres: { movies: [], shows: [] },
+              totalMovies: 0,
+              totalShows: 0,
+              totalWatched: 0,
+              totalWatching: 0,
+              totalPlanToWatch: 0,
+              totalOnHold: 0,
+              totalDropped: 0,
+              averageRating: 0,
+              totalRated: 0,
+              totalWithNotes: 0,
+              totalWatchtime: 0,
+              topGenres: [],
               topDirectors: [],
               topShowCreators: [],
-              watchingStreak: 0,
-              favoriteDecade: {
-                movies: { decade: '', count: 0 },
-                shows: { decade: '', count: 0 }
-              },
-              watchTimeByMonth: {
-                movies: [],
-                shows: []
-              },
-              completionRate: { movies: 0, shows: 0 },
+              completionRate: 0,
+              watchTimeByMonth: [],
               averageEpisodesPerShow: 0,
               totalEpisodesWatched: 0,
               longestShow: { title: '', episodes: 0 },
@@ -407,29 +423,29 @@ export default function UserStats({ userId }: Props) {
         averageSession = totalDays > 0 ? totalRuntime / totalDays : 0;
 
         // Calculate completion rate
-        const totalEntries = watchlist.filter(entry => entry.mediaType === selectedMediaType).length;
+        const totalEntries = targetWatchlist.filter(entry => entry.mediaType === selectedMediaType).length;
         const completionRate = totalEntries > 0 ? (watchedEntries.length / totalEntries) * 100 : 0;
 
         // Update stats based on media type
         setStats(prevStats => {
           const newStats = {
             ...(prevStats || {
-              totalWatched: { movies: 0, shows: 0 },
-              totalWatchtime: { movies: 0, shows: 0 },
-              averageRating: { movies: 0, shows: 0 },
-              topGenres: { movies: [], shows: [] },
+              totalMovies: 0,
+              totalShows: 0,
+              totalWatched: 0,
+              totalWatching: 0,
+              totalPlanToWatch: 0,
+              totalOnHold: 0,
+              totalDropped: 0,
+              averageRating: 0,
+              totalRated: 0,
+              totalWithNotes: 0,
+              totalWatchtime: 0,
+              topGenres: [],
               topDirectors: [],
               topShowCreators: [],
-              watchingStreak: 0,
-              favoriteDecade: {
-                movies: { decade: '', count: 0 },
-                shows: { decade: '', count: 0 }
-              },
-              watchTimeByMonth: {
-                movies: [],
-                shows: []
-              },
-              completionRate: { movies: 0, shows: 0 },
+              completionRate: 0,
+              watchTimeByMonth: [],
               averageEpisodesPerShow: 0,
               totalEpisodesWatched: 0,
               longestShow: { title: '', episodes: 0 },
@@ -441,30 +457,30 @@ export default function UserStats({ userId }: Props) {
           };
           
           if (selectedMediaType === 'movie') {
-            newStats.totalWatched.movies = watchedEntries.length;
-            newStats.totalWatchtime.movies = totalRuntime;
-            newStats.averageRating.movies = ratingCount > 0 ? totalRating / ratingCount : 0;
-            newStats.topGenres.movies = Object.values(genreCounts)
+            newStats.totalMovies = watchedEntries.length;
+            newStats.totalWatchtime = totalRuntime;
+            newStats.averageRating = ratingCount > 0 ? totalRating / ratingCount : 0;
+            newStats.topGenres = Object.values(genreCounts)
               .sort((a, b) => b.count - a.count)
               .slice(0, 5);
             newStats.topDirectors = Object.values(creatorCounts)
               .sort((a, b) => b.count - a.count)
               .slice(0, 3);
-            newStats.completionRate.movies = completionRate;
-            newStats.watchTimeByMonth.movies = Object.entries(watchTimeByMonth)
+            newStats.completionRate = completionRate;
+            newStats.watchTimeByMonth = Object.entries(watchTimeByMonth)
               .map(([month, minutes]) => ({ month, minutes }));
           } else {
-            newStats.totalWatched.shows = watchedEntries.length;
-            newStats.totalWatchtime.shows = totalRuntime;
-            newStats.averageRating.shows = ratingCount > 0 ? totalRating / ratingCount : 0;
-            newStats.topGenres.shows = Object.values(genreCounts)
+            newStats.totalShows = watchedEntries.length;
+            newStats.totalWatchtime = totalRuntime;
+            newStats.averageRating = ratingCount > 0 ? totalRating / ratingCount : 0;
+            newStats.topGenres = Object.values(genreCounts)
               .sort((a, b) => b.count - a.count)
               .slice(0, 5);
             newStats.topShowCreators = Object.values(creatorCounts)
               .sort((a, b) => b.count - a.count)
               .slice(0, 3);
-            newStats.completionRate.shows = completionRate;
-            newStats.watchTimeByMonth.shows = Object.entries(watchTimeByMonth)
+            newStats.completionRate = completionRate;
+            newStats.watchTimeByMonth = Object.entries(watchTimeByMonth)
               .map(([month, minutes]) => ({ month, minutes }));
             newStats.averageEpisodesPerShow = totalEpisodes / watchedEntries.length;
             newStats.totalEpisodesWatched = totalEpisodes;
@@ -485,38 +501,8 @@ export default function UserStats({ userId }: Props) {
       }
     };
 
-    if (watchlist.length > 0) {
-      calculateStats();
-    } else {
-      // Set empty stats and stop loading if watchlist is empty
-      setStats({
-        totalWatched: { movies: 0, shows: 0 },
-        totalWatchtime: { movies: 0, shows: 0 },
-        averageRating: { movies: 0, shows: 0 },
-        topGenres: { movies: [], shows: [] },
-        topDirectors: [],
-        topShowCreators: [],
-        watchingStreak: 0,
-        favoriteDecade: {
-          movies: { decade: '', count: 0 },
-          shows: { decade: '', count: 0 }
-        },
-        watchTimeByMonth: {
-          movies: [],
-          shows: []
-        },
-        completionRate: { movies: 0, shows: 0 },
-        averageEpisodesPerShow: 0,
-        totalEpisodesWatched: 0,
-        longestShow: { title: '', episodes: 0 },
-        longestBinge: 0,
-        mostInOneDay: 0,
-        averageSession: 0,
-        decadeCounts: {}
-      });
-      setIsLoading(false);
-    }
-  }, [userId, watchlist, selectedMediaType]);
+    calculateStats();
+  }, [watchlist, otherUserWatchlist, selectedMediaType, userId]);
 
   const formatTime = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
@@ -540,19 +526,19 @@ export default function UserStats({ userId }: Props) {
   if (!stats) return null;
 
   const currentStats = selectedMediaType === 'movie' ? {
-    totalWatched: stats.totalWatched.movies,
-    totalWatchtime: stats.totalWatchtime.movies,
-    averageRating: stats.averageRating.movies,
-    completionRate: stats.completionRate.movies,
-    topGenres: stats.topGenres.movies,
-    watchTimeByMonth: stats.watchTimeByMonth.movies
+    totalWatched: stats.totalMovies,
+    totalWatchtime: stats.totalWatchtime,
+    averageRating: stats.averageRating,
+    completionRate: stats.completionRate,
+    topGenres: stats.topGenres,
+    watchTimeByMonth: stats.watchTimeByMonth
   } : {
-    totalWatched: stats.totalWatched.shows,
-    totalWatchtime: stats.totalWatchtime.shows,
-    averageRating: stats.averageRating.shows,
-    completionRate: stats.completionRate.shows,
-    topGenres: stats.topGenres.shows,
-    watchTimeByMonth: stats.watchTimeByMonth.shows
+    totalWatched: stats.totalShows,
+    totalWatchtime: stats.totalWatchtime,
+    averageRating: stats.averageRating,
+    completionRate: stats.completionRate,
+    topGenres: stats.topGenres,
+    watchTimeByMonth: stats.watchTimeByMonth
   };
 
   // Add empty state when no content is watched
@@ -583,23 +569,12 @@ export default function UserStats({ userId }: Props) {
         
         <div className="space-y-3">
           <h3 className="text-2xl font-bold">
-            No {selectedMediaType === 'movie' ? 'Movies' : 'TV Shows'} Yet
+            No {selectedMediaType === 'movie' ? 'Movies' : 'TV Shows'} Watched Yet
           </h3>
           <p className="text-gray-400 max-w-md">
-            Start building your collection by adding some {selectedMediaType === 'movie' ? 'movies' : 'TV shows'} to your watchlist.
-            Your watching stats will appear here!
+            Your watching stats will appear here once you&apos;ve watched some {selectedMediaType === 'movie' ? 'movies' : 'TV shows'}.
           </p>
         </div>
-
-        <motion.a
-          href="/"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium shadow-lg hover:shadow-xl transition-shadow"
-        >
-          <LuFilm className="w-5 h-5" />
-          <span>Discover {selectedMediaType === 'movie' ? 'Movies' : 'TV Shows'}</span>
-        </motion.a>
       </motion.div>
     );
   }

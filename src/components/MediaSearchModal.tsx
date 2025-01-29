@@ -109,27 +109,18 @@ export default function MediaSearchModal({ isOpen, onClose, onSelectMedia, initi
           className="w-full max-h-[85vh] sm:max-w-2xl bg-gradient-to-br from-white/[0.15] to-white/[0.05] backdrop-blur-2xl rounded-2xl border border-white/20 shadow-2xl flex flex-col"
         >
           {/* Header */}
-          <div className="flex justify-between items-center p-4 sticky top-0 z-[150] bg-inherit backdrop-blur-xl rounded-t-2xl border-b border-white/10">
-            <h2 className="text-xl sm:text-2xl font-bold text-white">Search {mediaType === 'movie' ? 'Movies' : 'TV Shows'}</h2>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 bg-black/20 rounded-lg p-1">
-                <button
-                  onClick={() => setMediaType('movie')}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    mediaType === 'movie' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  Movies
-                </button>
-                <button
-                  onClick={() => setMediaType('tv')}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    mediaType === 'tv' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  TV Shows
-                </button>
-              </div>
+          <div className="flex flex-col gap-6 p-6 sticky top-0 z-[150] bg-inherit backdrop-blur-xl rounded-t-2xl border-b border-white/10">
+            <div className="flex items-center justify-between">
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex flex-col gap-1"
+              >
+                <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
+                  Discover
+                </h2>
+                <p className="text-sm text-gray-400">Find your next favorite {mediaType === 'movie' ? 'movie' : 'TV show'}</p>
+              </motion.div>
               <motion.button 
                 onClick={onClose}
                 whileHover={{ scale: 1.1 }}
@@ -139,6 +130,56 @@ export default function MediaSearchModal({ isOpen, onClose, onSelectMedia, initi
                 <svg className="w-6 h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
+              </motion.button>
+            </div>
+
+            <div className="relative flex items-center gap-2 bg-gradient-to-r from-white/[0.08] to-white/[0.04] backdrop-blur-xl rounded-xl p-1.5 border border-white/10">
+              <motion.div
+                className="absolute rounded-lg bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-white/10 shadow-xl backdrop-blur-sm"
+                layoutId="tab-background"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                style={{
+                  width: "calc(50% - 4px)",
+                  top: "4px",
+                  bottom: "4px",
+                  left: mediaType === 'movie' ? '4px' : 'calc(50% + 2px)',
+                }}
+              />
+              <motion.button
+                onClick={() => setMediaType('movie')}
+                className={`relative flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  mediaType === 'movie' ? 'text-white' : 'text-gray-400 hover:text-white'
+                }`}
+                whileHover={{ scale: mediaType === 'movie' ? 1 : 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <motion.span
+                  animate={{ opacity: mediaType === 'movie' ? 1 : 0.7 }}
+                  className="relative z-10 flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                  </svg>
+                  <span className="font-medium">Movies</span>
+                </motion.span>
+              </motion.button>
+              <motion.button
+                onClick={() => setMediaType('tv')}
+                className={`relative flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  mediaType === 'tv' ? 'text-white' : 'text-gray-400 hover:text-white'
+                }`}
+                whileHover={{ scale: mediaType === 'tv' ? 1 : 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <motion.span
+                  animate={{ opacity: mediaType === 'tv' ? 1 : 0.7 }}
+                  className="relative z-10 flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  <span className="font-medium">TV Shows</span>
+                </motion.span>
               </motion.button>
             </div>
           </div>

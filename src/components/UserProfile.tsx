@@ -6,11 +6,12 @@ import { WatchStatus } from '@/lib/prismaTypes';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
-import { LuSearch, LuInfo } from 'react-icons/lu';
+import { LuSearch, LuInfo, LuFilm } from 'react-icons/lu';
 import MediaDetailsModal from '@/components/MediaDetailsModal';
 import { fetchWithRetry } from '@/lib/retryUtils';
 import WatchlistButton from './WatchlistButton';
 import UserStats from './UserStats';
+import Link from 'next/link';
 
 const watchStatusLabels: Record<WatchStatus, string> = {
   PLAN_TO_WATCH: 'Plan to Watch',
@@ -42,6 +43,8 @@ export default function UserProfile() {
     oldest: 'Oldest First',
     aToZ: 'A to Z',
     zToA: 'Z to A',
+    movies: 'Movies Only',
+    tvShows: 'TV Shows Only',
   };
 
   const container = {
@@ -138,6 +141,11 @@ export default function UserProfile() {
     .filter(entry =>
       !searchQuery || entry.title.toLowerCase().includes(searchQuery.toLowerCase())
     )
+    .filter(entry => {
+      if (sortOption === 'movies') return entry.mediaType === 'movie';
+      if (sortOption === 'tvShows') return entry.mediaType === 'tv';
+      return true;
+    })
     .sort((a, b) => {
       switch (sortOption) {
         case 'newest':
@@ -217,6 +225,63 @@ export default function UserProfile() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isSortOpen]);
+
+  // Add the sort dropdown button and menu
+  const renderSortDropdown = () => (
+    <div className="relative sort-dropdown">
+      <motion.button
+        onClick={() => setIsSortOpen(!isSortOpen)}
+        className="h-10 px-3 bg-black/80 backdrop-blur-xl rounded-lg border border-white/10 hover:border-white/20 text-white flex items-center gap-2 transition-all active:scale-95 touch-manipulation"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
+          />
+        </svg>
+        <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px]">
+          {sortOptions[sortOption as keyof typeof sortOptions]}
+        </span>
+      </motion.button>
+
+      <AnimatePresence>
+        {isSortOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute right-0 mt-2 w-44 bg-black/90 backdrop-blur-xl rounded-lg shadow-lg border border-white/10 overflow-hidden z-50"
+          >
+            {Object.entries(sortOptions).map(([key, label]) => (
+              <motion.button
+                key={key}
+                onClick={() => {
+                  setSortOption(key);
+                  setIsSortOpen(false);
+                }}
+                className={`w-full h-11 px-3 text-left hover:bg-white/10 transition-colors flex items-center ${
+                  sortOption === key ? 'text-white bg-white/10' : 'text-gray-300'
+                }`}
+                whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <span className="text-sm">{label}</span>
+              </motion.button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 
   if (!user) return null;
 
@@ -327,7 +392,7 @@ export default function UserProfile() {
           className="relative"
         >
           <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-blue-500/5 rounded-2xl" />
-          <UserStats userId={user.uid} />
+          <UserStats />
         </motion.div>
 
         {/* Watchlist Section */}
@@ -371,59 +436,7 @@ export default function UserProfile() {
                 </AnimatePresence>
               </div>
 
-              <div className="relative sort-dropdown">
-                <motion.button
-                  onClick={() => setIsSortOpen(!isSortOpen)}
-                  className="h-10 px-3 bg-black/80 backdrop-blur-xl rounded-lg border border-white/10 hover:border-white/20 text-white flex items-center gap-2 transition-all active:scale-95 touch-manipulation"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
-                    />
-                  </svg>
-                  <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px]">
-                    {sortOptions[sortOption as keyof typeof sortOptions]}
-                  </span>
-                </motion.button>
-
-                <AnimatePresence>
-                  {isSortOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute right-0 mt-2 w-44 bg-black/90 backdrop-blur-xl rounded-lg shadow-lg border border-white/10 overflow-hidden z-50"
-                    >
-                      {Object.entries(sortOptions).map(([key, label]) => (
-                        <motion.button
-                          key={key}
-                          onClick={() => {
-                            setSortOption(key);
-                            setIsSortOpen(false);
-                          }}
-                          className={`w-full h-11 px-3 text-left hover:bg-white/10 transition-colors flex items-center ${
-                            sortOption === key ? 'text-white bg-white/10' : 'text-gray-300'
-                          }`}
-                          whileHover={{ x: 4 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          <span className="text-sm">{label}</span>
-                        </motion.button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              {renderSortDropdown()}
             </div>
 
             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40">
@@ -466,17 +479,33 @@ export default function UserProfile() {
               />
             </div>
           ) : searchFilteredWatchlist.length === 0 ? (
-            <motion.p 
+            <motion.div 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-center text-gray-400 py-8"
+              className="flex flex-col items-center justify-center text-center py-8 space-y-6"
             >
-              {searchQuery 
-                ? 'No items found matching your search.'
-                : selectedStatus === 'ALL' 
-                  ? 'No items in your watchlist yet.'
-                  : `No items in ${watchStatusLabels[selectedStatus as WatchStatus].toLowerCase()}.`}
-            </motion.p>
+              {searchQuery ? (
+                <p className="text-gray-400">No items found matching your search.</p>
+              ) : selectedStatus === 'ALL' ? (
+                <>
+                  <p className="text-gray-400">No items in your watchlist yet.</p>
+                  <Link href="/" passHref>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium shadow-lg hover:shadow-xl transition-shadow"
+                    >
+                      <LuFilm className="w-5 h-5" />
+                      <span>Discover Movies</span>
+                    </motion.button>
+                  </Link>
+                </>
+              ) : (
+                <p className="text-gray-400">
+                  No items in {watchStatusLabels[selectedStatus as WatchStatus].toLowerCase()}.
+                </p>
+              )}
+            </motion.div>
           ) : (
             <motion.div 
               variants={container}
@@ -498,7 +527,7 @@ export default function UserProfile() {
                         fill
                         className="object-cover transition-transform duration-300 group-hover:scale-105"
                         placeholder="blur"
-                        blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                        blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0XFyAeIB4gHh4gIB4dHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.style.display = 'none';
@@ -517,7 +546,7 @@ export default function UserProfile() {
                       }`}
                     >
                       <p className="text-sm font-medium text-center text-white mb-4">{media.title}</p>
-                      <div className="w-full max-w-[200px] space-y-2">
+                      <div className="w-full max-w-[200px] flex flex-col items-center space-y-2">
                         <motion.button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -535,11 +564,14 @@ export default function UserProfile() {
                           <LuInfo className="w-4 h-4" />
                           <span>View Details</span>
                         </motion.button>
-                        <div onClick={(e) => e.stopPropagation()} className={
-                          !window.matchMedia('(hover: hover)').matches && touchedItemId !== media.id 
-                            ? 'pointer-events-none' 
-                            : ''
-                        }>
+                        <div 
+                          onClick={(e) => e.stopPropagation()} 
+                          className={`w-full flex justify-center ${
+                            !window.matchMedia('(hover: hover)').matches && touchedItemId !== media.id 
+                              ? 'pointer-events-none' 
+                              : ''
+                          }`}
+                        >
                           <WatchlistButton
                             media={{
                               id: media.mediaId,
