@@ -68,6 +68,7 @@ export default function WatchlistButton({ media, position = 'bottom' }: Watchlis
         } else {
           await addToWatchlist(media, status)
         }
+        setIsDropdownOpen(false)
         setIsRatingModalOpen(true)
       } else {
         if (isInList && watchlistEntry) {
@@ -79,20 +80,23 @@ export default function WatchlistButton({ media, position = 'bottom' }: Watchlis
         } else {
           await addToWatchlist(media, status)
         }
+        setIsDropdownOpen(false)
       }
     } catch (error) {
       console.error('Error updating watchlist:', error)
     }
-    setIsDropdownOpen(false)
   }
 
   const handleRatingSubmit = async (rating: number) => {
-    if (!watchlistEntry) return
+    if (!watchlistEntry) return;
 
     try {
-      await updateWatchlistEntry(watchlistEntry.id, { rating })
+      await updateWatchlistEntry(watchlistEntry.id, { rating });
+      // Only close the modal if the rating update was successful
+      setIsRatingModalOpen(false);
     } catch (error) {
-      console.error('Error updating rating:', error)
+      console.error('Error updating rating:', error);
+      // Keep the modal open if there was an error
     }
   }
 
