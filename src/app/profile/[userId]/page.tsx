@@ -230,7 +230,7 @@ function UserProfile({ params }: PageProps) {
     });
 
   const SearchBar = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-[1fr,auto] gap-4 items-start mb-6">
+    <div className="flex flex-col sm:flex-row gap-4 items-start">
       <div className="relative w-full">
         <div className={clsx(
           "flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200",
@@ -262,15 +262,16 @@ function UserProfile({ params }: PageProps) {
           )}
         </div>
       </div>
-      <div className="relative sort-dropdown">
+      <div className="relative sort-dropdown shrink-0">
         <motion.button
           onClick={() => setIsSortOpen(!isSortOpen)}
           className={clsx(
-            "h-12 px-4 rounded-xl text-sm font-medium w-full sm:w-auto",
+            "h-12 px-4 rounded-xl text-sm font-medium",
             "bg-black/40 hover:bg-black/50",
             "border border-white/10 hover:border-white/20",
-            "text-white flex items-center justify-between sm:justify-start gap-3 transition-all",
-            "active:scale-95 touch-manipulation shadow-lg backdrop-blur-sm"
+            "text-white flex items-center gap-3 transition-all",
+            "active:scale-95 touch-manipulation shadow-lg backdrop-blur-sm",
+            "w-full sm:w-auto min-w-[140px]"
           )}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
