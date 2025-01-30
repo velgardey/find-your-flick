@@ -46,7 +46,7 @@ function UserProfile({ params }: PageProps) {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const [selectedMediaId, setSelectedMediaId] = useState<number | null>(null);
-  const [selectedMediaType, setSelectedMediaType] = useState<'movie' | 'tv'>('movie');
+  const [selectedMediaType, setSelectedMediaType] = useState<'movie' | 'tv' | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -82,8 +82,12 @@ function UserProfile({ params }: PageProps) {
         return;
       }
     }
-    setSelectedMediaId(mediaId);
+    console.log('Setting media type:', mediaType);
     setSelectedMediaType(mediaType);
+    setTimeout(() => {
+      console.log('Setting media ID:', mediaId);
+      setSelectedMediaId(mediaId);
+    }, 0);
   };
 
   useEffect(() => {
@@ -174,6 +178,10 @@ function UserProfile({ params }: PageProps) {
 
     fetchProfile();
   }, [userId, user]);
+
+  useEffect(() => {
+    console.log('State changed - mediaId:', selectedMediaId, 'mediaType:', selectedMediaType);
+  }, [selectedMediaId, selectedMediaType]);
 
   if (!user) {
     return (
@@ -589,11 +597,15 @@ function UserProfile({ params }: PageProps) {
 
       {/* Media Details Modal */}
       <AnimatePresence>
-        {selectedMediaId && (
+        {selectedMediaId && selectedMediaType && (
           <MediaDetailsModal
             mediaId={selectedMediaId}
             mediaType={selectedMediaType}
-            onClose={() => setSelectedMediaId(null)}
+            onClose={() => {
+              console.log('Closing modal, resetting states');
+              setSelectedMediaId(null);
+              setSelectedMediaType(null);
+            }}
           />
         )}
       </AnimatePresence>

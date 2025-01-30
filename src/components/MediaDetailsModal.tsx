@@ -95,7 +95,7 @@ const STREAMING_URLS: { [key: string]: (title: string, mediaType: 'movie' | 'tv'
 
 interface MediaDetailsModalProps {
   mediaId: number | null;
-  mediaType: 'movie' | 'tv';
+  mediaType: 'movie' | 'tv' | null;
   onClose: () => void;
   layoutId?: string;
 }
@@ -150,7 +150,9 @@ export default function MediaDetailsModal({ mediaId, mediaType, onClose, layoutI
     const controller = new AbortController();
 
     const fetchMediaData = async () => {
-      if (!mediaId) return;
+      if (!mediaId || !mediaType) {
+        return; // Early return if either mediaId or mediaType is null
+      }
       
       setIsLoading(true);
       setMedia(null);
@@ -163,6 +165,11 @@ export default function MediaDetailsModal({ mediaId, mediaType, onClose, layoutI
           `/api/tmdb?path=/${mediaType}/${mediaId}?language=en-US`,
           { signal: controller.signal }
         );
+        
+        if (!mediaResponse.ok) {
+          throw new Error(`Failed to fetch media details: ${mediaResponse.status}`);
+        }
+        
         const mediaData = await mediaResponse.json();
 
         if (isMounted) {
@@ -178,6 +185,11 @@ export default function MediaDetailsModal({ mediaId, mediaType, onClose, layoutI
           `/api/tmdb?path=/${mediaType}/${mediaId}/videos?language=en-US`,
           { signal: controller.signal }
         );
+        
+        if (!videosResponse.ok) {
+          throw new Error(`Failed to fetch videos: ${videosResponse.status}`);
+        }
+        
         const videosData = await videosResponse.json();
 
         if (isMounted) {
@@ -192,6 +204,11 @@ export default function MediaDetailsModal({ mediaId, mediaType, onClose, layoutI
           `/api/tmdb?path=/${mediaType}/${mediaId}/watch/providers`,
           { signal: controller.signal }
         );
+        
+        if (!streamingResponse.ok) {
+          throw new Error(`Failed to fetch streaming data: ${streamingResponse.status}`);
+        }
+        
         const streamingData = await streamingResponse.json();
 
         if (isMounted) {

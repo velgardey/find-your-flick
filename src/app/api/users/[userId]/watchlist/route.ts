@@ -1,17 +1,20 @@
 import { NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebase-admin';
 import { prisma } from '@/lib/prisma';
+import { WatchStatus } from '@prisma/client';
 
-interface WatchlistEntry {
+// Define the response type that matches what we're actually returning
+type WatchlistResponse = {
   id: string;
   mediaId: number;
+  mediaType: 'movie' | 'tv';
   title: string;
   posterPath: string | null;
-  status: 'PLAN_TO_WATCH' | 'WATCHING' | 'WATCHED' | 'ON_HOLD' | 'DROPPED';
+  status: WatchStatus;
   rating: number | null;
   notes: string | null;
-  createdAt: Date;
-}
+  createdAt: string;
+};
 
 type Props = {
   params: Promise<{
@@ -61,6 +64,7 @@ export async function GET(
         select: {
           id: true,
           mediaId: true,
+          mediaType: true,
           title: true,
           posterPath: true,
           status: true,
@@ -71,8 +75,9 @@ export async function GET(
       });
 
       // Transform dates to ISO strings for JSON serialization
-      const transformedWatchlist = watchlist.map((entry: WatchlistEntry) => ({
+      const transformedWatchlist: WatchlistResponse[] = watchlist.map((entry) => ({
         ...entry,
+        mediaType: entry.mediaType as 'movie' | 'tv',
         createdAt: entry.createdAt.toISOString(),
       }));
 
