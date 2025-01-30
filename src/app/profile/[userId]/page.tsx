@@ -428,44 +428,53 @@ function UserProfile({ params }: PageProps) {
               transition={{ delay: 0.4 }}
               className="relative rounded-2xl bg-white/5 backdrop-blur-lg border border-white/10 p-8"
             >
-              <div className="flex items-center justify-between mb-6">
-                <motion.h2 
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent"
-                >
-                  Watchlist
-                </motion.h2>
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="flex items-center gap-1">
+              <div className="flex flex-col gap-6">
+                <div className="flex items-center justify-between">
+                  <motion.h2 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent"
+                  >
+                    Watchlist
+                  </motion.h2>
+                  <div className="flex items-center gap-2">
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setShowMovies(!showMovies)}
                       className={clsx(
-                        "px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                        showMovies ? "bg-purple-500/20 text-purple-400" : "bg-white/5 text-gray-400 hover:bg-white/10"
+                        "p-3 rounded-xl text-sm font-medium transition-all",
+                        "backdrop-blur-sm shadow-lg",
+                        showMovies 
+                          ? "bg-purple-500/20 text-purple-400 border border-purple-500/30" 
+                          : "bg-black/40 text-gray-400 hover:bg-black/50 border border-white/10",
+                        (!showMovies && !showShows) && "bg-red-500/20 text-red-400 border-red-500/30"
                       )}
+                      title={showMovies ? "Hide Movies" : "Show Movies"}
                     >
-                      <FilmIcon className="w-4 h-4" />
+                      <FilmIcon className="w-5 h-5" />
                     </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setShowShows(!showShows)}
                       className={clsx(
-                        "px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                        showShows ? "bg-purple-500/20 text-purple-400" : "bg-white/5 text-gray-400 hover:bg-white/10"
+                        "p-3 rounded-xl text-sm font-medium transition-all",
+                        "backdrop-blur-sm shadow-lg",
+                        showShows 
+                          ? "bg-purple-500/20 text-purple-400 border border-purple-500/30" 
+                          : "bg-black/40 text-gray-400 hover:bg-black/50 border border-white/10",
+                        (!showMovies && !showShows) && "bg-red-500/20 text-red-400 border-red-500/30"
                       )}
+                      title={showShows ? "Hide TV Shows" : "Show TV Shows"}
                     >
-                      <TvIcon className="w-4 h-4" />
+                      <TvIcon className="w-5 h-5" />
                     </motion.button>
                   </div>
-                  <SearchBar />
                 </div>
-              </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                <SearchBar />
+
                 <motion.div 
                   layout
                   className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 -mx-8 px-8 sm:mx-0 sm:px-0"
