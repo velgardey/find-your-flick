@@ -327,7 +327,7 @@ export default function MediaDetailsModal({ mediaId, mediaType, onClose, layoutI
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
-        className="fixed inset-0 z-[500] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md overflow-hidden"
+        className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md overflow-hidden"
         role="dialog"
       >
         <motion.div
@@ -344,11 +344,9 @@ export default function MediaDetailsModal({ mediaId, mediaType, onClose, layoutI
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="absolute top-4 right-4 z-[200] group"
+            className="absolute top-4 right-4 z-[1100] p-2.5 rounded-lg bg-black/80 hover:bg-black/60 active:bg-black/40 backdrop-blur-sm border border-white/10 transition-all duration-200 touch-manipulation"
           >
-            <div className="relative p-2 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/60 transition-all duration-200 border border-white/10">
-              <LuX className="w-5 h-5 text-white/80 group-hover:text-white transition-colors" />
-            </div>
+            <LuX className="h-6 w-6 text-gray-400 hover:text-white transition-colors" />
           </motion.button>
 
           {/* Full Background Backdrop */}

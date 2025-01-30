@@ -74,7 +74,7 @@ export default function Navbar() {
 
   return (
     <>
-      <div className="fixed top-0 z-50 w-full bg-black/50 backdrop-blur-lg border-b border-gray-800/50">
+      <div className="fixed top-0 z-40 w-full bg-black/50 backdrop-blur-lg border-b border-gray-800/50">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center">
@@ -201,7 +201,7 @@ export default function Navbar() {
       </div>
 
       <Transition.Root show={mobileMenuOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-50 md:hidden" onClose={setMobileMenuOpen}>
+        <Dialog as="div" className="relative z-40 md:hidden" onClose={setMobileMenuOpen}>
           <Transition.Child
             as={Fragment}
             enter="ease-in-out duration-300"
