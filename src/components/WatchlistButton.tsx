@@ -4,10 +4,11 @@ import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWatchlist } from '@/contexts/WatchlistContext'
 import { useRouter } from 'next/navigation'
-import { LuPlus, LuCheck, LuChevronDown, LuTrash2, LuLoader, LuX, LuPlay, LuPause } from 'react-icons/lu'
+import { LuPlus, LuCheck, LuChevronDown, LuTrash2, LuLoader, LuX, LuPlay, LuPause, LuStar } from 'react-icons/lu'
 import { WatchStatus } from '@/lib/prismaTypes'
 import Dropdown from './ui/Dropdown'
 import { motion } from 'framer-motion'
+import RatingModal from './RatingModal'
 
 interface Media {
   id: number;
@@ -43,6 +44,7 @@ export default function WatchlistButton({ media, position = 'bottom' }: Watchlis
     retryFailedOperation
   } = useWatchlist()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isRatingModalOpen, setIsRatingModalOpen] = useState(false)
 
   const watchlistEntry = getWatchlistEntry(media.id)
   const isInList = isInWatchlist(media.id)
@@ -60,15 +62,38 @@ export default function WatchlistButton({ media, position = 'bottom' }: Watchlis
     }
 
     try {
-      if (isInList && watchlistEntry) {
-        await updateWatchlistEntry(watchlistEntry.id, { status })
+      if (status === WatchStatus.WATCHED) {
+        if (isInList && watchlistEntry) {
+          await updateWatchlistEntry(watchlistEntry.id, { status })
+        } else {
+          await addToWatchlist(media, status)
+        }
+        setIsRatingModalOpen(true)
       } else {
-        await addToWatchlist(media, status)
+        if (isInList && watchlistEntry) {
+          if (watchlistEntry.status === WatchStatus.WATCHED) {
+            await updateWatchlistEntry(watchlistEntry.id, { status, rating: null })
+          } else {
+            await updateWatchlistEntry(watchlistEntry.id, { status })
+          }
+        } else {
+          await addToWatchlist(media, status)
+        }
       }
     } catch (error) {
       console.error('Error updating watchlist:', error)
     }
     setIsDropdownOpen(false)
+  }
+
+  const handleRatingSubmit = async (rating: number) => {
+    if (!watchlistEntry) return
+
+    try {
+      await updateWatchlistEntry(watchlistEntry.id, { rating })
+    } catch (error) {
+      console.error('Error updating rating:', error)
+    }
   }
 
   const handleRemove = async () => {
@@ -162,7 +187,15 @@ export default function WatchlistButton({ media, position = 'bottom' }: Watchlis
           ) : hasError ? (
             "Error"
           ) : isInList ? (
-            watchStatusLabels[watchlistEntry!.status]
+            <div className="flex items-center gap-2">
+              <span>{watchStatusLabels[watchlistEntry!.status]}</span>
+              {watchlistEntry!.rating && (
+                <div className="flex items-center gap-0.5 text-yellow-400">
+                  <LuStar className="w-3 h-3 fill-current" />
+                  <span>{watchlistEntry!.rating}</span>
+                </div>
+              )}
+            </div>
           ) : (
             "Add"
           )}
@@ -170,17 +203,17 @@ export default function WatchlistButton({ media, position = 'bottom' }: Watchlis
       </div>
       <div className="flex items-center gap-1.5 flex-shrink-0">
         {hasError && (
-          <motion.button
+          <motion.div
             onClick={(e) => {
               e.stopPropagation()
               retryFailedOperation()
             }}
-            className="text-[10px] bg-red-500/20 hover:bg-red-500/30 text-red-400 px-1.5 py-0.5 rounded-md font-medium backdrop-blur-sm"
+            className="text-[10px] bg-red-500/20 hover:bg-red-500/30 text-red-400 px-1.5 py-0.5 rounded-md font-medium backdrop-blur-sm cursor-pointer"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
             Retry
-          </motion.button>
+          </motion.div>
         )}
         <LuChevronDown 
           className={`w-3 h-3 transition-transform duration-300 ease-spring ${isDropdownOpen ? 'rotate-180' : ''}`} 
@@ -248,6 +281,12 @@ export default function WatchlistButton({ media, position = 'bottom' }: Watchlis
                 )}
               </span>
               <span className="flex-1 truncate">{label}</span>
+              {watchlistEntry?.status === status && watchlistEntry.rating && (
+                <div className="flex items-center gap-0.5 text-yellow-400">
+                  <LuStar className="w-3 h-3 fill-current" />
+                  <span>{watchlistEntry.rating}</span>
+                </div>
+              )}
             </motion.button>
           ))}
           {isInList && (
@@ -270,6 +309,13 @@ export default function WatchlistButton({ media, position = 'bottom' }: Watchlis
           )}
         </motion.div>
       </Dropdown>
+
+      <RatingModal
+        isOpen={isRatingModalOpen}
+        onClose={() => setIsRatingModalOpen(false)}
+        onSubmit={handleRatingSubmit}
+        mediaTitle={media.title}
+      />
     </div>
   )
 } 

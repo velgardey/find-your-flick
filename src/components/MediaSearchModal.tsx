@@ -7,10 +7,10 @@ import MediaDetailsModal from './MediaDetailsModal';
 
 interface Media {
   id: number;
-  title: string;  // movie.title or tvShow.name
+  title: string; 
   poster_path: string;
   media_type: 'movie' | 'tv';
-  name?: string;  // for TV shows
+  name?: string;
 }
 
 interface MediaSearchModalProps {

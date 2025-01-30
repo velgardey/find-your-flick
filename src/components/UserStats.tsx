@@ -361,12 +361,6 @@ export default function UserStats({ userId }: UserStatsProps) {
             watchTimeByMonth[monthKey] += runtime;
           }
 
-          // Process ratings
-          if (entry.rating) {
-            totalRating += entry.rating;
-            ratingCount++;
-          }
-
           // Process binge-watching stats
           if (!bingesByDate[watchDate]) {
             bingesByDate[watchDate] = {
@@ -383,12 +377,19 @@ export default function UserStats({ userId }: UserStatsProps) {
             runtime
           });
 
-          // Process decade counts
-          const decade = new Date(entry.updatedAt).getFullYear().toString().slice(0, 3);
+          // Process decade counts - use the entry's updatedAt date
+          const year = new Date(entry.updatedAt).getFullYear();
+          const decade = Math.floor(year / 10) * 10;
           if (!decadeCounts[decade]) {
             decadeCounts[decade] = 0;
           }
           decadeCounts[decade]++;
+
+          // Process ratings more safely
+          if (entry.rating !== null && entry.rating !== undefined) {
+            totalRating += entry.rating;
+            ratingCount++;
+          }
         });
 
         // Calculate binge stats from the grouped data
@@ -459,7 +460,7 @@ export default function UserStats({ userId }: UserStatsProps) {
           if (selectedMediaType === 'movie') {
             newStats.totalMovies = watchedEntries.length;
             newStats.totalWatchtime = totalRuntime;
-            newStats.averageRating = ratingCount > 0 ? totalRating / ratingCount : 0;
+            newStats.averageRating = ratingCount > 0 ? Math.round((totalRating / ratingCount) * 10) / 10 : 0;
             newStats.topGenres = Object.values(genreCounts)
               .sort((a, b) => b.count - a.count)
               .slice(0, 5);
@@ -469,10 +470,11 @@ export default function UserStats({ userId }: UserStatsProps) {
             newStats.completionRate = completionRate;
             newStats.watchTimeByMonth = Object.entries(watchTimeByMonth)
               .map(([month, minutes]) => ({ month, minutes }));
+            newStats.decadeCounts = decadeCounts;
           } else {
             newStats.totalShows = watchedEntries.length;
             newStats.totalWatchtime = totalRuntime;
-            newStats.averageRating = ratingCount > 0 ? totalRating / ratingCount : 0;
+            newStats.averageRating = ratingCount > 0 ? Math.round((totalRating / ratingCount) * 10) / 10 : 0;
             newStats.topGenres = Object.values(genreCounts)
               .sort((a, b) => b.count - a.count)
               .slice(0, 5);
@@ -482,7 +484,7 @@ export default function UserStats({ userId }: UserStatsProps) {
             newStats.completionRate = completionRate;
             newStats.watchTimeByMonth = Object.entries(watchTimeByMonth)
               .map(([month, minutes]) => ({ month, minutes }));
-            newStats.averageEpisodesPerShow = totalEpisodes / watchedEntries.length;
+            newStats.averageEpisodesPerShow = watchedEntries.length > 0 ? Math.round(totalEpisodes / watchedEntries.length) : 0;
             newStats.totalEpisodesWatched = totalEpisodes;
             newStats.longestShow = longestShow;
             newStats.longestBinge = longestBinge;
@@ -692,7 +694,7 @@ export default function UserStats({ userId }: UserStatsProps) {
               />
             </div>
 
-            {/* Favorite Decades */}
+            {/* Time Machine Section */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -700,32 +702,27 @@ export default function UserStats({ userId }: UserStatsProps) {
             >
               <h3 className="text-xl font-semibold mb-4">Time Machine</h3>
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                {Object.entries(stats.decadeCounts || {})
-                  .map(([decade, count]) => ({
-                    decade: decade + '0',  // Add '0' to complete the decade
-                    count: count
-                  }))
-                  .sort((a, b) => Number(b.decade) - Number(a.decade))
-                  .slice(0, 5)
-                  .map(({decade, count}, index) => (
-                  <motion.div
-                    key={decade}
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="bg-white/5 backdrop-blur-lg rounded-lg p-4 text-center border border-white/10"
-                  >
-                    <div className="text-2xl font-bold">{decade}s</div>
-                    <div className="text-sm text-gray-400 mt-1">
-                      {count} {count === 1 ? 
-                        (selectedMediaType === 'movie' ? 'movie' : 'show') : 
-                        (selectedMediaType === 'movie' ? 'movies' : 'shows')}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-2">
-                      {Math.round((count / currentStats.totalWatched) * 100)}% of library
-                    </div>
-                  </motion.div>
-                ))}
+                {Object.entries(stats.decadeCounts)
+                  .sort((a, b) => Number(b[0]) - Number(a[0]))
+                  .map(([decade, count], index) => (
+                    <motion.div
+                      key={decade}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="bg-white/5 backdrop-blur-lg rounded-lg p-4 text-center border border-white/10"
+                    >
+                      <div className="text-2xl font-bold">{decade}s</div>
+                      <div className="text-sm text-gray-400 mt-1">
+                        {count} {count === 1 ? 
+                          (selectedMediaType === 'movie' ? 'movie' : 'show') : 
+                          (selectedMediaType === 'movie' ? 'movies' : 'shows')}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-2">
+                        {Math.round((count / currentStats.totalWatched) * 100)}% of library
+                      </div>
+                    </motion.div>
+                  ))}
               </div>
             </motion.div>
 

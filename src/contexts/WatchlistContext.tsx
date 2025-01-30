@@ -61,34 +61,62 @@ const WatchlistContext = createContext<WatchlistContextType>({
 })
 
 function isWatchlistEntry(item: unknown): item is WatchlistEntry {
-  if (typeof item !== 'object' || item === null) return false
+  if (!item || typeof item !== 'object') return false
   
   const entry = item as Record<string, unknown>
   
-  return (
+  // Required fields
+  const hasRequiredFields = 
     typeof entry.id === 'string' &&
     typeof entry.mediaId === 'number' &&
     typeof entry.mediaType === 'string' &&
     (entry.mediaType === 'movie' || entry.mediaType === 'tv') &&
     typeof entry.title === 'string' &&
+    typeof entry.status === 'string';
+
+  if (!hasRequiredFields) {
+    console.log('Missing required fields in watchlist entry:', entry);
+    return false;
+  }
+
+  // Optional fields with type checking
+  const hasValidOptionalFields = 
     (entry.posterPath === null || typeof entry.posterPath === 'string') &&
-    typeof entry.status === 'string' &&
     (entry.rating === null || typeof entry.rating === 'number') &&
     (entry.notes === null || typeof entry.notes === 'string') &&
-    typeof entry.createdAt === 'string' &&
-    typeof entry.updatedAt === 'string' &&
-    (entry.currentSeason === undefined || typeof entry.currentSeason === 'number') &&
-    (entry.currentEpisode === undefined || typeof entry.currentEpisode === 'number') &&
-    (entry.totalSeasons === undefined || typeof entry.totalSeasons === 'number') &&
-    (entry.totalEpisodes === undefined || typeof entry.totalEpisodes === 'number') &&
-    (entry.nextAirDate === undefined || typeof entry.nextAirDate === 'string') &&
-    (entry.showStatus === undefined || typeof entry.showStatus === 'string') &&
-    Array.isArray(entry.genres) && entry.genres.every(g => typeof g === 'string')
-  )
+    (entry.createdAt === undefined || typeof entry.createdAt === 'string') &&
+    (entry.updatedAt === undefined || typeof entry.updatedAt === 'string') &&
+    (entry.currentSeason === undefined || entry.currentSeason === null || typeof entry.currentSeason === 'number') &&
+    (entry.currentEpisode === undefined || entry.currentEpisode === null || typeof entry.currentEpisode === 'number') &&
+    (entry.totalSeasons === undefined || entry.totalSeasons === null || typeof entry.totalSeasons === 'number') &&
+    (entry.totalEpisodes === undefined || entry.totalEpisodes === null || typeof entry.totalEpisodes === 'number') &&
+    (entry.nextAirDate === undefined || entry.nextAirDate === null || typeof entry.nextAirDate === 'string') &&
+    (entry.showStatus === undefined || entry.showStatus === null || typeof entry.showStatus === 'string') &&
+    (entry.genres === undefined || (Array.isArray(entry.genres) && entry.genres.every(g => typeof g === 'string')));
+
+  if (!hasValidOptionalFields) {
+    console.log('Invalid optional fields in watchlist entry:', entry);
+    return false;
+  }
+
+  return true;
 }
 
 function isWatchlistArray(data: unknown): data is WatchlistEntry[] {
-  return Array.isArray(data) && data.every(isWatchlistEntry)
+  if (!Array.isArray(data)) {
+    console.log('Expected array but got:', typeof data);
+    return false;
+  }
+  
+  const isValid = data.every((item, index) => {
+    const valid = isWatchlistEntry(item);
+    if (!valid) {
+      console.log(`Invalid entry at index ${index}:`, item);
+    }
+    return valid;
+  });
+
+  return isValid;
 }
 
 interface WatchlistResponse {
@@ -96,16 +124,30 @@ interface WatchlistResponse {
 }
 
 function isWatchlistResponse(data: unknown): data is WatchlistResponse {
-  if (typeof data !== 'object' || data === null) return false
+  if (!data || typeof data !== 'object') {
+    console.log('Response is not an object:', data);
+    return false;
+  }
   
   // Handle direct array response
-  if (isWatchlistArray(data)) {
-    return true
+  if (Array.isArray(data)) {
+    return isWatchlistArray(data);
   }
   
   // Handle response wrapped in data property
-  const response = data as Record<string, unknown>
-  return 'data' in response && isWatchlistArray(response.data)
+  const response = data as Record<string, unknown>;
+  
+  if (!('data' in response)) {
+    console.log('Response missing data property:', response);
+    return false;
+  }
+  
+  if (!Array.isArray(response.data)) {
+    console.log('Response data is not an array:', response.data);
+    return false;
+  }
+  
+  return isWatchlistArray(response.data);
 }
 
 export function WatchlistProvider({ children }: { children: React.ReactNode }) {
@@ -132,7 +174,27 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         ? `/api/watchlist?search=${encodeURIComponent(searchQuery)}`
         : '/api/watchlist'
         
-      const responseData = await fetchWithAuth(url)
+      console.log('Fetching watchlist from:', url)
+      const response = await fetchWithAuth(url)
+      console.log('Raw watchlist response:', response)
+      
+      // Check if response is null or undefined
+      if (!response) {
+        console.error('Watchlist response is null or undefined')
+        setWatchlist([])
+        return
+      }
+
+      // Check if response has the correct structure
+      if (typeof response !== 'object') {
+        console.error('Watchlist response is not an object:', response)
+        setWatchlist([])
+        return
+      }
+
+      // Extract data from response
+      const responseData = 'data' in response ? response.data : response
+      console.log('Extracted watchlist data:', responseData)
       
       // Validate and transform the data
       if (!isWatchlistResponse(responseData)) {
@@ -142,7 +204,9 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       }
       
       // Handle both direct array and wrapped response
-      setWatchlist(Array.isArray(responseData) ? responseData : responseData.data)
+      const watchlistData = Array.isArray(responseData) ? responseData : responseData.data
+      console.log('Final watchlist data:', watchlistData)
+      setWatchlist(watchlistData)
     } catch (error) {
       console.error('Error fetching watchlist:', error)
       setWatchlist([])

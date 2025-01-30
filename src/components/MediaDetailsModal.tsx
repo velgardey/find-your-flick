@@ -344,7 +344,7 @@ export default function MediaDetailsModal({ mediaId, mediaType, onClose, layoutI
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="absolute top-4 right-4 z-50 group"
+            className="absolute top-4 right-4 z-[200] group"
           >
             <div className="relative p-2 rounded-full bg-black/40 backdrop-blur-md hover:bg-black/60 transition-all duration-200 border border-white/10">
               <LuX className="w-5 h-5 text-white/80 group-hover:text-white transition-colors" />

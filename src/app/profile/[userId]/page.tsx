@@ -10,9 +10,8 @@ import MediaDetailsModal from '@/components/MediaDetailsModal';
 import UserStats from '@/components/UserStats';
 import TasteMatch from '@/components/TasteMatch';
 import withAuth from '@/components/withAuth';
-import { MagnifyingGlassIcon, FilmIcon, TvIcon, FunnelIcon, CalendarIcon, CheckIcon, StarIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, FilmIcon, TvIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { Menu, Transition } from '@headlessui/react';
-type MenuRenderPropArg = { open: boolean };
 import clsx from 'clsx';
 import { Fragment } from 'react';
 
@@ -59,6 +58,7 @@ function UserProfile({ params }: PageProps) {
   const [showMovies, setShowMovies] = useState(true);
   const [showShows, setShowShows] = useState(true);
   const [sortBy, setSortBy] = useState('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const watchStatusLabels: Record<string, string> = {
     PLAN_TO_WATCH: 'Plan to Watch',
@@ -206,105 +206,134 @@ function UserProfile({ params }: PageProps) {
   }
 
   const filteredWatchlist = watchlist
-    .filter(movie => selectedStatus === 'ALL' || movie.status === selectedStatus)
     .filter(movie => 
-      !searchQuery || movie.title.toLowerCase().includes(searchQuery.toLowerCase())
+      (selectedStatus === 'ALL' || movie.status === selectedStatus) &&
+      ((!showMovies && movie.mediaType === 'tv') || (!showShows && movie.mediaType === 'movie') || (showMovies && showShows)) &&
+      (!searchQuery || movie.title.toLowerCase().includes(searchQuery.toLowerCase()))
     )
     .sort((a, b) => {
+      let comparison = 0;
       switch (sortBy) {
         case 'date':
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          comparison = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          break;
         case 'rating':
-          return (b.rating || 0) - (a.rating || 0);
+          const ratingA = a.rating ?? -1;
+          const ratingB = b.rating ?? -1;
+          comparison = ratingB - ratingA;
+          break;
         case 'title':
-          return a.title.localeCompare(b.title);
+          comparison = a.title.localeCompare(b.title);
+          break;
         default:
           return 0;
       }
+      return sortOrder === 'asc' ? -comparison : comparison;
     });
 
-  const renderMenu = ({ open }: MenuRenderPropArg) => (
-    <>
-      <Menu.Button
-        as={motion.button}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+  const SearchBar = () => (
+    <div className="relative w-full max-w-md mx-auto mb-6">
+      <div className={clsx(
+        "flex items-center gap-2 px-4 py-3 rounded-xl transition-all duration-200",
+        "bg-white/5 hover:bg-white/10 focus-within:bg-white/10",
+        "border border-white/10 focus-within:border-purple-500/50",
+        "shadow-lg backdrop-blur-sm"
+      )}>
+        <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search your watchlist..."
+          className={clsx(
+            "w-full bg-transparent text-white placeholder-gray-400",
+            "text-base focus:outline-none",
+            "appearance-none touch-manipulation"
+          )}
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="p-1 hover:bg-white/10 rounded-full"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  const SortControls = () => (
+    <div className="flex items-center gap-2 mb-6">
+      <Menu as="div" className="relative">
+        <Menu.Button
+          className={clsx(
+            "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2",
+            "bg-white/5 hover:bg-white/10 text-gray-200",
+            "border border-white/10 focus:outline-none"
+          )}
+        >
+          <span>{sortBy === 'date' ? 'Date Added' : sortBy === 'rating' ? 'Rating' : 'Title'}</span>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </Menu.Button>
+        <Transition
+          as={Fragment}
+          enter="transition ease-out duration-100"
+          enterFrom="transform opacity-0 scale-95"
+          enterTo="transform opacity-100 scale-100"
+          leave="transition ease-in duration-75"
+          leaveFrom="transform opacity-100 scale-100"
+          leaveTo="transform opacity-0 scale-95"
+        >
+          <Menu.Items className="absolute right-0 mt-2 w-48 rounded-lg bg-gray-900/90 backdrop-blur-sm border border-white/10 shadow-lg focus:outline-none z-10">
+            <div className="p-1">
+              {['date', 'rating', 'title'].map((option) => (
+                <Menu.Item key={option}>
+                  {({ active }) => (
+                    <button
+                      onClick={() => setSortBy(option)}
+                      className={clsx(
+                        "flex items-center w-full px-3 py-2 text-sm rounded-md",
+                        active ? "bg-purple-500/20 text-purple-400" : "text-gray-200"
+                      )}
+                    >
+                      {option === 'date' ? 'Date Added' : option === 'rating' ? 'Rating' : 'Title'}
+                      {sortBy === option && <CheckIcon className="w-4 h-4 ml-2" />}
+                    </button>
+                  )}
+                </Menu.Item>
+              ))}
+            </div>
+          </Menu.Items>
+        </Transition>
+      </Menu>
+
+      <button
+        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
         className={clsx(
-          "px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-          open ? "bg-purple-500/20 text-purple-400" : "bg-white/5 text-gray-400 hover:bg-white/10"
+          "p-2 rounded-lg",
+          "bg-white/5 hover:bg-white/10 text-gray-200",
+          "border border-white/10 focus:outline-none"
         )}
       >
-        <FunnelIcon className="w-4 h-4" />
-      </Menu.Button>
-
-      <Transition
-        as={Fragment}
-        enter="transition ease-out duration-100"
-        enterFrom="transform opacity-0 scale-95"
-        enterTo="transform opacity-100 scale-100"
-        leave="transition ease-in duration-75"
-        leaveFrom="transform opacity-100 scale-100"
-        leaveTo="transform opacity-0 scale-95"
-      >
-        <Menu.Items className="absolute right-0 mt-2 w-48 origin-top-right rounded-lg bg-gray-900/90 backdrop-blur-sm border border-white/10 shadow-lg focus:outline-none z-10">
-          <div className="p-1">
-            <Menu.Item>
-              {({ active }) => (
-                <button
-                  onClick={() => setSortBy('date')}
-                  className={clsx(
-                    "flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-md",
-                    active ? "bg-white/10" : ""
-                  )}
-                >
-                  <CalendarIcon className="w-4 h-4" />
-                  Date Added
-                  {sortBy === 'date' && (
-                    <CheckIcon className="w-4 h-4 ml-auto" />
-                  )}
-                </button>
-              )}
-            </Menu.Item>
-
-            <Menu.Item>
-              {({ active }) => (
-                <button
-                  onClick={() => setSortBy('rating')}
-                  className={clsx(
-                    "flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-md",
-                    active ? "bg-white/10" : ""
-                  )}
-                >
-                  <StarIcon className="w-4 h-4" />
-                  Rating
-                  {sortBy === 'rating' && (
-                    <CheckIcon className="w-4 h-4 ml-auto" />
-                  )}
-                </button>
-              )}
-            </Menu.Item>
-
-            <Menu.Item>
-              {({ active }) => (
-                <button
-                  onClick={() => setSortBy('title')}
-                  className={clsx(
-                    "flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-md",
-                    active ? "bg-white/10" : ""
-                  )}
-                >
-                  <DocumentTextIcon className="w-4 h-4" />
-                  Title
-                  {sortBy === 'title' && (
-                    <CheckIcon className="w-4 h-4 ml-auto" />
-                  )}
-                </button>
-              )}
-            </Menu.Item>
-          </div>
-        </Menu.Items>
-      </Transition>
-    </>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className={clsx(
+            "h-4 w-4 transform transition-transform",
+            sortOrder === 'desc' ? 'rotate-180' : ''
+          )}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9M3 12h5" />
+        </svg>
+      </button>
+    </div>
   );
 
   return (
@@ -402,16 +431,6 @@ function UserProfile({ params }: PageProps) {
                   Watchlist
                 </motion.h2>
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="relative flex-1 max-w-sm">
-                    <input
-                      type="text"
-                      placeholder="Search watchlist..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500/20"
-                    />
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  </div>
                   <div className="flex items-center gap-1">
                     <motion.button
                       whileHover={{ scale: 1.05 }}
@@ -435,52 +454,34 @@ function UserProfile({ params }: PageProps) {
                     >
                       <TvIcon className="w-4 h-4" />
                     </motion.button>
-                    <Menu as="div" className="relative">
-                      {renderMenu}
-                    </Menu>
                   </div>
+                  <SearchBar />
                 </div>
               </div>
 
-              <AnimatePresence>
-                {isSearchOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mb-6"
-                  >
-                    <input
-                      type="text"
-                      placeholder="Search your watchlist..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-white/10 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 backdrop-blur-lg"
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <motion.div 
-                layout
-                className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide"
-              >
-                {['ALL', ...Object.keys(watchStatusLabels)].map((status) => (
-                  <motion.button
-                    key={status}
-                    onClick={() => setSelectedStatus(status)}
-                    className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors backdrop-blur-lg ${
-                      selectedStatus === status
-                        ? 'bg-white/20 text-white'
-                        : 'bg-white/10 hover:bg-white/15 text-gray-300'
-                    }`}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    {status === 'ALL' ? 'All' : watchStatusLabels[status]}
-                  </motion.button>
-                ))}
-              </motion.div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                <SortControls />
+                <motion.div 
+                  layout
+                  className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide"
+                >
+                  {['ALL', ...Object.keys(watchStatusLabels)].map((status) => (
+                    <motion.button
+                      key={status}
+                      onClick={() => setSelectedStatus(status)}
+                      className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors backdrop-blur-lg ${
+                        selectedStatus === status
+                          ? 'bg-white/20 text-white'
+                          : 'bg-white/10 hover:bg-white/15 text-gray-300'
+                      }`}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      {status === 'ALL' ? 'All' : watchStatusLabels[status]}
+                    </motion.button>
+                  ))}
+                </motion.div>
+              </div>
 
               {filteredWatchlist.length === 0 ? (
                 <div className="text-center py-12">

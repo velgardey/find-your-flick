@@ -6,12 +6,13 @@ import { WatchStatus } from '@/lib/prismaTypes';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
-import { LuSearch, LuInfo, LuFilm } from 'react-icons/lu';
+import { LuSearch, LuInfo, LuFilm, LuTv } from 'react-icons/lu';
 import MediaDetailsModal from '@/components/MediaDetailsModal';
 import { fetchWithRetry } from '@/lib/retryUtils';
 import WatchlistButton from './WatchlistButton';
 import UserStats from './UserStats';
 import Link from 'next/link';
+import clsx from 'clsx';
 
 const watchStatusLabels: Record<WatchStatus, string> = {
   PLAN_TO_WATCH: 'Plan to Watch',
@@ -37,14 +38,14 @@ export default function UserProfile() {
   const [touchedItemId, setTouchedItemId] = useState<string | null>(null);
   const [sortOption, setSortOption] = useState<string>('newest');
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [showMovies, setShowMovies] = useState(true);
+  const [showShows, setShowShows] = useState(true);
 
   const sortOptions = {
     newest: 'Newest First',
     oldest: 'Oldest First',
     aToZ: 'A to Z',
     zToA: 'Z to A',
-    movies: 'Movies Only',
-    tvShows: 'TV Shows Only',
   };
 
   const container = {
@@ -133,17 +134,19 @@ export default function UserProfile() {
     }
   };
 
-  const filteredWatchlist = selectedStatus === 'ALL'
-    ? watchlist
-    : watchlist.filter(entry => entry.status === selectedStatus);
-
-  const searchFilteredWatchlist = filteredWatchlist
-    .filter(entry =>
-      !searchQuery || entry.title.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+  const filteredWatchlist = watchlist
     .filter(entry => {
-      if (sortOption === 'movies') return entry.mediaType === 'movie';
-      if (sortOption === 'tvShows') return entry.mediaType === 'tv';
+      // First apply media type filter
+      if (!showMovies && !showShows) return false;
+      if (!showMovies && entry.mediaType === 'movie') return false;
+      if (!showShows && entry.mediaType === 'tv') return false;
+
+      // Then apply status filter
+      if (selectedStatus !== 'ALL' && entry.status !== selectedStatus) return false;
+
+      // Finally apply search filter
+      if (searchQuery && !entry.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+
       return true;
     })
     .sort((a, b) => {
@@ -226,17 +229,58 @@ export default function UserProfile() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isSortOpen]);
 
-  // Add the sort dropdown button and menu
-  const renderSortDropdown = () => (
+  // Add new search bar component
+  const SearchBarComponent = () => (
+    <div className="relative w-full">
+      <div className={clsx(
+        "flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200",
+        "bg-black/40 hover:bg-black/50 focus-within:bg-black/50",
+        "border border-white/10 focus-within:border-purple-500/50",
+        "shadow-lg backdrop-blur-sm group"
+      )}>
+        <LuSearch className="w-5 h-5 text-gray-400 group-focus-within:text-purple-400 transition-colors" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search your watchlist..."
+          className={clsx(
+            "w-full bg-transparent text-white placeholder-gray-400",
+            "text-base focus:outline-none",
+            "appearance-none touch-manipulation"
+          )}
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="p-2 hover:bg-white/10 rounded-full transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 hover:text-white" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  // Add new sort controls component
+  const SortControlsComponent = () => (
     <div className="relative sort-dropdown">
       <motion.button
         onClick={() => setIsSortOpen(!isSortOpen)}
-        className="h-10 px-3 bg-black/80 backdrop-blur-xl rounded-lg border border-white/10 hover:border-white/20 text-white flex items-center gap-2 transition-all active:scale-95 touch-manipulation"
+        className={clsx(
+          "h-12 px-4 rounded-xl text-sm font-medium",
+          "bg-black/40 hover:bg-black/50",
+          "border border-white/10 hover:border-white/20",
+          "text-white flex items-center gap-3 transition-all",
+          "active:scale-95 touch-manipulation shadow-lg backdrop-blur-sm"
+        )}
         whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.95 }}
+        whileTap={{ scale: 0.98 }}
       >
         <svg
-          className="w-4 h-4"
+          className="w-5 h-5"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -248,7 +292,7 @@ export default function UserProfile() {
             d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
           />
         </svg>
-        <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px]">
+        <span className="whitespace-nowrap">
           {sortOptions[sortOption as keyof typeof sortOptions]}
         </span>
       </motion.button>
@@ -259,7 +303,7 @@ export default function UserProfile() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="absolute right-0 mt-2 w-44 bg-black/90 backdrop-blur-xl rounded-lg shadow-lg border border-white/10 overflow-hidden z-50"
+            className="absolute right-0 mt-2 w-48 bg-black/90 backdrop-blur-xl rounded-xl shadow-lg border border-white/10 overflow-hidden z-50"
           >
             {Object.entries(sortOptions).map(([key, label]) => (
               <motion.button
@@ -268,13 +312,25 @@ export default function UserProfile() {
                   setSortOption(key);
                   setIsSortOpen(false);
                 }}
-                className={`w-full h-11 px-3 text-left hover:bg-white/10 transition-colors flex items-center ${
-                  sortOption === key ? 'text-white bg-white/10' : 'text-gray-300'
-                }`}
+                className={clsx(
+                  "w-full h-12 px-4 text-left hover:bg-white/10 transition-colors flex items-center gap-3",
+                  sortOption === key ? 'text-purple-400 bg-purple-500/10' : 'text-gray-300'
+                )}
                 whileHover={{ x: 4 }}
                 whileTap={{ scale: 0.98 }}
               >
                 <span className="text-sm">{label}</span>
+                {sortOption === key && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="ml-auto"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </motion.div>
+                )}
               </motion.button>
             ))}
           </motion.div>
@@ -403,71 +459,78 @@ export default function UserProfile() {
           transition={{ delay: 0.4 }}
           className="relative rounded-2xl bg-white/5 backdrop-blur-lg border border-white/10 p-8"
         >
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-4">
-              <div className="relative w-full search-container">
-                <button
-                  onClick={() => setIsSearchOpen(!isSearchOpen)}
-                  className={`w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                    isSearchOpen ? 'bg-white/20' : 'bg-white/10 hover:bg-white/20'
-                  }`}
-                >
-                  <LuSearch className="w-4 h-4" />
-                  <span className="text-gray-400">{isSearchOpen ? 'Close search' : 'Search your watchlist...'}</span>
-                </button>
-                <AnimatePresence>
-                  {isSearchOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute inset-x-0 top-full mt-2 z-10"
-                    >
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search your watchlist..."
-                        className="w-full px-4 py-2 bg-black/80 backdrop-blur-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 text-white placeholder-gray-400 border border-white/10"
-                        autoFocus
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {renderSortDropdown()}
-            </div>
-
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40">
-              <motion.button
-                onClick={() => setSelectedStatus('ALL')}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
-                  selectedStatus === 'ALL'
-                    ? 'bg-white/20 text-white'
-                    : 'bg-white/10 hover:bg-white/20 text-gray-300'
-                }`}
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center justify-between">
+              <motion.h2 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent"
               >
-                All
-              </motion.button>
-              {Object.entries(watchStatusLabels).map(([status, label]) => (
+                Watchlist
+              </motion.h2>
+              <div className="flex items-center gap-2">
                 <motion.button
-                  key={status}
-                  onClick={() => setSelectedStatus(status as WatchStatus)}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className={`px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
-                    selectedStatus === status
-                      ? 'bg-white/20 text-white'
-                      : 'bg-white/10 hover:bg-white/20 text-gray-300'
-                  }`}
+                  onClick={() => setShowMovies(!showMovies)}
+                  className={clsx(
+                    "p-3 rounded-xl text-sm font-medium transition-all",
+                    "backdrop-blur-sm shadow-lg",
+                    showMovies 
+                      ? "bg-purple-500/20 text-purple-400 border border-purple-500/30" 
+                      : "bg-black/40 text-gray-400 hover:bg-black/50 border border-white/10",
+                    (!showMovies && !showShows) && "bg-red-500/20 text-red-400 border-red-500/30"
+                  )}
+                  title={showMovies ? "Hide Movies" : "Show Movies"}
                 >
-                  {label}
+                  <LuFilm className="w-5 h-5" />
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowShows(!showShows)}
+                  className={clsx(
+                    "p-3 rounded-xl text-sm font-medium transition-all",
+                    "backdrop-blur-sm shadow-lg",
+                    showShows 
+                      ? "bg-purple-500/20 text-purple-400 border border-purple-500/30" 
+                      : "bg-black/40 text-gray-400 hover:bg-black/50 border border-white/10",
+                    (!showMovies && !showShows) && "bg-red-500/20 text-red-400 border-red-500/30"
+                  )}
+                  title={showShows ? "Hide TV Shows" : "Show TV Shows"}
+                >
+                  <LuTv className="w-5 h-5" />
+                </motion.button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr,auto] gap-4 items-start">
+              <SearchBarComponent />
+              <SortControlsComponent />
+            </div>
+
+            <motion.div 
+              layout
+              className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20"
+            >
+              {['ALL', ...Object.keys(watchStatusLabels)].map((status) => (
+                <motion.button
+                  key={status}
+                  onClick={() => setSelectedStatus(status as WatchStatus | 'ALL')}
+                  className={clsx(
+                    "px-4 py-2.5 rounded-xl whitespace-nowrap transition-all",
+                    "backdrop-blur-sm shadow-lg",
+                    selectedStatus === status
+                      ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                      : 'bg-black/40 hover:bg-black/50 text-gray-300 border border-white/10'
+                  )}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {status === 'ALL' ? 'All' : watchStatusLabels[status as WatchStatus]}
                 </motion.button>
               ))}
-            </div>
+            </motion.div>
           </div>
 
           {watchlistLoading ? (
@@ -478,7 +541,7 @@ export default function UserProfile() {
                 className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full"
               />
             </div>
-          ) : searchFilteredWatchlist.length === 0 ? (
+          ) : filteredWatchlist.length === 0 ? (
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -513,7 +576,7 @@ export default function UserProfile() {
               animate="show"
               className="grid grid-cols-2 gap-4 mt-4"
             >
-              {searchFilteredWatchlist.map(media => (
+              {filteredWatchlist.map(media => (
                 <motion.div
                   key={media.id}
                   variants={item}

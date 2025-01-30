@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
-import { LuCopy, LuCheck, LuUserPlus } from 'react-icons/lu';
+import { LuCopy, LuCheck, LuUserPlus, LuX } from 'react-icons/lu';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchWithAuth } from '@/lib/api';
 import withAuth from '@/components/withAuth';
@@ -33,6 +33,7 @@ function Friends() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [inviteLink, setInviteLink] = useState('');
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
@@ -72,6 +73,7 @@ function Friends() {
         method: 'POST',
       });
       setInviteLink(response.inviteLink);
+      setShowInviteModal(true);
       setError(null);
     } catch (error) {
       console.error('Error generating invite link:', error);
@@ -151,28 +153,91 @@ function Friends() {
           </button>
         </div>
 
-        {inviteLink && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-black/50 backdrop-blur-sm border border-gray-800/50 rounded-xl p-4 mb-8"
-          >
-            <div className="flex items-center justify-between">
-              <input
-                type="text"
-                value={inviteLink}
-                readOnly
-                className="bg-transparent text-gray-300 flex-1 mr-4"
+        <AnimatePresence>
+          {showInviteModal && (
+            <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/60 backdrop-blur-md"
+                onClick={() => setShowInviteModal(false)}
               />
-              <button
-                onClick={copyInviteLink}
-                className="text-white hover:text-gray-300 transition-colors"
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ 
+                  duration: 0.2,
+                  ease: [0.16, 1, 0.3, 1] // custom ease curve for smooth animation
+                }}
+                className="w-full max-w-md relative"
+                onClick={(e) => e.stopPropagation()}
               >
-                {copied ? <LuCheck className="w-5 h-5" /> : <LuCopy className="w-5 h-5" />}
-              </button>
+                <div className="bg-gray-900/90 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <motion.h3 
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="text-xl font-semibold text-white"
+                      >
+                        Invite Friend
+                      </motion.h3>
+                      <motion.button
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 }}
+                        onClick={() => setShowInviteModal(false)}
+                        className="p-2 hover:bg-white/10 rounded-lg transition-all text-gray-400 hover:text-white active:scale-95"
+                      >
+                        <LuX className="w-5 h-5" />
+                      </motion.button>
+                    </div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      className="space-y-4"
+                    >
+                      <div className="flex items-center gap-2 bg-black/50 rounded-xl p-4 border border-white/10 shadow-inner">
+                        <input
+                          type="text"
+                          value={inviteLink}
+                          readOnly
+                          className="bg-transparent text-gray-300 flex-1 outline-none min-w-0 text-sm font-medium select-all"
+                        />
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={copyInviteLink}
+                          className="p-2.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white shrink-0 border border-white/5"
+                        >
+                          {copied ? (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              exit={{ scale: 0 }}
+                            >
+                              <LuCheck className="w-5 h-5" />
+                            </motion.div>
+                          ) : (
+                            <LuCopy className="w-5 h-5" />
+                          )}
+                        </motion.button>
+                      </div>
+                      <p className="text-sm text-gray-400 text-center">
+                        Share this link with your friends to connect on the platform
+                      </p>
+                    </motion.div>
+                  </div>
+                </div>
+              </motion.div>
             </div>
-          </motion.div>
-        )}
+          )}
+        </AnimatePresence>
 
         {friendRequests.length > 0 && (
           <div className="mb-8">

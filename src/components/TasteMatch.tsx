@@ -7,7 +7,7 @@ import { useWatchlist } from '@/contexts/WatchlistContext';
 import Image from 'next/image';
 import { fetchWithAuth } from '@/lib/api';
 import { clsx } from 'clsx';
-import { ChevronRightIcon, FilmIcon, TvIcon, UsersIcon } from '@heroicons/react/24/outline';
+import { LuUsers, LuChevronRight, LuFilm, LuTv, LuTrophy, LuHeart, LuThumbsUp, LuStar } from 'react-icons/lu';
 
 interface TasteMatchProps {
   userId: string;
@@ -19,11 +19,13 @@ interface MatchStats {
     title: string;
     posterPath: string | null;
     rating: number;
+    friendRating: number;
   }[];
   commonShows: {
     title: string;
     posterPath: string | null;
     rating: number;
+    friendRating: number;
   }[];
   recommendations: {
     title: string;
@@ -36,6 +38,13 @@ interface MatchStats {
     percentage: number;
   }[];
   ratingCorrelation: number;
+  funStats: {
+    favoriteGenre: string;
+    highestRatedCommon: string;
+    lowestRatedCommon: string;
+    totalWatchTime: number;
+    perfectMatches: number;
+  };
 }
 
 interface WatchlistEntry {
@@ -58,34 +67,66 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
   const { watchlist } = useWatchlist();
 
   const calculateOverallMatch = useCallback((commonMoviesCount: number, commonShowsCount: number, ratingCorrelation: number, genreMatches: { genre: string; percentage: number }[]) => {
-    // If there's any common media or genre matches, ensure we return at least 1
     if (commonMoviesCount + commonShowsCount > 0 || genreMatches.length > 0) {
-      // Weight factors for different components
-      const commonMediaWeight = 0.4;  // 40% weight for common media
-      const ratingWeight = 0.3;       // 30% weight for rating correlation
-      const genreWeight = 0.3;        // 30% weight for genre match
+      const commonMediaWeight = 0.4;
+      const ratingWeight = 0.3;
+      const genreWeight = 0.3;
 
-      // Calculate common media score (max 100)
       const commonMediaScore = Math.min(((commonMoviesCount + commonShowsCount) * 15), 100);
-      
-      // Convert rating correlation (-1 to 1) to a 0-100 scale
       const ratingScore = ((ratingCorrelation + 1) / 2) * 100;
-
-      // Calculate average genre match percentage
       const genreScore = genreMatches.reduce((sum, genre) => sum + genre.percentage, 0);
       const avgGenreScore = genreMatches.length ? genreScore / genreMatches.length : 0;
 
-      // Calculate weighted total
       const totalScore = (commonMediaScore * commonMediaWeight) +
                         (ratingScore * ratingWeight) +
                         (avgGenreScore * genreWeight);
 
-      // Ensure we return at least 1 if there's any match
       return Math.max(1, Math.round(totalScore));
     }
-
-    return 0; // Return 0 only if there's absolutely no match
+    return 0;
   }, []);
+
+  const calculateFunStats = (
+    commonMovies: { title: string; rating: number; friendRating: number }[],
+    commonShows: { title: string; rating: number; friendRating: number }[],
+    genreMatch: { genre: string; percentage: number }[]
+  ) => {
+    const allCommon = [...commonMovies, ...commonShows];
+    const perfectMatches = allCommon.filter(item => item.rating === item.friendRating).length;
+    
+    // Calculate favorite matching genre
+    const favoriteGenre = genreMatch.length > 0 
+      ? genreMatch.reduce((prev, current) => 
+          current.percentage > prev.percentage ? current : prev
+        ).genre 
+      : 'None yet';
+
+    // Find highest and lowest rated common content
+    let highestRatedCommon = 'None yet';
+    let lowestRatedCommon = 'None yet';
+    
+    if (allCommon.length > 0) {
+      const sorted = [...allCommon].sort((a, b) => {
+        const avgA = (a.rating + a.friendRating) / 2;
+        const avgB = (b.rating + b.friendRating) / 2;
+        return avgB - avgA;
+      });
+      
+      highestRatedCommon = sorted[0].title;
+      lowestRatedCommon = sorted[sorted.length - 1].title;
+    }
+
+    // Estimate total watch time (assuming average movie is 2 hours and episode is 45 minutes)
+    const totalWatchTime = (commonMovies.length * 120) + (commonShows.length * 45);
+
+    return {
+      favoriteGenre,
+      highestRatedCommon,
+      lowestRatedCommon,
+      totalWatchTime,
+      perfectMatches
+    };
+  };
 
   const calculateGenreMatch = (userWatchlist: WatchlistEntry[], friendWatchlist: WatchlistEntry[]) => {
     // Get all genres from both watchlists, but only from WATCHED items
@@ -223,152 +264,125 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
 
       try {
         setIsLoading(true);
-        // Fetch friend's watchlist using authenticated request
         const response = await fetchWithAuth(`/api/users/${userId}/watchlist`);
         
         if (!response || typeof response !== 'object') {
           throw new Error('Invalid response from watchlist API');
         }
 
-        // Ensure friendWatchlist is an array
         const friendWatchlist: WatchlistEntry[] = Array.isArray(response) ? response : [];
-
-        // Debug logging
-        console.log('User watchlist:', watchlist.length, 'items');
-        console.log('Friend watchlist:', friendWatchlist.length, 'items');
-
-        // Get watched items from both watchlists
         const userWatched = watchlist.filter(entry => entry.status === 'WATCHED');
         const friendWatched = friendWatchlist.filter(entry => entry.status === 'WATCHED');
 
-        console.log('User watched items:', userWatched.length);
-        console.log('Friend watched items:', friendWatched.length);
-
-        // If either user has no watched content, set empty stats
         if (userWatched.length === 0 || friendWatched.length === 0) {
-          console.log('No watched content found');
           setMatchStats({
             overallMatch: 0,
             commonMovies: [],
             commonShows: [],
             recommendations: [],
             genreMatch: [],
-            ratingCorrelation: 0
+            ratingCorrelation: 0,
+            funStats: {
+              favoriteGenre: 'None yet',
+              highestRatedCommon: 'None yet',
+              lowestRatedCommon: 'None yet',
+              totalWatchTime: 0,
+              perfectMatches: 0
+            }
           });
           setIsLoading(false);
           return;
         }
 
-        // Find common movies and shows
+        // Find common content with ratings
         const commonMovies = userWatched
           .filter(entry => 
             entry.mediaType === 'movie' && 
-            friendWatched.some(
-              (friendEntry) => 
-                friendEntry.mediaId === entry.mediaId
-            )
+            friendWatched.some(fe => fe.mediaId === entry.mediaId)
           )
-          .map(entry => ({
-            title: entry.title,
-            posterPath: entry.posterPath,
-            rating: entry.rating || 0,
-            friendRating: friendWatched.find((fe) => fe.mediaId === entry.mediaId)?.rating || 0
-          }));
+          .map(entry => {
+            const friendEntry = friendWatched.find(fe => fe.mediaId === entry.mediaId);
+            return {
+              title: entry.title,
+              posterPath: entry.posterPath,
+              rating: entry.rating || 0,
+              friendRating: friendEntry?.rating || 0
+            };
+          });
 
         const commonShows = userWatched
           .filter(entry => 
             entry.mediaType === 'tv' && 
-            friendWatched.some(
-              (friendEntry) => 
-                friendEntry.mediaId === entry.mediaId
-            )
+            friendWatched.some(fe => fe.mediaId === entry.mediaId)
           )
-          .map(entry => ({
-            title: entry.title,
-            posterPath: entry.posterPath,
-            rating: entry.rating || 0,
-            friendRating: friendWatched.find((fe) => fe.mediaId === entry.mediaId)?.rating || 0
-          }));
-
-        console.log('Common movies:', commonMovies.length);
-        console.log('Common shows:', commonShows.length);
+          .map(entry => {
+            const friendEntry = friendWatched.find(fe => fe.mediaId === entry.mediaId);
+            return {
+              title: entry.title,
+              posterPath: entry.posterPath,
+              rating: entry.rating || 0,
+              friendRating: friendEntry?.rating || 0
+            };
+          });
 
         // Calculate rating correlation
         const ratingPairs = [...commonMovies, ...commonShows]
-          .map(item => ({
-            userRating: item.rating,
-            friendRating: item.friendRating
-          }))
-          .filter(pair => pair.userRating && pair.friendRating);
+          .filter(item => item.rating && item.friendRating);
 
         let ratingCorrelation = 0;
         if (ratingPairs.length > 0) {
-          const meanUser = ratingPairs.reduce((sum, pair) => sum + pair.userRating, 0) / ratingPairs.length;
+          const meanUser = ratingPairs.reduce((sum, pair) => sum + pair.rating, 0) / ratingPairs.length;
           const meanFriend = ratingPairs.reduce((sum, pair) => sum + pair.friendRating, 0) / ratingPairs.length;
           
           const numerator = ratingPairs.reduce((sum, pair) => 
-            sum + (pair.userRating - meanUser) * (pair.friendRating - meanFriend), 0
+            sum + (pair.rating - meanUser) * (pair.friendRating - meanFriend), 0
           );
           
           const denomUser = Math.sqrt(ratingPairs.reduce((sum, pair) => 
-            sum + Math.pow(pair.userRating - meanUser, 2), 0
+            sum + Math.pow(pair.rating - meanUser, 2), 0
           ));
           
           const denomFriend = Math.sqrt(ratingPairs.reduce((sum, pair) => 
             sum + Math.pow(pair.friendRating - meanFriend, 2), 0
           ));
           
-          if (denomUser === 0 || denomFriend === 0) {
-            ratingCorrelation = 0;
-          } else {
+          if (denomUser !== 0 && denomFriend !== 0) {
             ratingCorrelation = numerator / (denomUser * denomFriend);
           }
         }
 
-        // Calculate genre match using watched items only
+        // Calculate genre match and recommendations
         const genreMatch = calculateGenreMatch(userWatched, friendWatched);
-        console.log('Genre matches:', genreMatch.length);
-
-        // Generate recommendations based on watched items
         const recommendations = await generateRecommendations(userWatched, friendWatched);
-        console.log('Recommendations:', recommendations.length);
-
-        // Calculate overall match score
         const overallMatch = calculateOverallMatch(
           commonMovies.length, 
           commonShows.length, 
           ratingCorrelation,
           genreMatch
         );
-        console.log('Overall match score:', overallMatch);
 
-        const newMatchStats = {
+        // Calculate fun stats
+        const funStats = calculateFunStats(commonMovies, commonShows, genreMatch);
+
+        setMatchStats({
           overallMatch,
-          commonMovies: commonMovies.map(({ title, posterPath, rating }) => ({ title, posterPath, rating })),
-          commonShows: commonShows.map(({ title, posterPath, rating }) => ({ title, posterPath, rating })),
+          commonMovies,
+          commonShows,
           recommendations,
           genreMatch,
-          ratingCorrelation
-        };
-
-        setMatchStats(newMatchStats);
+          ratingCorrelation,
+          funStats
+        });
       } catch (error) {
         console.error('Error calculating match stats:', error);
-        setMatchStats({
-          overallMatch: 0,
-          commonMovies: [],
-          commonShows: [],
-          recommendations: [],
-          genreMatch: [],
-          ratingCorrelation: 0
-        });
+        setMatchStats(null);
       } finally {
         setIsLoading(false);
       }
     };
 
     calculateMatchStats();
-  }, [userId, user, watchlist, calculateOverallMatch]);
+  }, [user, userId, watchlist, calculateOverallMatch]);
 
   if (isLoading) {
     return (
@@ -396,35 +410,25 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
     );
   }
 
-  // Check if there's any meaningful content to display
   const hasContent = matchStats && (
     matchStats.commonMovies.length > 0 || 
     matchStats.commonShows.length > 0 || 
     (matchStats.genreMatch.length > 0 && matchStats.overallMatch > 0)
   );
 
-  // If we have matchStats but no content matches
-  if (matchStats && !hasContent) {
-    // Check if both users have watched content
+  if (!hasContent) {
     const hasWatchedContent = watchlist?.some(item => item.status === 'WATCHED');
-    
-    if (hasWatchedContent) {
-      return (
-        <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden">
-          <div className="p-6 text-center">
-            <p className="text-gray-400">No matches found yet. Keep watching and rating content to see your taste match!</p>
-          </div>
+    return (
+      <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden">
+        <div className="p-6 text-center">
+          <p className="text-gray-400">
+            {hasWatchedContent 
+              ? "No matches found yet. Keep watching and rating content to see your taste match!"
+              : "Start watching content to see your taste match!"}
+          </p>
         </div>
-      );
-    } else {
-      return (
-        <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden">
-          <div className="p-6 text-center">
-            <p className="text-gray-400">Start watching content to see your taste match!</p>
-          </div>
-        </div>
-      );
-    }
+      </div>
+    );
   }
 
   return (
@@ -438,7 +442,7 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
         className="w-full p-6 flex items-center gap-4 text-left"
       >
         <div className="bg-purple-500/20 p-3 rounded-xl">
-          <UsersIcon className="w-6 h-6 text-purple-400" />
+          <LuUsers className="w-6 h-6 text-purple-400" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -453,7 +457,7 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
             {getMatchDescription(matchStats)}
           </p>
         </div>
-        <ChevronRightIcon 
+        <LuChevronRight 
           className={clsx(
             "w-5 h-5 text-gray-400 transition-transform",
             isExpanded && "rotate-90"
@@ -471,11 +475,35 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
             className="overflow-hidden"
           >
             <div className="p-6 pt-0 space-y-6">
+              {/* Fun Stats Section */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-white/5 rounded-xl p-4 text-center">
+                  <LuHeart className="w-5 h-5 text-red-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">Perfect Matches</p>
+                  <p className="text-lg font-medium">{matchStats.funStats.perfectMatches}</p>
+                </div>
+                <div className="bg-white/5 rounded-xl p-4 text-center">
+                  <LuTrophy className="w-5 h-5 text-yellow-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">Favorite Genre</p>
+                  <p className="text-lg font-medium truncate">{matchStats.funStats.favoriteGenre}</p>
+                </div>
+                <div className="bg-white/5 rounded-xl p-4 text-center">
+                  <LuThumbsUp className="w-5 h-5 text-green-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">Rating Match</p>
+                  <p className="text-lg font-medium">{Math.round(matchStats.ratingCorrelation * 100)}%</p>
+                </div>
+                <div className="bg-white/5 rounded-xl p-4 text-center">
+                  <LuStar className="w-5 h-5 text-purple-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">Watch Time</p>
+                  <p className="text-lg font-medium">{Math.round(matchStats.funStats.totalWatchTime / 60)}h</p>
+                </div>
+              </div>
+
               {/* Common Content Section */}
               {(matchStats.commonMovies.length > 0 || matchStats.commonShows.length > 0) && (
                 <div>
                   <h4 className="text-sm font-medium text-gray-400 mb-3">Common Content</h4>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Common Movies */}
                     {matchStats.commonMovies.length > 0 && (
                       <div>
@@ -493,12 +521,16 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
                                 />
                               ) : (
                                 <div className="w-8 h-12 bg-white/5 rounded flex items-center justify-center">
-                                  <FilmIcon className="w-4 h-4 text-gray-400" />
+                                  <LuFilm className="w-4 h-4 text-gray-400" />
                                 </div>
                               )}
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm truncate">{movie.title}</p>
-                                <p className="text-xs text-gray-400">Rating: {movie.rating}/10</p>
+                                <div className="flex items-center gap-2 text-xs text-gray-400">
+                                  <span>You: {movie.rating}/10</span>
+                                  <span>•</span>
+                                  <span>Friend: {movie.friendRating}/10</span>
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -523,12 +555,16 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
                                 />
                               ) : (
                                 <div className="w-8 h-12 bg-white/5 rounded flex items-center justify-center">
-                                  <TvIcon className="w-4 h-4 text-gray-400" />
+                                  <LuTv className="w-4 h-4 text-gray-400" />
                                 </div>
                               )}
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm truncate">{show.title}</p>
-                                <p className="text-xs text-gray-400">Rating: {show.rating}/10</p>
+                                <div className="flex items-center gap-2 text-xs text-gray-400">
+                                  <span>You: {show.rating}/10</span>
+                                  <span>•</span>
+                                  <span>Friend: {show.friendRating}/10</span>
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -542,19 +578,12 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
               {/* Genre Match Section */}
               {matchStats.genreMatch.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-medium text-gray-400 mb-3">
-                    Genre Match
-                    {matchStats.ratingCorrelation > 0 && (
-                      <span className="ml-2 text-xs text-purple-400">
-                        ({Math.round(matchStats.ratingCorrelation * 100)}% rating correlation)
-                      </span>
-                    )}
-                  </h4>
-                  <div className="grid grid-cols-2 gap-3">
+                  <h4 className="text-sm font-medium text-gray-400 mb-3">Genre Match</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {matchStats.genreMatch.map((genre, index) => (
                       <div
                         key={index}
-                        className="bg-white/5 rounded-lg p-2 flex items-center justify-between"
+                        className="bg-white/5 rounded-lg p-3 flex items-center justify-between"
                       >
                         <span className="text-sm truncate">{genre.genre}</span>
                         <span className="text-sm text-purple-400">{genre.percentage}%</span>
@@ -582,9 +611,9 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               {item.mediaType === 'movie' ? (
-                                <FilmIcon className="w-8 h-8 text-gray-400" />
+                                <LuFilm className="w-8 h-8 text-gray-400" />
                               ) : (
-                                <TvIcon className="w-8 h-8 text-gray-400" />
+                                <LuTv className="w-8 h-8 text-gray-400" />
                               )}
                             </div>
                           )}

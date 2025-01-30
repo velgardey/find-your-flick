@@ -2,13 +2,19 @@ import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 
 export type ApiResponse<T> = {
-  data?: T;
+  data: T;
   error?: string;
   details?: unknown;
 };
 
 export function successResponse<T>(data: T): NextResponse {
-  return NextResponse.json({ data });
+  // Ensure we're not double-wrapping the data
+  const responseData = (data && typeof data === 'object' && 'data' in data) 
+    ? data 
+    : { data };
+  
+  console.log('Sending API response:', responseData);
+  return NextResponse.json(responseData);
 }
 
 export function errorResponse(
@@ -16,7 +22,10 @@ export function errorResponse(
   status: number = 500,
   details?: unknown
 ): NextResponse {
-  const response: ApiResponse<never> = { error: message };
+  const response: ApiResponse<never> = { 
+    data: null as never,  // Always include a data field
+    error: message 
+  };
   if (details) {
     response.details = details;
   }

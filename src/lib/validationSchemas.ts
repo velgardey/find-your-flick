@@ -6,6 +6,13 @@ export const watchlistUpdateSchema = z.object({
   rating: z.number().min(0).max(5).nullable().optional(),
   notes: z.string().max(1000).nullable().optional(),
   genres: z.array(z.string()).optional(),
+  // TV show specific fields
+  currentSeason: z.number().int().min(0).nullable().optional(),
+  currentEpisode: z.number().int().min(0).nullable().optional(),
+  totalSeasons: z.number().int().min(0).nullable().optional(),
+  totalEpisodes: z.number().int().min(0).nullable().optional(),
+  nextAirDate: z.string().nullable().optional(),
+  showStatus: z.string().nullable().optional(),
 });
 
 export const watchlistCreateSchema = z.object({
@@ -15,4 +22,11 @@ export const watchlistCreateSchema = z.object({
   posterPath: z.string().nullable(),
   status: z.nativeEnum(WatchStatus),
   genres: z.array(z.string()),
-}); 
+  // TV show specific fields
+  currentSeason: z.number().int().min(0).nullable().optional(),
+  currentEpisode: z.number().int().min(0).nullable().optional(),
+  totalSeasons: z.number().int().min(0).nullable().optional(),
+  totalEpisodes: z.number().int().min(0).nullable().optional(),
+  nextAirDate: z.string().nullable().optional(),
+  showStatus: z.string().nullable().optional(),
+});
