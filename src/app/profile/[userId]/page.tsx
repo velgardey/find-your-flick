@@ -10,10 +10,8 @@ import MediaDetailsModal from '@/components/MediaDetailsModal';
 import UserStats from '@/components/UserStats';
 import TasteMatch from '@/components/TasteMatch';
 import withAuth from '@/components/withAuth';
-import { MagnifyingGlassIcon, FilmIcon, TvIcon, CheckIcon } from '@heroicons/react/24/outline';
-import { Menu, Transition } from '@headlessui/react';
+import { MagnifyingGlassIcon, FilmIcon, TvIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
-import { Fragment } from 'react';
 
 interface UserProfile {
   id: string;
@@ -232,107 +230,110 @@ function UserProfile({ params }: PageProps) {
     });
 
   const SearchBar = () => (
-    <div className="relative w-full max-w-md mx-auto mb-6">
-      <div className={clsx(
-        "flex items-center gap-2 px-4 py-3 rounded-xl transition-all duration-200",
-        "bg-white/5 hover:bg-white/10 focus-within:bg-white/10",
-        "border border-white/10 focus-within:border-purple-500/50",
-        "shadow-lg backdrop-blur-sm"
-      )}>
-        <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search your watchlist..."
-          className={clsx(
-            "w-full bg-transparent text-white placeholder-gray-400",
-            "text-base focus:outline-none",
-            "appearance-none touch-manipulation"
+    <div className="grid grid-cols-1 sm:grid-cols-[1fr,auto] gap-4 items-start mb-6">
+      <div className="relative w-full">
+        <div className={clsx(
+          "flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200",
+          "bg-black/40 hover:bg-black/50 focus-within:bg-black/50",
+          "border border-white/10 focus-within:border-purple-500/50",
+          "shadow-lg backdrop-blur-sm group"
+        )}>
+          <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 group-focus-within:text-purple-400 transition-colors" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search your watchlist..."
+            className={clsx(
+              "w-full bg-transparent text-white placeholder-gray-400",
+              "text-base focus:outline-none",
+              "appearance-none touch-manipulation"
+            )}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 hover:text-white" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </button>
           )}
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="p-1 hover:bg-white/10 rounded-full"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-            </svg>
-          </button>
-        )}
+        </div>
       </div>
-    </div>
-  );
-
-  const SortControls = () => (
-    <div className="flex items-center gap-2 mb-6">
-      <Menu as="div" className="relative">
-        <Menu.Button
+      <div className="relative sort-dropdown">
+        <motion.button
+          onClick={() => setIsSortOpen(!isSortOpen)}
           className={clsx(
-            "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2",
-            "bg-white/5 hover:bg-white/10 text-gray-200",
-            "border border-white/10 focus:outline-none"
+            "h-12 px-4 rounded-xl text-sm font-medium w-full sm:w-auto",
+            "bg-black/40 hover:bg-black/50",
+            "border border-white/10 hover:border-white/20",
+            "text-white flex items-center justify-between sm:justify-start gap-3 transition-all",
+            "active:scale-95 touch-manipulation shadow-lg backdrop-blur-sm"
           )}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
         >
-          <span>{sortBy === 'date' ? 'Date Added' : sortBy === 'rating' ? 'Rating' : 'Title'}</span>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
+            />
           </svg>
-        </Menu.Button>
-        <Transition
-          as={Fragment}
-          enter="transition ease-out duration-100"
-          enterFrom="transform opacity-0 scale-95"
-          enterTo="transform opacity-100 scale-100"
-          leave="transition ease-in duration-75"
-          leaveFrom="transform opacity-100 scale-100"
-          leaveTo="transform opacity-0 scale-95"
-        >
-          <Menu.Items className="absolute right-0 mt-2 w-48 rounded-lg bg-gray-900/90 backdrop-blur-sm border border-white/10 shadow-lg focus:outline-none z-10">
-            <div className="p-1">
-              {['date', 'rating', 'title'].map((option) => (
-                <Menu.Item key={option}>
-                  {({ active }) => (
-                    <button
-                      onClick={() => setSortBy(option)}
-                      className={clsx(
-                        "flex items-center w-full px-3 py-2 text-sm rounded-md",
-                        active ? "bg-purple-500/20 text-purple-400" : "text-gray-200"
-                      )}
-                    >
-                      {option === 'date' ? 'Date Added' : option === 'rating' ? 'Rating' : 'Title'}
-                      {sortBy === option && <CheckIcon className="w-4 h-4 ml-2" />}
-                    </button>
-                  )}
-                </Menu.Item>
-              ))}
-            </div>
-          </Menu.Items>
-        </Transition>
-      </Menu>
+          <span className="whitespace-nowrap">
+            {sortBy === 'date' ? 'Date Added' : sortBy === 'rating' ? 'Rating' : 'Title'}
+          </span>
+        </motion.button>
 
-      <button
-        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-        className={clsx(
-          "p-2 rounded-lg",
-          "bg-white/5 hover:bg-white/10 text-gray-200",
-          "border border-white/10 focus:outline-none"
-        )}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className={clsx(
-            "h-4 w-4 transform transition-transform",
-            sortOrder === 'desc' ? 'rotate-180' : ''
+        <AnimatePresence>
+          {isSortOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="absolute right-0 mt-2 w-48 bg-black/90 backdrop-blur-xl rounded-xl shadow-lg border border-white/10 overflow-hidden z-50"
+            >
+              {['date', 'rating', 'title'].map((option) => (
+                <motion.button
+                  key={option}
+                  onClick={() => {
+                    setSortBy(option);
+                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                    setIsSortOpen(false);
+                  }}
+                  className={clsx(
+                    "w-full h-12 px-4 text-left hover:bg-white/10 transition-colors flex items-center gap-3",
+                    sortBy === option ? 'text-purple-400 bg-purple-500/10' : 'text-gray-300'
+                  )}
+                  whileHover={{ x: 4 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <span className="text-sm capitalize">{option}</span>
+                  {sortBy === option && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="ml-auto"
+                    >
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </motion.div>
+                  )}
+                </motion.button>
+              ))}
+            </motion.div>
           )}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9M3 12h5" />
-        </svg>
-      </button>
+        </AnimatePresence>
+      </div>
     </div>
   );
 
@@ -367,27 +368,32 @@ function UserProfile({ params }: PageProps) {
               className="relative overflow-hidden rounded-2xl mb-12 bg-white/5 backdrop-blur-lg border border-white/10 p-8"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 opacity-50" />
-              <div className="relative flex items-center gap-6">
-                {profile.photoURL ? (
-                  <Image
-                    src={profile.photoURL}
-                    alt={profile.displayName || 'User'}
-                    width={96}
-                    height={96}
-                    className="rounded-full"
-                  />
-                ) : (
-                  <div className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center">
-                    <span className="text-2xl text-white/60">
-                      {profile.displayName?.[0] || profile.email[0]}
-                    </span>
+              <div className="relative flex flex-col sm:flex-row items-center gap-6 p-4 sm:p-8">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full blur-lg opacity-50" />
+                  <div className="relative">
+                    {profile.photoURL ? (
+                      <Image
+                        src={profile.photoURL}
+                        alt={profile.displayName || 'User'}
+                        width={96}
+                        height={96}
+                        className="rounded-full ring-2 ring-white/20"
+                      />
+                    ) : (
+                      <div className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center ring-2 ring-white/20">
+                        <span className="text-2xl text-white/60">
+                          {profile.displayName?.[0] || profile.email[0]}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
-                <div>
-                  <h1 className="text-3xl font-bold">
+                </div>
+                <div className="text-center sm:text-left">
+                  <h1 className="text-2xl sm:text-3xl font-bold break-words max-w-[250px] sm:max-w-none">
                     {profile.displayName || 'Anonymous User'}
                   </h1>
-                  <p className="text-gray-400">{profile.email}</p>
+                  <p className="text-gray-400 break-words max-w-[250px] sm:max-w-none text-sm sm:text-base">{profile.email}</p>
                 </div>
               </div>
             </motion.div>
@@ -460,20 +466,21 @@ function UserProfile({ params }: PageProps) {
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                <SortControls />
                 <motion.div 
                   layout
-                  className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide"
+                  className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 -mx-8 px-8 sm:mx-0 sm:px-0"
                 >
                   {['ALL', ...Object.keys(watchStatusLabels)].map((status) => (
                     <motion.button
                       key={status}
                       onClick={() => setSelectedStatus(status)}
-                      className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors backdrop-blur-lg ${
+                      className={clsx(
+                        "px-4 py-2.5 rounded-xl whitespace-nowrap transition-all",
+                        "backdrop-blur-sm shadow-lg flex-shrink-0",
                         selectedStatus === status
-                          ? 'bg-white/20 text-white'
-                          : 'bg-white/10 hover:bg-white/15 text-gray-300'
-                      }`}
+                          ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                          : 'bg-black/40 hover:bg-black/50 text-gray-300 border border-white/10'
+                      )}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                     >
