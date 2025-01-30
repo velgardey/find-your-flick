@@ -25,7 +25,7 @@ export default function RatingModal({ isOpen, onClose, onSubmit, mediaTitle }: R
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 flex items-center justify-center z-[9999] p-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
