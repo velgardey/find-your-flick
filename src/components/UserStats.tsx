@@ -6,6 +6,7 @@ import { useWatchlist } from '@/contexts/WatchlistContext';
 import { LuChevronDown, LuClock, LuTrendingUp, LuActivity, LuStar, LuFilm, LuTv } from 'react-icons/lu';
 import Image from 'next/image';
 import { fetchWithAuth } from '@/lib/api';
+import { MovieDetails, TVShowDetails } from '@/types/media';
 
 // Create motion components
 // const MotionImage = motion.create(Image);
@@ -377,13 +378,19 @@ export default function UserStats({ userId }: UserStatsProps) {
             runtime
           });
 
-          // Process decade counts - use the entry's updatedAt date
-          const year = new Date(entry.updatedAt).getFullYear();
-          const decade = Math.floor(year / 10) * 10;
-          if (!decadeCounts[decade]) {
-            decadeCounts[decade] = 0;
+          // Process decade counts - use the media's release date or first air date
+          const releaseDate = selectedMediaType === 'movie' ? 
+            (media as MovieDetails).release_date : 
+            (media as TVShowDetails).first_air_date;
+            
+          if (releaseDate) {
+            const year = new Date(releaseDate).getFullYear();
+            const decade = Math.floor(year / 10) * 10;
+            if (!decadeCounts[decade]) {
+              decadeCounts[decade] = 0;
+            }
+            decadeCounts[decade]++;
           }
-          decadeCounts[decade]++;
 
           // Process ratings more safely
           if (entry.rating !== null && entry.rating !== undefined) {
