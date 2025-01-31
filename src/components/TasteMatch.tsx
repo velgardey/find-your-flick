@@ -67,23 +67,45 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
   const { watchlist } = useWatchlist();
 
   const calculateOverallMatch = useCallback((commonMoviesCount: number, commonShowsCount: number, ratingCorrelation: number, genreMatches: { genre: string; percentage: number }[]) => {
-    if (commonMoviesCount + commonShowsCount > 0 || genreMatches.length > 0) {
-      const commonMediaWeight = 0.4;
-      const ratingWeight = 0.3;
-      const genreWeight = 0.3;
-
-      const commonMediaScore = Math.min(((commonMoviesCount + commonShowsCount) * 15), 100);
-      const ratingScore = ((ratingCorrelation + 1) / 2) * 100;
-      const genreScore = genreMatches.reduce((sum, genre) => sum + genre.percentage, 0);
-      const avgGenreScore = genreMatches.length ? genreScore / genreMatches.length : 0;
-
-      const totalScore = (commonMediaScore * commonMediaWeight) +
-                        (ratingScore * ratingWeight) +
-                        (avgGenreScore * genreWeight);
-
-      return Math.max(1, Math.round(totalScore));
+    if (commonMoviesCount + commonShowsCount === 0 && genreMatches.length === 0) {
+      return 0;
     }
-    return 0;
+
+    // Adjust weights based on available data
+    let commonMediaWeight = 0.4;
+    let ratingWeight = 0.3;
+    let genreWeight = 0.3;
+
+    // If we don't have rating correlation, redistribute its weight
+    if (isNaN(ratingCorrelation) || ratingCorrelation === 0) {
+      commonMediaWeight += ratingWeight / 2;
+      genreWeight += ratingWeight / 2;
+      ratingWeight = 0;
+    }
+
+    // If we don't have genre matches, redistribute its weight
+    if (genreMatches.length === 0) {
+      commonMediaWeight += genreWeight / 2;
+      ratingWeight += genreWeight / 2;
+      genreWeight = 0;
+    }
+
+    // Calculate common media score with a more gradual curve
+    const commonMediaScore = Math.min(((commonMoviesCount + commonShowsCount) * 10), 100);
+    
+    // Calculate rating score with proper bounds
+    const ratingScore = !isNaN(ratingCorrelation) ? ((ratingCorrelation + 1) / 2) * 100 : 0;
+    
+    // Calculate genre score with proper weighting
+    const genreScore = genreMatches.reduce((sum, genre) => sum + genre.percentage, 0);
+    const avgGenreScore = genreMatches.length ? genreScore / genreMatches.length : 0;
+
+    // Calculate total score with adjusted weights
+    const totalScore = (commonMediaScore * commonMediaWeight) +
+                      (ratingScore * ratingWeight) +
+                      (avgGenreScore * genreWeight);
+
+    return Math.max(1, Math.min(100, Math.round(totalScore)));
   }, []);
 
   const calculateFunStats = (
@@ -129,21 +151,24 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
   };
 
   const calculateGenreMatch = (userWatchlist: WatchlistEntry[], friendWatchlist: WatchlistEntry[]) => {
-    // Get all genres from both watchlists, but only from WATCHED items
     const userGenres = new Map<string, { count: number; weight: number }>();
     const friendGenres = new Map<string, { count: number; weight: number }>();
 
-    // Helper function to add genres with weight
     const addGenresToMap = (entry: WatchlistEntry, map: Map<string, { count: number; weight: number }>) => {
       if (!entry.genres) return;
       
-      // Calculate weight based on status and rating
-      let weight = 1;
+      // Enhanced weight calculation
+      let weight = 0.5; // Base weight for all items
+      
       if (entry.status === 'WATCHED') {
-        weight = 1.5;  // Give more weight to watched items
+        weight = 1.0; // Base weight for watched items
         if (entry.rating) {
-          weight += (entry.rating / 10) * 0.5;  // Additional weight for highly rated items
+          weight += (entry.rating / 10) * 0.5; // Additional weight for ratings
         }
+      } else if (entry.status === 'WATCHING') {
+        weight = 0.75; // Items being watched get more weight than planned
+      } else if (entry.status === 'PLAN_TO_WATCH') {
+        weight = 0.25; // Small weight for planned items
       }
 
       entry.genres.forEach(genre => {
@@ -168,16 +193,26 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
       const friendStats = friendGenres.get(genre) || { count: 0, weight: 0 };
       
       if (userStats.count > 0 && friendStats.count > 0) {
-        // Calculate weighted similarity
+        // Enhanced similarity calculation
         const maxWeight = Math.max(userStats.weight, friendStats.weight);
         const minWeight = Math.min(userStats.weight, friendStats.weight);
-        const percentage = Math.round((minWeight / maxWeight) * 100);
+        
+        // Calculate normalized weights
+        const userNormWeight = userStats.weight / userStats.count;
+        const friendNormWeight = friendStats.weight / friendStats.count;
+        
+        // Calculate similarity considering both absolute and normalized weights
+        const absoluteSimilarity = (minWeight / maxWeight) * 100;
+        const normalizedSimilarity = (Math.min(userNormWeight, friendNormWeight) / Math.max(userNormWeight, friendNormWeight)) * 100;
+        
+        // Final percentage is an average of both metrics
+        const percentage = Math.round((absoluteSimilarity + normalizedSimilarity) / 2);
         
         genreMatches.push({ genre, percentage });
       }
     });
 
-    // Sort by percentage and return top 6
+    // Sort by percentage and return top matches
     return genreMatches
       .sort((a, b) => b.percentage - a.percentage)
       .slice(0, 6);
@@ -185,11 +220,17 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
 
   const generateRecommendations = async (userWatchlist: WatchlistEntry[], friendWatchlist: WatchlistEntry[]) => {
     try {
-      // Find items that friend has watched but user hasn't
+      // Get user's watched and rated content
+      const userWatched = userWatchlist.filter(
+        entry => entry.status === 'WATCHED' && entry.rating !== null
+      );
+
+      // Get friend's highly rated content
       const potentialRecommendations = friendWatchlist.filter(
         friendEntry => 
           friendEntry.status === 'WATCHED' &&
-          friendEntry.rating && friendEntry.rating >= 7 && // Only recommend highly rated content
+          friendEntry.rating && 
+          friendEntry.rating >= 7 && // Only recommend highly rated content
           !userWatchlist.some(
             userEntry => 
               userEntry.mediaId === friendEntry.mediaId && 
@@ -201,44 +242,73 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
         return [];
       }
 
-      // Calculate user's genre preferences
-      const userGenrePreferences = new Map<string, number>();
-      userWatchlist
-        .filter(entry => entry.status === 'WATCHED' && entry.rating && entry.rating >= 7)
-        .forEach(entry => {
-          entry.genres?.forEach(genre => {
-            const currentCount = userGenrePreferences.get(genre) || 0;
-            userGenrePreferences.set(genre, currentCount + 1);
+      // Calculate user's genre preferences with weighted ratings
+      const userGenrePreferences = new Map<string, { count: number; avgRating: number }>();
+      userWatched.forEach(entry => {
+        entry.genres?.forEach(genre => {
+          const current = userGenrePreferences.get(genre) || { count: 0, avgRating: 0 };
+          userGenrePreferences.set(genre, {
+            count: current.count + 1,
+            avgRating: ((current.avgRating * current.count) + (entry.rating || 0)) / (current.count + 1)
           });
         });
+      });
 
-      // Score recommendations based on genre match and friend's rating
+      // Score recommendations based on multiple factors
       const scoredRecommendations = potentialRecommendations.map(item => {
+        let score = 0;
+        
+        // Base score from friend's rating (0-50 points)
+        score += ((item.rating || 0) / 10) * 50;
+        
+        // Genre match score (0-30 points)
         let genreMatchScore = 0;
+        let matchedGenres = 0;
         item.genres?.forEach(genre => {
-          if (userGenrePreferences.has(genre)) {
-            genreMatchScore += userGenrePreferences.get(genre)! * 2;
+          const userPref = userGenrePreferences.get(genre);
+          if (userPref) {
+            genreMatchScore += (userPref.avgRating / 10) * (userPref.count / Math.max(...Array.from(userGenrePreferences.values()).map(v => v.count)));
+            matchedGenres++;
           }
         });
+        if (matchedGenres > 0) {
+          score += (genreMatchScore / matchedGenres) * 30;
+        }
+        
+        // Recency bonus (0-20 points)
+        const releaseDate = new Date(item.createdAt);
+        const now = new Date();
+        const monthsOld = (now.getTime() - releaseDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
+        const recencyScore = Math.max(0, 20 - (monthsOld / 6)); // Lose points for every 6 months old
+        score += recencyScore;
 
         return {
           ...item,
-          score: (genreMatchScore * 0.6) + ((item.rating || 0) * 0.4)
+          score,
+          matchedGenres
         };
       });
 
-      // Sort by score and get top 4 (since we only display 4 anyway)
+      // Sort by score and get top 4
       const topRecommendations = scoredRecommendations
         .sort((a, b) => b.score - a.score)
         .slice(0, 4);
 
-      // Format recommendations without additional API calls
+      // Format recommendations with detailed reasons
       return topRecommendations.map(item => {
-        // Create a personalized reason based on genres and rating
         const matchingGenres = item.genres?.filter(genre => userGenrePreferences.has(genre)) || [];
         let reason = `Rated ${item.rating}/10 by your friend`;
+        
         if (matchingGenres.length > 0) {
-          reason += ` • Matches your ${matchingGenres.slice(0, 2).join(' & ')} preferences`;
+          const topGenres = matchingGenres
+            .sort((a, b) => {
+              const prefA = userGenrePreferences.get(a)?.avgRating || 0;
+              const prefB = userGenrePreferences.get(b)?.avgRating || 0;
+              return prefB - prefA;
+            })
+            .slice(0, 2);
+          
+          reason += ` • Matches your ${topGenres.join(' & ')} preferences`;
         }
         
         return {
@@ -252,6 +322,42 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
       console.error('Error generating recommendations:', error);
       return [];
     }
+  };
+
+  // Improved rating correlation calculation
+  const calculateRatingCorrelation = (commonContent: { rating: number; friendRating: number }[]) => {
+    const validPairs = commonContent.filter(item => 
+      typeof item.rating === 'number' && 
+      typeof item.friendRating === 'number' &&
+      !isNaN(item.rating) && 
+      !isNaN(item.friendRating)
+    );
+
+    if (validPairs.length < 2) {
+      return 0;
+    }
+
+    const meanUser = validPairs.reduce((sum, pair) => sum + pair.rating, 0) / validPairs.length;
+    const meanFriend = validPairs.reduce((sum, pair) => sum + pair.friendRating, 0) / validPairs.length;
+
+    let numerator = 0;
+    let denomUser = 0;
+    let denomFriend = 0;
+
+    validPairs.forEach(pair => {
+      const userDiff = pair.rating - meanUser;
+      const friendDiff = pair.friendRating - meanFriend;
+      numerator += userDiff * friendDiff;
+      denomUser += userDiff * userDiff;
+      denomFriend += friendDiff * friendDiff;
+    });
+
+    if (denomUser === 0 || denomFriend === 0) {
+      return 0;
+    }
+
+    const correlation = numerator / (Math.sqrt(denomUser) * Math.sqrt(denomFriend));
+    return Math.max(-1, Math.min(1, correlation));
   };
 
   useEffect(() => {
@@ -326,30 +432,7 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
           });
 
         // Calculate rating correlation
-        const ratingPairs = [...commonMovies, ...commonShows]
-          .filter(item => item.rating && item.friendRating);
-
-        let ratingCorrelation = 0;
-        if (ratingPairs.length > 0) {
-          const meanUser = ratingPairs.reduce((sum, pair) => sum + pair.rating, 0) / ratingPairs.length;
-          const meanFriend = ratingPairs.reduce((sum, pair) => sum + pair.friendRating, 0) / ratingPairs.length;
-          
-          const numerator = ratingPairs.reduce((sum, pair) => 
-            sum + (pair.rating - meanUser) * (pair.friendRating - meanFriend), 0
-          );
-          
-          const denomUser = Math.sqrt(ratingPairs.reduce((sum, pair) => 
-            sum + Math.pow(pair.rating - meanUser, 2), 0
-          ));
-          
-          const denomFriend = Math.sqrt(ratingPairs.reduce((sum, pair) => 
-            sum + Math.pow(pair.friendRating - meanFriend, 2), 0
-          ));
-          
-          if (denomUser !== 0 && denomFriend !== 0) {
-            ratingCorrelation = numerator / (denomUser * denomFriend);
-          }
-        }
+        const ratingCorrelation = calculateRatingCorrelation([...commonMovies, ...commonShows]);
 
         // Calculate genre match and recommendations
         const genreMatch = calculateGenreMatch(userWatched, friendWatched);
