@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     title: "Find Your Flick - Discover Your Next Favorite Movie",
     description: "Your personalized movie recommendation engine. Discover, share, and track your favorite movies and TV shows.",
   },
-  metadataBase: new URL("https://findyourflick.com"),
+  metadataBase: new URL("https://myflick.live"),
   alternates: {
     canonical: "/",
   },
