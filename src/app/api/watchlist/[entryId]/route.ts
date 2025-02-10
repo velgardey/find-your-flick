@@ -80,3 +80,35 @@ export async function PATCH(
     return handleApiError(error);
   }
 }
+
+export async function DELETE(
+  request: Request,
+  props: Props
+): Promise<NextResponse> {
+  try {
+    const params = await props.params;
+    const auth = await authenticateRequest(request);
+    if (!auth.success) return auth.response;
+
+    const entry = await prisma.watchlistEntry.findFirst({
+      where: {
+        id: params.entryId,
+        userId: auth.user.uid,
+      },
+    });
+
+    if (!entry) {
+      return notFoundResponse('Watchlist entry');
+    }
+
+    await prisma.watchlistEntry.delete({
+      where: {
+        id: params.entryId,
+      },
+    });
+
+    return successResponse({ message: 'Watchlist entry deleted successfully' });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
