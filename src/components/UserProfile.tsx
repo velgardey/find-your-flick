@@ -279,22 +279,35 @@ export default function UserProfile() {
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
-          />
-        </svg>
-        <span className="whitespace-nowrap">
-          {sortOptions[sortOption as keyof typeof sortOptions]}
-        </span>
+        <motion.div className="flex items-center gap-2">
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
+            />
+          </svg>
+          <span className="whitespace-nowrap">
+            {sortOption === 'newest' ? 'Newest First' : 
+             sortOption === 'oldest' ? 'Oldest First' :
+             sortOption === 'aToZ' ? 'A to Z' : 'Z to A'}
+          </span>
+          <motion.div
+            animate={{ rotate: isSortOpen ? 180 : 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 20 }}
+            className="ml-1"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </motion.div>
+        </motion.div>
       </motion.button>
 
       <AnimatePresence>
@@ -305,34 +318,91 @@ export default function UserProfile() {
             exit={{ opacity: 0, y: -10 }}
             className="absolute right-0 mt-2 w-48 bg-black/90 backdrop-blur-xl rounded-xl shadow-lg border border-white/10 overflow-hidden z-50"
           >
-            {Object.entries(sortOptions).map(([key, label]) => (
+            <div className="py-2">
+              <div className="px-3 py-2 text-xs text-gray-400 uppercase">Date Added</div>
               <motion.button
-                key={key}
                 onClick={() => {
-                  setSortOption(key);
+                  setSortOption('newest');
                   setIsSortOpen(false);
                 }}
                 className={clsx(
-                  "w-full h-12 px-4 text-left hover:bg-white/10 transition-colors flex items-center gap-3",
-                  sortOption === key ? 'text-purple-400 bg-purple-500/10' : 'text-gray-300'
+                  "w-full h-10 px-3 text-left hover:bg-white/10 transition-colors flex items-center gap-3",
+                  sortOption === 'newest' ? 'text-purple-400 bg-purple-500/10' : 'text-gray-300'
                 )}
                 whileHover={{ x: 4 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <span className="text-sm">{label}</span>
-                {sortOption === key && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="ml-auto"
-                  >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </motion.div>
-                )}
+                <motion.div
+                  initial={false}
+                  animate={{ rotate: 0 }}
+                  className="w-4 h-4"
+                >
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                </motion.div>
+                <span className="text-sm">Newest First</span>
               </motion.button>
-            ))}
+              <motion.button
+                onClick={() => {
+                  setSortOption('oldest');
+                  setIsSortOpen(false);
+                }}
+                className={clsx(
+                  "w-full h-10 px-3 text-left hover:bg-white/10 transition-colors flex items-center gap-3",
+                  sortOption === 'oldest' ? 'text-purple-400 bg-purple-500/10' : 'text-gray-300'
+                )}
+                whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <motion.div
+                  initial={false}
+                  animate={{ rotate: 180 }}
+                  className="w-4 h-4"
+                >
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                </motion.div>
+                <span className="text-sm">Oldest First</span>
+              </motion.button>
+
+              <div className="px-3 py-2 text-xs text-gray-400 uppercase mt-2">Alphabetical</div>
+              <motion.button
+                onClick={() => {
+                  setSortOption('aToZ');
+                  setIsSortOpen(false);
+                }}
+                className={clsx(
+                  "w-full h-10 px-3 text-left hover:bg-white/10 transition-colors flex items-center gap-3",
+                  sortOption === 'aToZ' ? 'text-purple-400 bg-purple-500/10' : 'text-gray-300'
+                )}
+                whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6" />
+                </svg>
+                <span className="text-sm">A to Z</span>
+              </motion.button>
+              <motion.button
+                onClick={() => {
+                  setSortOption('zToA');
+                  setIsSortOpen(false);
+                }}
+                className={clsx(
+                  "w-full h-10 px-3 text-left hover:bg-white/10 transition-colors flex items-center gap-3",
+                  sortOption === 'zToA' ? 'text-purple-400 bg-purple-500/10' : 'text-gray-300'
+                )}
+                whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9" />
+                </svg>
+                <span className="text-sm">Z to A</span>
+              </motion.button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -453,7 +523,7 @@ export default function UserProfile() {
 
         {/* Watchlist Section */}
         <motion.div
-          layout
+          layout="position"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
@@ -470,6 +540,8 @@ export default function UserProfile() {
               </motion.h2>
               <div className="flex items-center gap-2">
                 <motion.button
+                  layoutId="movie-toggle"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setShowMovies(!showMovies)}
@@ -486,6 +558,8 @@ export default function UserProfile() {
                   <LuFilm className="w-5 h-5" />
                 </motion.button>
                 <motion.button
+                  layoutId="tv-toggle"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setShowShows(!showShows)}
@@ -571,22 +645,28 @@ export default function UserProfile() {
             </motion.div>
           ) : (
             <motion.div 
-              variants={container}
-              initial="hidden"
-              animate="show"
-              className="grid grid-cols-2 gap-4 mt-4"
+              layout
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-4"
             >
-              {filteredWatchlist.map(media => (
+              {filteredWatchlist.map((movie, index) => (
                 <motion.div
-                  key={media.id}
-                  variants={item}
+                  key={movie.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ delay: index * 0.05 }}
                   className="media-card relative group"
                 >
-                  <div className="relative aspect-[2/3] rounded-lg overflow-hidden">
-                    {media.posterPath ? (
+                  <div
+                    className="relative aspect-[2/3] rounded-lg overflow-hidden cursor-pointer"
+                  >
+                    {movie.posterPath ? (
                       <Image
-                        src={`https://image.tmdb.org/t/p/w500${media.posterPath}`}
-                        alt={media.title}
+                        src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`}
+                        alt={movie.title}
                         fill
                         className="object-cover transition-transform duration-300 group-hover:scale-105"
                         placeholder="blur"
@@ -603,23 +683,23 @@ export default function UserProfile() {
                       </div>
                     )}
                     <div 
-                      onClick={(e) => handleMediaClick(media.mediaId, media.mediaType, media.id, e)}
+                      onClick={(e) => handleMediaClick(movie.mediaId, movie.mediaType, movie.id, e)}
                       className={`absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-4 transition-opacity duration-200 ${
-                        touchedItemId === media.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                        touchedItemId === movie.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                       }`}
                     >
-                      <p className="text-sm font-medium text-center text-white mb-4">{media.title}</p>
+                      <p className="text-sm font-medium text-center text-white mb-4">{movie.title}</p>
                       <div className="w-full max-w-[200px] flex flex-col items-center space-y-2">
                         <motion.button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedMediaId(media.mediaId);
-                            setSelectedMediaType(media.mediaType);
+                            setSelectedMediaId(movie.mediaId);
+                            setSelectedMediaType(movie.mediaType);
                           }}
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg bg-black/40 hover:bg-black/60 transition-colors text-sm ${
-                            !window.matchMedia('(hover: hover)').matches && touchedItemId !== media.id 
+                            !window.matchMedia('(hover: hover)').matches && touchedItemId !== movie.id 
                               ? 'pointer-events-none' 
                               : ''
                           }`}
@@ -630,17 +710,17 @@ export default function UserProfile() {
                         <div 
                           onClick={(e) => e.stopPropagation()} 
                           className={`w-full flex justify-center ${
-                            !window.matchMedia('(hover: hover)').matches && touchedItemId !== media.id 
+                            !window.matchMedia('(hover: hover)').matches && touchedItemId !== movie.id 
                               ? 'pointer-events-none' 
                               : ''
                           }`}
                         >
                           <WatchlistButton
                             media={{
-                              id: media.mediaId,
-                              title: media.title,
-                              poster_path: media.posterPath || '',
-                              media_type: media.mediaType
+                              id: movie.mediaId,
+                              title: movie.title,
+                              poster_path: movie.posterPath || '',
+                              media_type: movie.mediaType
                             }}
                             position="bottom"
                           />

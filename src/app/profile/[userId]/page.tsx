@@ -284,22 +284,35 @@ function UserProfile({ params }: PageProps) {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
-            />
-          </svg>
-          <span className="whitespace-nowrap">
-            {sortBy === 'date' ? 'Date Added' : sortBy === 'rating' ? 'Rating' : 'Title'}
-          </span>
+          <motion.div className="flex items-center gap-2">
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
+              />
+            </svg>
+            <span className="whitespace-nowrap">
+              {sortBy === 'date' ? (sortOrder === 'desc' ? 'Newest First' : 'Oldest First') :
+               sortBy === 'rating' ? (sortOrder === 'desc' ? 'Highest Rated' : 'Lowest Rated') :
+               sortOrder === 'desc' ? 'Z to A' : 'A to Z'}
+            </span>
+            <motion.div
+              animate={{ rotate: isSortOpen ? 180 : 0 }}
+              transition={{ type: "spring", stiffness: 200, damping: 20 }}
+              className="ml-1"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </motion.div>
+          </motion.div>
         </motion.button>
 
         <AnimatePresence>
@@ -310,35 +323,133 @@ function UserProfile({ params }: PageProps) {
               exit={{ opacity: 0, y: -10 }}
               className="absolute right-0 mt-2 w-48 bg-black/90 backdrop-blur-xl rounded-xl shadow-lg border border-white/10 overflow-hidden z-50"
             >
-              {['date', 'rating', 'title'].map((option) => (
+              <div className="py-2">
+                <div className="px-3 py-2 text-xs text-gray-400 uppercase">Date Added</div>
                 <motion.button
-                  key={option}
                   onClick={() => {
-                    setSortBy(option);
-                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                    setSortBy('date');
+                    setSortOrder('desc');
                     setIsSortOpen(false);
                   }}
                   className={clsx(
-                    "w-full h-12 px-4 text-left hover:bg-white/10 transition-colors flex items-center gap-3",
-                    sortBy === option ? 'text-purple-400 bg-purple-500/10' : 'text-gray-300'
+                    "w-full h-10 px-3 text-left hover:bg-white/10 transition-colors flex items-center gap-3",
+                    sortBy === 'date' && sortOrder === 'desc' ? 'text-purple-400 bg-purple-500/10' : 'text-gray-300'
                   )}
                   whileHover={{ x: 4 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <span className="text-sm capitalize">{option}</span>
-                  {sortBy === option && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="ml-auto"
-                    >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </motion.div>
-                  )}
+                  <motion.div
+                    initial={false}
+                    animate={{ rotate: 0 }}
+                    className="w-4 h-4"
+                  >
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                  </motion.div>
+                  <span className="text-sm">Newest First</span>
                 </motion.button>
-              ))}
+                <motion.button
+                  onClick={() => {
+                    setSortBy('date');
+                    setSortOrder('asc');
+                    setIsSortOpen(false);
+                  }}
+                  className={clsx(
+                    "w-full h-10 px-3 text-left hover:bg-white/10 transition-colors flex items-center gap-3",
+                    sortBy === 'date' && sortOrder === 'asc' ? 'text-purple-400 bg-purple-500/10' : 'text-gray-300'
+                  )}
+                  whileHover={{ x: 4 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <motion.div
+                    initial={false}
+                    animate={{ rotate: 180 }}
+                    className="w-4 h-4"
+                  >
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                  </motion.div>
+                  <span className="text-sm">Oldest First</span>
+                </motion.button>
+
+                <div className="px-3 py-2 text-xs text-gray-400 uppercase mt-2">Rating</div>
+                <motion.button
+                  onClick={() => {
+                    setSortBy('rating');
+                    setSortOrder('desc');
+                    setIsSortOpen(false);
+                  }}
+                  className={clsx(
+                    "w-full h-10 px-3 text-left hover:bg-white/10 transition-colors flex items-center gap-3",
+                    sortBy === 'rating' && sortOrder === 'desc' ? 'text-purple-400 bg-purple-500/10' : 'text-gray-300'
+                  )}
+                  whileHover={{ x: 4 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                  <span className="text-sm">Highest Rated</span>
+                </motion.button>
+                <motion.button
+                  onClick={() => {
+                    setSortBy('rating');
+                    setSortOrder('asc');
+                    setIsSortOpen(false);
+                  }}
+                  className={clsx(
+                    "w-full h-10 px-3 text-left hover:bg-white/10 transition-colors flex items-center gap-3",
+                    sortBy === 'rating' && sortOrder === 'asc' ? 'text-purple-400 bg-purple-500/10' : 'text-gray-300'
+                  )}
+                  whileHover={{ x: 4 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                  <span className="text-sm">Lowest Rated</span>
+                </motion.button>
+
+                <div className="px-3 py-2 text-xs text-gray-400 uppercase mt-2">Alphabetical</div>
+                <motion.button
+                  onClick={() => {
+                    setSortBy('title');
+                    setSortOrder('asc');
+                    setIsSortOpen(false);
+                  }}
+                  className={clsx(
+                    "w-full h-10 px-3 text-left hover:bg-white/10 transition-colors flex items-center gap-3",
+                    sortBy === 'title' && sortOrder === 'asc' ? 'text-purple-400 bg-purple-500/10' : 'text-gray-300'
+                  )}
+                  whileHover={{ x: 4 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6" />
+                  </svg>
+                  <span className="text-sm">A to Z</span>
+                </motion.button>
+                <motion.button
+                  onClick={() => {
+                    setSortBy('title');
+                    setSortOrder('desc');
+                    setIsSortOpen(false);
+                  }}
+                  className={clsx(
+                    "w-full h-10 px-3 text-left hover:bg-white/10 transition-colors flex items-center gap-3",
+                    sortBy === 'title' && sortOrder === 'desc' ? 'text-purple-400 bg-purple-500/10' : 'text-gray-300'
+                  )}
+                  whileHover={{ x: 4 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9" />
+                  </svg>
+                  <span className="text-sm">Z to A</span>
+                </motion.button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
