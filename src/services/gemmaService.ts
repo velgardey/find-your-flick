@@ -15,7 +15,7 @@ export async function generateMediaRecommendations(
   mediaType: 'movie' | 'tv'
 ): Promise<string[]> {
   const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY!);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const prompt = `You are an expert media curator with deep knowledge of ${mediaType === 'movie' ? 'films' : 'television shows'} across all genres, eras, and cultures. Analyze the following input and recommend ${count} exceptional ${mediaType === 'movie' ? 'movies' : 'TV shows'}.
 
