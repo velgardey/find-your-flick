@@ -41,29 +41,6 @@ export default function UserProfile() {
   const [showMovies, setShowMovies] = useState(true);
   const [showShows, setShowShows] = useState(true);
 
-  const sortOptions = {
-    newest: 'Newest First',
-    oldest: 'Oldest First',
-    aToZ: 'A to Z',
-    zToA: 'Z to A',
-  };
-
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2
-      }
-    }
-  };
-
-  const item = {
-    hidden: { y: 20, opacity: 0 },
-    show: { y: 0, opacity: 1 }
-  };
-
   const loadUserProfile = useCallback(async () => {
     if (!user?.uid) return;
     
