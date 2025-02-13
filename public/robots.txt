@@ -3,7 +3,7 @@ User-agent: *
 Allow: /
 
 # Sitemap location
-Sitemap: https://findyourflick.com/sitemap.xml
+Sitemap: https://myflick.live/sitemap.xml
 
 # Disallow API routes
 Disallow: /api/

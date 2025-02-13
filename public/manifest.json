@@ -1,6 +1,6 @@
 {
   "name": "Find Your Flick",
-  "short_name": "FindFlick",
+  "short_name": "Flick",
   "description": "Your personalized movie recommendation engine",
   "start_url": "/",
   "display": "standalone",
