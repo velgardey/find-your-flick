@@ -537,7 +537,7 @@ function UserProfile({ params }: PageProps) {
               animate={{ opacity: 1, y: 0 }}
               className="mb-12"
             >
-              <UserStats />
+              <UserStats userId={userId} />
             </motion.div>
 
             {/* Watchlist Section */}

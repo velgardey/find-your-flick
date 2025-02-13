@@ -17,6 +17,7 @@ interface WatchlistEntry {
   status: string;
   rating: number | null;
   updatedAt: string;
+  createdAt: string;
 }
 
 interface Genre {
@@ -349,9 +350,15 @@ export default function UserStats({ userId }: UserStatsProps) {
 
           // Process runtime and watch time
           const entry = watchedEntries[index];
-          const watchTimestamp = new Date(entry.updatedAt).getTime();
-          const watchDate = new Date(entry.updatedAt).toISOString().slice(0, 10); // YYYY-MM-DD
-          const monthKey = new Date(entry.updatedAt).toISOString().slice(0, 7);
+          const watchDate = entry.updatedAt 
+            ? new Date(entry.updatedAt).toISOString().slice(0, 10) // YYYY-MM-DD
+            : new Date(entry.createdAt).toISOString().slice(0, 10); // Fallback to createdAt
+          const monthKey = entry.updatedAt 
+            ? new Date(entry.updatedAt).toISOString().slice(0, 7)
+            : new Date(entry.createdAt).toISOString().slice(0, 7);
+          const watchTimestamp = entry.updatedAt 
+            ? new Date(entry.updatedAt).getTime()
+            : new Date(entry.createdAt).getTime();
 
           const runtime = selectedMediaType === 'movie' ? 
             (media.runtime || 0) : 
