@@ -380,12 +380,7 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
         entry => entry.status === 'WATCHED' || entry.status === 'WATCHING'
       );
 
-      // Get user's already planned content
-      const userPlanned = userWatchlist.filter(
-        entry => entry.status === 'PLAN_TO_WATCH'
-      );
-
-      // Find already consumed media IDs
+      // Find already consumed media IDs (including planned)
       const consumedMediaIds = new Set(userWatchlist.map(entry => entry.mediaId));
 
       // Get friend's highly rated content
@@ -643,7 +638,7 @@ export default function TasteMatch({ userId }: TasteMatchProps) {
     };
 
     calculateMatchStats();
-  }, [user, userId, watchlist, calculateOverallMatch]);
+  }, [user, userId, watchlist, calculateOverallMatch, generateRecommendations]);
 
   // Handler for opening media details modal
   const handleMediaClick = (mediaId: number, mediaType: 'movie' | 'tv') => {
