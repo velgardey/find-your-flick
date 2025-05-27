@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LuArrowLeft, LuX } from 'react-icons/lu';
+import { LuArrowLeft } from 'react-icons/lu';
 import { MovieDetails, TVShowDetails } from '@/types/media';
 import { useWatchlist } from '@/contexts/WatchlistContext';
 
@@ -20,7 +20,14 @@ export default function PlayerPage() {
   const [media, setMedia] = useState<MovieDetails | TVShowDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [iframeLoaded, setIframeLoaded] = useState(false);
-  const [watchProgress, setWatchProgress] = useState<any>(null);
+  const [watchProgress, setWatchProgress] = useState<{ 
+    type: string;
+    id: string;
+    progress?: { 
+      watched: number; 
+      duration: number;
+    };
+  } | null>(null);
   
   const { getWatchlistEntry, updateWatchlistEntry } = useWatchlist();
   const watchlistEntry = mediaId ? getWatchlistEntry(parseInt(mediaId)) : undefined;

@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "npx prisma generate --no-engine && npx prisma db push && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "prisma:generate": "prisma generate --no-engine"
   },
   "dependencies": {
     "@firebase/auth": "^1.9.0",

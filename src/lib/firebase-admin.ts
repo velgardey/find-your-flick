@@ -13,7 +13,10 @@ if (!admin.apps.length) {
         privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       }),
     });
-    console.log('Firebase Admin initialized successfully');
+    // Only log in development mode and not during hot reloading
+    if (process.env.NODE_ENV !== 'production' && process.env.NEXT_MANUAL_SIG_HANDLE) {
+      console.log('Firebase Admin initialized successfully');
+    }
   } catch (error) {
     console.error('Firebase admin initialization error:', error);
     throw error;

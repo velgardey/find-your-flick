@@ -5,7 +5,10 @@ import { withRetry } from './retryUtils'
 const globalForPrisma = global as unknown as { prisma: PrismaClient }
 
 export const prisma = globalForPrisma.prisma || 
-  new PrismaClient().$extends(withAccelerate())
+  new PrismaClient({
+    // Disable engine binary generation warning in development
+    log: process.env.NODE_ENV === 'development' ? [] : ['error']
+  }).$extends(withAccelerate())
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
