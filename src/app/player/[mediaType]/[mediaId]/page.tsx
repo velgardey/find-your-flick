@@ -192,8 +192,8 @@ export default function PlayerPage() {
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="flex items-center justify-between p-6 bg-gradient-to-b from-black/90 via-black/50 to-transparent absolute top-0 left-0 right-0 z-10"
+          exit={{ opacity: 0, y: -20 }}
+          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent"
         >
           <motion.button
             onClick={handleClose}
@@ -205,20 +205,7 @@ export default function PlayerPage() {
             <span className="font-medium">Back to Browse</span>
           </motion.button>
           
-          {media && (
-            <motion.h1 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-white text-lg font-medium truncate max-w-[60%] text-center"
-            >
-              {media.title}
-              {mediaType === 'tv' && season && episode && (
-                <span className="text-gray-400 text-sm ml-2">
-                  S{season} E{episode}
-                </span>
-              )}
-            </motion.h1>
-          )}
+          {/* Title has been removed as requested */}
           
           {/* Empty div to maintain flex spacing */}
           <div className="w-[140px]"></div>
