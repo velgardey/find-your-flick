@@ -7,6 +7,7 @@ import { LuChevronDown, LuClock, LuTrendingUp, LuActivity, LuStar, LuFilm, LuTv 
 import Image from 'next/image';
 import { fetchWithAuth } from '@/lib/api';
 import { MovieDetails, TVShowDetails } from '@/types/media';
+import { fetchMediaDetails } from '@/lib/mediaUtils';
 
 // Create motion components
 // const MotionImage = motion.create(Image);
@@ -33,7 +34,9 @@ interface Director {
   profilePath: string | null;
 }
 
-interface MediaDetails {
+// Extended media details interface that includes properties from both movie and TV show types
+interface ExtendedMediaDetails {
+  id: number;
   genres?: Array<{ id: number; name: string }>;
   credits?: {
     crew?: Array<{
@@ -42,11 +45,19 @@ interface MediaDetails {
       job: string;
       profile_path: string | null;
     }>;
+    cast?: Array<{
+      id: number;
+      name: string;
+      character?: string;
+      profile_path?: string | null;
+    }>;
   };
   runtime?: number;
   episode_run_time?: number[];
   number_of_episodes?: number;
   name?: string;
+  title?: string;
+  media_type?: 'movie' | 'tv';
   error?: string;
 }
 
@@ -78,49 +89,8 @@ interface UserStats {
 
 type MediaType = 'movie' | 'tv';
 
-interface IconComponent {
-  className?: string;
-}
-
-function StatCard({ 
-  title, 
-  value, 
-  icon: Icon,
-  subtitle,
-  color = 'default'
-}: { 
-  title: string; 
-  value: string | number; 
-  icon: React.ComponentType<IconComponent>;
-  subtitle?: string;
-  color?: 'default' | 'purple' | 'blue' | 'green' | 'yellow';
-}) {
-  const colorClasses = {
-    default: 'from-white/10 to-white/5',
-    purple: 'from-purple-500/20 to-purple-500/5',
-    blue: 'from-blue-500/20 to-blue-500/5',
-    green: 'from-green-500/20 to-green-500/5',
-    yellow: 'from-yellow-500/20 to-yellow-500/5',
-  };
-
-  return (
-    <motion.div 
-      whileHover={{ scale: 1.02 }}
-      className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${colorClasses[color]} p-6 border border-white/10`}
-    >
-      <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 opacity-10">
-        <Icon className="w-full h-full" />
-      </div>
-      <div className="relative">
-        <div className="text-gray-400 text-sm">{title}</div>
-        <div className="text-2xl font-bold mt-1">{value}</div>
-        {subtitle && (
-          <div className="text-xs text-gray-500 mt-2">{subtitle}</div>
-        )}
-      </div>
-    </motion.div>
-  );
-}
+// Import the shared StatCard component
+import StatCard from './ui/StatCard';
 
 interface UserStatsProps {
   userId?: string;
@@ -161,8 +131,13 @@ export default function UserStats({ userId }: UserStatsProps) {
       // Use the appropriate watchlist based on whether we're viewing another user's profile
       const targetWatchlist = userId ? otherUserWatchlist : watchlist;
       
+      // Don't set loading to false if we're still waiting for the target watchlist
       if (!targetWatchlist) {
-        setIsLoading(false);
+        // Only set loading to false if we're not expecting more data
+        // For other user profiles, keep loading until we get the watchlist
+        if (!userId || (userId && otherUserWatchlist === null)) {
+          setIsLoading(false);
+        }
         setStats(null);
         return;
       }
@@ -212,20 +187,10 @@ export default function UserStats({ userId }: UserStatsProps) {
         const mediaDetails = await Promise.all(
           watchedEntries.map(async (entry) => {
             try {
-              const response = await fetch(`/api/tmdb?path=/${entry.mediaType}/${entry.mediaId}&append_to_response=credits`, {
-                headers: {
-                  'Accept': 'application/json'
-                }
-              });
-              
-              const data = await response.json() as MediaDetails;
-              
-              if (!response.ok) {
-                console.error(`Error fetching details for ${entry.mediaType} ${entry.mediaId}:`, data.error);
-                return null;
-              }
-              
-              return data;
+              const mediaDetails = await fetchMediaDetails<ExtendedMediaDetails>(entry.mediaType, entry.mediaId, {
+                appendToResponse: ['credits']
+              }); 
+              return mediaDetails;
             } catch (error) {
               console.error(`Error fetching details for ${entry.mediaType} ${entry.mediaId}:`, error);
               return null;
@@ -298,7 +263,7 @@ export default function UserStats({ userId }: UserStatsProps) {
           watchTimeByMonth[month] = 0;
         });
 
-        validMediaDetails.forEach((media, index) => {
+        validMediaDetails.forEach((media: ExtendedMediaDetails, index: number) => {
           // Process genres
           media.genres?.forEach((genre: { id: number; name: string }) => {
             if (!genreCounts[genre.id]) {
@@ -309,25 +274,32 @@ export default function UserStats({ userId }: UserStatsProps) {
 
           // Process creators and TV show specific stats
           if (selectedMediaType === 'movie') {
-            const directors = media.credits?.crew?.filter((person) => person.job === 'Director') || [];
+            const directors = (media.credits?.crew?.filter((person: { job: string; id: number; name: string; profile_path: string | null }) => 
+              person.job === 'Director'
+            ) || []).map((director: { id: number; name: string; profile_path: string | null }) => ({
+              id: director.id,
+              name: director.name,
+              count: 1,
+              profilePath: director.profile_path
+            }));
             directors.forEach(director => {
               if (!creatorCounts[director.id]) {
                 creatorCounts[director.id] = {
                   id: director.id,
                   name: director.name,
                   count: 0,
-                  profilePath: director.profile_path
+                  profilePath: director.profilePath
                 };
               }
               creatorCounts[director.id].count++;
             });
           } else {
-            const creators = media.credits?.crew?.filter((person) => 
+            const creators = media.credits?.crew?.filter((person: { job: string; id: number; name: string; profile_path: string | null }) => 
               person.job === 'Creator' || 
               person.job === 'Executive Producer' || 
               person.job === 'Showrunner'
             ) || [];
-            creators.forEach(creator => {
+            creators.forEach((creator: { id: number; name: string; profile_path: string | null }) => {
               if (!creatorCounts[creator.id]) {
                 creatorCounts[creator.id] = {
                   id: creator.id,
@@ -526,6 +498,7 @@ export default function UserStats({ userId }: UserStatsProps) {
     return `${hours}h ${remainingMinutes}m`;
   };
 
+  // First check if we're still loading
   if (isLoading) {
     return (
       <div className="space-y-4 animate-pulse">
@@ -539,6 +512,7 @@ export default function UserStats({ userId }: UserStatsProps) {
     );
   }
 
+  // If stats is null after loading is complete, return null
   if (!stats) return null;
 
   const currentStats = selectedMediaType === 'movie' ? {
@@ -557,8 +531,8 @@ export default function UserStats({ userId }: UserStatsProps) {
     watchTimeByMonth: stats.watchTimeByMonth
   };
 
-  // Add empty state when no content is watched
-  if (currentStats.totalWatched === 0) {
+  // Only show empty state when loading is complete and we've confirmed there are no watched movies/shows
+  if (!isLoading && currentStats.totalWatched === 0) {
     return (
       <motion.div 
         initial={{ opacity: 0, y: 20 }}

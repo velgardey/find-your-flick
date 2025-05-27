@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebase-admin';
-import { prisma } from '@/lib/prisma';
+import { prisma, withPrismaRetry } from '@/lib/prisma';
 
 type Props = {
   params: Promise<{
@@ -26,12 +26,14 @@ export async function GET(
 
       // Check if the current user is friends with the requested user
       if (currentUserId !== userId) {
-        const friendship = await prisma.friendship.findFirst({
-          where: {
-            userId: currentUserId,
-            friendId: userId,
-          },
-        });
+        const friendship = await withPrismaRetry(() => 
+          prisma.friendship.findFirst({
+            where: {
+              userId: currentUserId,
+              friendId: userId,
+            },
+          })
+        );
 
         if (!friendship) {
           return NextResponse.json(
@@ -41,15 +43,17 @@ export async function GET(
         }
       }
 
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          id: true,
-          displayName: true,
-          photoURL: true,
-          email: true,
-        },
-      });
+      const user = await withPrismaRetry(() => 
+        prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            id: true,
+            displayName: true,
+            photoURL: true,
+            email: true,
+          },
+        })
+      );
 
       if (!user) {
         return NextResponse.json(

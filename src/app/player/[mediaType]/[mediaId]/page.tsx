@@ -6,6 +6,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LuArrowLeft } from 'react-icons/lu';
 import { MovieDetails, TVShowDetails } from '@/types/media';
 import { useWatchlist } from '@/contexts/WatchlistContext';
+import { fetchMediaDetails } from '@/lib/mediaUtils';
+import { WatchStatus } from '@/lib/prismaTypes';
+
+// Add TypeScript declaration for window.progressUpdateTimeout
+declare global {
+  interface Window {
+    progressUpdateTimeout: ReturnType<typeof setTimeout> | undefined;
+  }
+}
 
 export default function PlayerPage() {
   const params = useParams();
@@ -52,33 +61,71 @@ export default function PlayerPage() {
         if (watchlistEntry && event.data.id === mediaId) {
           const progressData = event.data;
           
-          // For TV shows, update current season and episode
-          if (mediaType === 'tv' && progressData.progress) {
-            const currentSeason = season ? parseInt(season) : 1;
-            const currentEpisode = episode ? parseInt(episode) : 1;
-            
-            // Calculate progress percentage
-            const watchedTime = progressData.progress.watched || 0;
-            const totalTime = progressData.progress.duration || 0;
-            const progressPercentage = totalTime > 0 ? (watchedTime / totalTime) * 100 : 0;
-            
-            // Only update if significant progress has been made (more than 5%)
-            if (progressPercentage > 5) {
-              updateWatchlistEntry(watchlistEntry.id, {
-                currentSeason,
-                currentEpisode,
-                // If progress is more than 90%, mark as watched and increment episode
-                ...(progressPercentage > 90 && mediaType === 'tv' ? {
-                  currentEpisode: currentEpisode + 1
-                } : {})
-              });
+          try {
+            if (progressData.progress) {
+              const watchedTime = progressData.progress.watched || 0;
+              const totalTime = progressData.progress.duration || 0;
+              const progressPercentage = totalTime > 0 ? (watchedTime / totalTime) * 100 : 0;
+              
+              // Common progress updates for both movies and TV shows
+              // Only update if significant progress has been made (more than 5%)
+              if (progressPercentage > 5) {
+                // Define updates with proper typing
+                const updates: {
+                  watchedSeconds: number;
+                  totalDuration: number;
+                  lastWatched: string;
+                  currentSeason?: number;
+                  currentEpisode?: number;
+                  status?: WatchStatus;
+                } = {
+                  watchedSeconds: watchedTime,
+                  totalDuration: totalTime,
+                  lastWatched: new Date().toISOString()
+                };
+                
+                // For TV shows, update current season and episode
+                if (mediaType === 'tv') {
+                  const currentSeason = season ? parseInt(season) : 1;
+                  const currentEpisode = episode ? parseInt(episode) : 1;
+                  
+                  updates.currentSeason = currentSeason;
+                  updates.currentEpisode = currentEpisode;
+                  
+                  // If progress is more than 90%, mark as watched and increment episode
+                  if (progressPercentage > 90) {
+                    updates.currentEpisode = currentEpisode + 1;
+                    
+                    // If status is WATCHING, update it to reflect progress
+                    if (watchlistEntry.status === WatchStatus.WATCHING) {
+                      updates.status = WatchStatus.WATCHED;
+                    }
+                  }
+                }
+                
+                // For movies, update status if nearly complete
+                if (mediaType === 'movie' && progressPercentage > 90 && watchlistEntry.status === WatchStatus.WATCHING) {
+                  updates.status = WatchStatus.WATCHED;
+                }
+                
+                // Debounce updates to avoid too many API calls
+                // We use a setTimeout to batch updates every 5 seconds
+                if (window.progressUpdateTimeout) {
+                  clearTimeout(window.progressUpdateTimeout);
+                }
+                
+                window.progressUpdateTimeout = setTimeout(() => {
+                  updateWatchlistEntry(watchlistEntry.id, updates)
+                    .catch(error => {
+                      console.error('Failed to update watch progress:', error);
+                      // Show a toast or notification to the user
+                      // This could be implemented with a toast library
+                    });
+                }, 5000);
+              }
             }
-          }
-          
-          // For movies, just update progress
-          if (mediaType === 'movie' && progressData.progress) {
-            // We could update a movie progress field if needed
-            console.log('Movie progress update:', progressData.progress);
+          } catch (error) {
+            console.error('Error processing watch progress update:', error);
           }
         }
       }
@@ -103,23 +150,26 @@ export default function PlayerPage() {
       setIsLoading(true);
       
       try {
-        const mediaResponse = await fetch(
-          `/api/tmdb?path=/${mediaType}/${mediaId}?language=en-US`,
-          { signal: controller.signal }
-        );
-        
-        if (!mediaResponse.ok) {
-          throw new Error(`Failed to fetch media details: ${mediaResponse.status}`);
-        }
-        
-        const mediaData = await mediaResponse.json();
+        // Use the shared utility function to fetch media details
+        const mediaData = await fetchMediaDetails(mediaType, mediaId, {
+          signal: controller.signal
+        });
 
         if (isMounted) {
-          setMedia({
-            ...mediaData,
-            title: mediaData.title || mediaData.name,
-            media_type: mediaType
-          });
+          // Create a properly typed object based on the mediaType
+          if (mediaType === 'movie') {
+            setMedia({
+              ...mediaData,
+              title: mediaData.title,
+              media_type: 'movie'
+            } as MovieDetails);
+          } else {
+            setMedia({
+              ...mediaData,
+              title: (mediaData as TVShowDetails).name,
+              media_type: 'tv'
+            } as TVShowDetails);
+          }
           setIsLoading(false);
         }
       } catch (error) {
@@ -153,33 +203,58 @@ export default function PlayerPage() {
 
   // Construct the Vidora URL based on media type
   const getVidoraUrl = () => {
-    if (!media) return '';
-    
     let baseUrl = '';
+    const params = [];
     
+    // Add media type specific parameters
     if (mediaType === 'movie') {
       baseUrl = `https://vidora.su/movie/${mediaId}`;
-    } else if (mediaType === 'tv') {
+    } else {
       baseUrl = `https://vidora.su/tv/${mediaId}`;
-      if (season && episode) {
-        baseUrl += `/${season}/${episode}`;
-      } else {
-        baseUrl += '/1/1'; // Default to season 1, episode 1 if not specified
+      
+      // Add season and episode params for TV shows
+      if (season) params.push(`season=${season}`);
+      if (episode) params.push(`episode=${episode}`);
+    }
+    
+    // Add custom parameters
+    if (autoplay) params.push(`autoplay=${autoplay}`);
+    if (colour) params.push(`colour=${colour}`);
+    if (backbutton) params.push(`backbutton=${encodeURIComponent(backbutton)}`);
+    if (logo) params.push(`logo=${encodeURIComponent(logo)}`);
+    if (pausescreen) params.push(`pausescreen=${pausescreen}`);
+    if (autonextepisode) params.push(`autonextepisode=${autonextepisode}`);
+    
+    // Add resume parameter based on stored progress or current progress
+    // Priority: 1. Current session progress, 2. Stored progress in database
+    let resumeTime = 0;
+    
+    // Check current session progress first
+    if (watchProgress?.progress?.watched) {
+      const watchedTime = watchProgress.progress.watched;
+      const totalTime = watchProgress.progress.duration || 0;
+      const progressPercentage = totalTime > 0 ? (watchedTime / totalTime) * 100 : 0;
+      
+      // Only use if significant progress (more than 10 seconds) and not at the end (less than 95%)
+      if (watchedTime > 10 && progressPercentage < 95) {
+        resumeTime = watchedTime;
+      }
+    } 
+    // If no current session progress, check database stored progress
+    else if (watchlistEntry?.watchedSeconds) {
+      const watchedTime = watchlistEntry.watchedSeconds;
+      const totalTime = watchlistEntry.totalDuration || 0;
+      const progressPercentage = totalTime > 0 ? (watchedTime / totalTime) * 100 : 0;
+      
+      // Only use if significant progress (more than 10 seconds) and not at the end (less than 95%)
+      if (watchedTime > 10 && progressPercentage < 95) {
+        resumeTime = watchedTime;
       }
     }
     
-    // Add parameters
-    const params = [
-      `autoplay=${autoplay}`,
-      `colour=${colour}`,
-      `backbutton=${backbutton}`,
-      `logo=${logo}`,
-      `pausescreen=${pausescreen}`
-    ];
-    
-    // Add autonextepisode only for TV shows
-    if (mediaType === 'tv') {
-      params.push(`autonextepisode=${autonextepisode}`);
+    // Add resume parameter if we have a valid resume time
+    if (resumeTime > 0) {
+      params.push(`resume=${Math.floor(resumeTime)}`);
     }
     
     return `${baseUrl}?${params.join('&')}`;

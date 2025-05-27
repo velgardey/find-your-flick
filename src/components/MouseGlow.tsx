@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 
+
 interface Props {
   onMediaChange?: (mediaId: number, mediaType: 'movie' | 'tv') => void;
 }
@@ -21,6 +22,8 @@ export default function MouseGlow({ onMediaChange }: Props) {
     // Fetch a single random movie backdrop when component mounts
     const fetchRandomBackdrop = async () => {
       try {
+        // We still need to use the direct API call here since we need a list of movies
+        // rather than details for a specific movie
         const response = await fetch('/api/tmdb?path=/movie/popular?language=en-US&page=1');
         const data = await response.json();
         

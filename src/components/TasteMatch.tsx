@@ -1,50 +1,18 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '@/contexts/AuthContext';
-import { useWatchlist } from '@/contexts/WatchlistContext';
 import Image from 'next/image';
+import { useAuth } from '@/contexts/AuthContext';
 import { fetchWithAuth } from '@/lib/api';
-import { clsx } from 'clsx';
-import { LuUsers, LuChevronRight, LuFilm, LuTv, LuTrophy, LuHeart, LuThumbsUp, LuStar } from 'react-icons/lu';
+import { useWatchlist } from '@/contexts/WatchlistContext';
+import { LuChevronDown, LuUsers, LuFilm, LuTv, LuStar, LuClock } from 'react-icons/lu';
+import { fetchMediaDetails } from '@/lib/mediaUtils';
+
+import StatCard from './ui/StatCard';
 
 interface TasteMatchProps {
   userId: string;
-}
-
-interface MatchStats {
-  overallMatch: number;
-  commonMovies: {
-    title: string;
-    posterPath: string | null;
-    rating: number;
-    friendRating: number;
-  }[];
-  commonShows: {
-    title: string;
-    posterPath: string | null;
-    rating: number;
-    friendRating: number;
-  }[];
-  recommendations: {
-    title: string;
-    posterPath: string | null;
-    mediaType: 'movie' | 'tv';
-    reason: string;
-  }[];
-  genreMatch: {
-    genre: string;
-    percentage: number;
-  }[];
-  ratingCorrelation: number;
-  funStats: {
-    favoriteGenre: string;
-    highestRatedCommon: string;
-    lowestRatedCommon: string;
-    totalWatchTime: number;
-    perfectMatches: number;
-  };
 }
 
 interface WatchlistEntry {
@@ -55,682 +23,1014 @@ interface WatchlistEntry {
   posterPath: string | null;
   status: string;
   rating: number | null;
-  genres?: string[];
+  notes: string | null;
   createdAt: string;
+  updatedAt: string;
+}
+
+interface MediaDetails {
+  id: number;
+  title?: string;
+  name?: string;
+  genres?: Array<{ id: number; name: string }>;
+  credits?: {
+    cast?: Array<{
+      id: number;
+      name: string;
+      character?: string;
+      profile_path?: string | null;
+    }>;
+    crew?: Array<{
+      id: number;
+      name: string;
+      job?: string;
+      profile_path?: string | null;
+    }>;
+  };
+  release_date?: string;
+  first_air_date?: string;
+  runtime?: number;
+  episode_run_time?: number[];
+  number_of_episodes?: number;
+}
+
+interface Director {
+  id: number;
+  name: string;
+  count: number;
+  profilePath?: string | null;
+}
+
+interface Actor {
+  id: number;
+  name: string;
+  count: number;
+  profilePath?: string | null;
+}
+
+interface TasteMatchData {
+  overallScore: number;
+  genreScore: number;
+  directorScore: number;
+  actorScore: number;
+  decadeScore: number;
+  commonGenres: Array<{ id: number; name: string; userCount: number; friendCount: number; matchScore: number }>;
+  commonDirectors: Array<Director & { matchScore: number }>;
+  commonActors: Array<Actor & { matchScore: number }>;
+  decadePreferences: Record<string, { user: number; friend: number; matchScore: number }>;
+  controversialPicks: Array<{ mediaId: number; mediaType: 'movie' | 'tv'; title: string; posterPath: string | null; userRating: number | null; friendRating: number | null }>;
+  sharedDiscoveries: number;
+  tastePersonality: string;
 }
 
 export default function TasteMatch({ userId }: TasteMatchProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [matchStats, setMatchStats] = useState<MatchStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
-  const { watchlist } = useWatchlist();
+  const [error, setError] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const { watchlist: currentUserWatchlist } = useWatchlist();
+  const [friendWatchlist, setFriendWatchlist] = useState<WatchlistEntry[] | null>(null);
+  const [tasteMatchData, setTasteMatchData] = useState<TasteMatchData | null>(null);
+  const [selectedMediaType, setSelectedMediaType] = useState<'movie' | 'tv'>('movie');
+  const { } = useAuth(); // Auth context still needed for authentication state
 
-  const calculateOverallMatch = useCallback((commonMoviesCount: number, commonShowsCount: number, ratingCorrelation: number, genreMatches: { genre: string; percentage: number }[]) => {
-    if (commonMoviesCount + commonShowsCount === 0 && genreMatches.length === 0) {
-      return 0;
-    }
-
-    // Adjust weights based on available data
-    let commonMediaWeight = 0.4;
-    let ratingWeight = 0.3;
-    let genreWeight = 0.3;
-
-    // If we don't have rating correlation, redistribute its weight
-    if (isNaN(ratingCorrelation) || ratingCorrelation === 0) {
-      commonMediaWeight += ratingWeight / 2;
-      genreWeight += ratingWeight / 2;
-      ratingWeight = 0;
-    }
-
-    // If we don't have genre matches, redistribute its weight
-    if (genreMatches.length === 0) {
-      commonMediaWeight += genreWeight / 2;
-      ratingWeight += genreWeight / 2;
-      genreWeight = 0;
-    }
-
-    // Calculate common media score with a more gradual curve
-    const commonMediaScore = Math.min(((commonMoviesCount + commonShowsCount) * 10), 100);
-    
-    // Calculate rating score with proper bounds
-    const ratingScore = !isNaN(ratingCorrelation) ? ((ratingCorrelation + 1) / 2) * 100 : 0;
-    
-    // Calculate genre score with proper weighting
-    const genreScore = genreMatches.reduce((sum, genre) => sum + genre.percentage, 0);
-    const avgGenreScore = genreMatches.length ? genreScore / genreMatches.length : 0;
-
-    // Calculate total score with adjusted weights
-    const totalScore = (commonMediaScore * commonMediaWeight) +
-                      (ratingScore * ratingWeight) +
-                      (avgGenreScore * genreWeight);
-
-    return Math.max(1, Math.min(100, Math.round(totalScore)));
-  }, []);
-
-  const calculateFunStats = (
-    commonMovies: { title: string; rating: number; friendRating: number }[],
-    commonShows: { title: string; rating: number; friendRating: number }[],
-    genreMatch: { genre: string; percentage: number }[]
-  ) => {
-    const allCommon = [...commonMovies, ...commonShows];
-    const perfectMatches = allCommon.filter(item => item.rating === item.friendRating).length;
-    
-    // Calculate favorite matching genre
-    const favoriteGenre = genreMatch.length > 0 
-      ? genreMatch.reduce((prev, current) => 
-          current.percentage > prev.percentage ? current : prev
-        ).genre 
-      : 'None yet';
-
-    // Find highest and lowest rated common content
-    let highestRatedCommon = 'None yet';
-    let lowestRatedCommon = 'None yet';
-    
-    if (allCommon.length > 0) {
-      const sorted = [...allCommon].sort((a, b) => {
-        const avgA = (a.rating + a.friendRating) / 2;
-        const avgB = (b.rating + b.friendRating) / 2;
-        return avgB - avgA;
-      });
-      
-      highestRatedCommon = sorted[0].title;
-      lowestRatedCommon = sorted[sorted.length - 1].title;
-    }
-
-    // Estimate total watch time (assuming average movie is 2 hours and episode is 45 minutes)
-    const totalWatchTime = (commonMovies.length * 120) + (commonShows.length * 45);
-
-    return {
-      favoriteGenre,
-      highestRatedCommon,
-      lowestRatedCommon,
-      totalWatchTime,
-      perfectMatches
-    };
-  };
-
-  const calculateGenreMatch = (userWatchlist: WatchlistEntry[], friendWatchlist: WatchlistEntry[]) => {
-    const userGenres = new Map<string, { count: number; weight: number }>();
-    const friendGenres = new Map<string, { count: number; weight: number }>();
-
-    const addGenresToMap = (entry: WatchlistEntry, map: Map<string, { count: number; weight: number }>) => {
-      if (!entry.genres) return;
-      
-      // Enhanced weight calculation
-      let weight = 0.5; // Base weight for all items
-      
-      if (entry.status === 'WATCHED') {
-        weight = 1.0; // Base weight for watched items
-        if (entry.rating) {
-          weight += (entry.rating / 10) * 0.5; // Additional weight for ratings
-        }
-      } else if (entry.status === 'WATCHING') {
-        weight = 0.75; // Items being watched get more weight than planned
-      } else if (entry.status === 'PLAN_TO_WATCH') {
-        weight = 0.25; // Small weight for planned items
-      }
-
-      entry.genres.forEach(genre => {
-        const current = map.get(genre) || { count: 0, weight: 0 };
-        map.set(genre, {
-          count: current.count + 1,
-          weight: current.weight + weight
-        });
-      });
-    };
-
-    // Process watchlists
-    userWatchlist.forEach(entry => addGenresToMap(entry, userGenres));
-    friendWatchlist.forEach(entry => addGenresToMap(entry, friendGenres));
-
-    // Calculate match percentage for each genre
-    const genreMatches: { genre: string; percentage: number }[] = [];
-    const allGenres = new Set([...userGenres.keys(), ...friendGenres.keys()]);
-
-    allGenres.forEach(genre => {
-      const userStats = userGenres.get(genre) || { count: 0, weight: 0 };
-      const friendStats = friendGenres.get(genre) || { count: 0, weight: 0 };
-      
-      if (userStats.count > 0 && friendStats.count > 0) {
-        // Enhanced similarity calculation
-        const maxWeight = Math.max(userStats.weight, friendStats.weight);
-        const minWeight = Math.min(userStats.weight, friendStats.weight);
-        
-        // Calculate normalized weights
-        const userNormWeight = userStats.weight / userStats.count;
-        const friendNormWeight = friendStats.weight / friendStats.count;
-        
-        // Calculate similarity considering both absolute and normalized weights
-        const absoluteSimilarity = (minWeight / maxWeight) * 100;
-        const normalizedSimilarity = (Math.min(userNormWeight, friendNormWeight) / Math.max(userNormWeight, friendNormWeight)) * 100;
-        
-        // Final percentage is an average of both metrics
-        const percentage = Math.round((absoluteSimilarity + normalizedSimilarity) / 2);
-        
-        genreMatches.push({ genre, percentage });
-      }
-    });
-
-    // Sort by percentage and return top matches
-    return genreMatches
-      .sort((a, b) => b.percentage - a.percentage)
-      .slice(0, 6);
-  };
-
-  const generateRecommendations = async (userWatchlist: WatchlistEntry[], friendWatchlist: WatchlistEntry[]) => {
-    try {
-      // Get user's watched and rated content
-      const userWatched = userWatchlist.filter(
-        entry => entry.status === 'WATCHED' && entry.rating !== null
-      );
-
-      // Get friend's highly rated content
-      const potentialRecommendations = friendWatchlist.filter(
-        friendEntry => 
-          friendEntry.status === 'WATCHED' &&
-          friendEntry.rating && 
-          friendEntry.rating >= 7 && // Only recommend highly rated content
-          !userWatchlist.some(
-            userEntry => 
-              userEntry.mediaId === friendEntry.mediaId && 
-              userEntry.mediaType === friendEntry.mediaType
-          )
-      );
-
-      if (potentialRecommendations.length === 0) {
-        return [];
-      }
-
-      // Calculate user's genre preferences with weighted ratings
-      const userGenrePreferences = new Map<string, { count: number; avgRating: number }>();
-      userWatched.forEach(entry => {
-        entry.genres?.forEach(genre => {
-          const current = userGenrePreferences.get(genre) || { count: 0, avgRating: 0 };
-          userGenrePreferences.set(genre, {
-            count: current.count + 1,
-            avgRating: ((current.avgRating * current.count) + (entry.rating || 0)) / (current.count + 1)
-          });
-        });
-      });
-
-      // Score recommendations based on multiple factors
-      const scoredRecommendations = potentialRecommendations.map(item => {
-        let score = 0;
-        
-        // Base score from friend's rating (0-50 points)
-        score += ((item.rating || 0) / 10) * 50;
-        
-        // Genre match score (0-30 points)
-        let genreMatchScore = 0;
-        let matchedGenres = 0;
-        item.genres?.forEach(genre => {
-          const userPref = userGenrePreferences.get(genre);
-          if (userPref) {
-            genreMatchScore += (userPref.avgRating / 10) * (userPref.count / Math.max(...Array.from(userGenrePreferences.values()).map(v => v.count)));
-            matchedGenres++;
-          }
-        });
-        if (matchedGenres > 0) {
-          score += (genreMatchScore / matchedGenres) * 30;
-        }
-        
-        // Recency bonus (0-20 points)
-        const releaseDate = new Date(item.createdAt);
-        const now = new Date();
-        const monthsOld = (now.getTime() - releaseDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
-        const recencyScore = Math.max(0, 20 - (monthsOld / 6)); // Lose points for every 6 months old
-        score += recencyScore;
-
-        return {
-          ...item,
-          score,
-          matchedGenres
-        };
-      });
-
-      // Sort by score and get top 4
-      const topRecommendations = scoredRecommendations
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 4);
-
-      // Format recommendations with detailed reasons
-      return topRecommendations.map(item => {
-        const matchingGenres = item.genres?.filter(genre => userGenrePreferences.has(genre)) || [];
-        let reason = `Rated ${item.rating}/10 by your friend`;
-        
-        if (matchingGenres.length > 0) {
-          const topGenres = matchingGenres
-            .sort((a, b) => {
-              const prefA = userGenrePreferences.get(a)?.avgRating || 0;
-              const prefB = userGenrePreferences.get(b)?.avgRating || 0;
-              return prefB - prefA;
-            })
-            .slice(0, 2);
-          
-          reason += ` • Matches your ${topGenres.join(' & ')} preferences`;
-        }
-        
-        return {
-          title: item.title,
-          posterPath: item.posterPath,
-          mediaType: item.mediaType,
-          reason
-        };
-      });
-    } catch (error) {
-      console.error('Error generating recommendations:', error);
-      return [];
-    }
-  };
-
-  // Improved rating correlation calculation
-  const calculateRatingCorrelation = (commonContent: { rating: number; friendRating: number }[]) => {
-    const validPairs = commonContent.filter(item => 
-      typeof item.rating === 'number' && 
-      typeof item.friendRating === 'number' &&
-      !isNaN(item.rating) && 
-      !isNaN(item.friendRating)
-    );
-
-    if (validPairs.length < 2) {
-      return 0;
-    }
-
-    const meanUser = validPairs.reduce((sum, pair) => sum + pair.rating, 0) / validPairs.length;
-    const meanFriend = validPairs.reduce((sum, pair) => sum + pair.friendRating, 0) / validPairs.length;
-
-    let numerator = 0;
-    let denomUser = 0;
-    let denomFriend = 0;
-
-    validPairs.forEach(pair => {
-      const userDiff = pair.rating - meanUser;
-      const friendDiff = pair.friendRating - meanFriend;
-      numerator += userDiff * friendDiff;
-      denomUser += userDiff * userDiff;
-      denomFriend += friendDiff * friendDiff;
-    });
-
-    if (denomUser === 0 || denomFriend === 0) {
-      return 0;
-    }
-
-    const correlation = numerator / (Math.sqrt(denomUser) * Math.sqrt(denomFriend));
-    return Math.max(-1, Math.min(1, correlation));
-  };
-
+  // Fetch friend's watchlist
   useEffect(() => {
-    const calculateMatchStats = async () => {
-      if (!user || !watchlist) {
+    const fetchFriendWatchlist = async () => {
+      if (!userId) return;
+      
+      try {
+        const response = await fetchWithAuth(`/api/users/${userId}/watchlist`);
+        if (Array.isArray(response)) {
+          setFriendWatchlist(response);
+        }
+      } catch (error) {
+        console.error('Error fetching friend watchlist:', error);
+        setError('Failed to load taste match data');
+      }
+    };
+
+    if (userId) {
+      fetchFriendWatchlist();
+    }
+  }, [userId]);
+
+  // Calculate taste match when both watchlists are available
+  useEffect(() => {
+    const calculateTasteMatch = async () => {
+      if (!currentUserWatchlist || !friendWatchlist) {
         setIsLoading(false);
-        setMatchStats(null);
         return;
       }
 
       try {
         setIsLoading(true);
-        const response = await fetchWithAuth(`/api/users/${userId}/watchlist`);
+        setError(null);
         
-        if (!response || typeof response !== 'object') {
-          throw new Error('Invalid response from watchlist API');
-        }
+        // Filter watched entries by media type for both users
+        const userWatchedEntries = currentUserWatchlist.filter((entry) => 
+          entry.status === 'WATCHED' && entry.mediaType === selectedMediaType
+        );
+        
+        const friendWatchedEntries = friendWatchlist.filter((entry) => 
+          entry.status === 'WATCHED' && entry.mediaType === selectedMediaType
+        );
 
-        const friendWatchlist: WatchlistEntry[] = Array.isArray(response) ? response : [];
-        const userWatched = watchlist.filter(entry => entry.status === 'WATCHED');
-        const friendWatched = friendWatchlist.filter(entry => entry.status === 'WATCHED');
-
-        if (userWatched.length === 0 || friendWatched.length === 0) {
-          setMatchStats({
-            overallMatch: 0,
-            commonMovies: [],
-            commonShows: [],
-            recommendations: [],
-            genreMatch: [],
-            ratingCorrelation: 0,
-            funStats: {
-              favoriteGenre: 'None yet',
-              highestRatedCommon: 'None yet',
-              lowestRatedCommon: 'None yet',
-              totalWatchTime: 0,
-              perfectMatches: 0
-            }
-          });
+        if (userWatchedEntries.length === 0 || friendWatchedEntries.length === 0) {
+          setTasteMatchData(null);
           setIsLoading(false);
           return;
         }
 
-        // Find common content with ratings
-        const commonMovies = userWatched
-          .filter(entry => 
-            entry.mediaType === 'movie' && 
-            friendWatched.some(fe => fe.mediaId === entry.mediaId)
-          )
-          .map(entry => {
-            const friendEntry = friendWatched.find(fe => fe.mediaId === entry.mediaId);
-            return {
-              title: entry.title,
-              posterPath: entry.posterPath,
-              rating: entry.rating || 0,
-              friendRating: friendEntry?.rating || 0
-            };
-          });
-
-        const commonShows = userWatched
-          .filter(entry => 
-            entry.mediaType === 'tv' && 
-            friendWatched.some(fe => fe.mediaId === entry.mediaId)
-          )
-          .map(entry => {
-            const friendEntry = friendWatched.find(fe => fe.mediaId === entry.mediaId);
-            return {
-              title: entry.title,
-              posterPath: entry.posterPath,
-              rating: entry.rating || 0,
-              friendRating: friendEntry?.rating || 0
-            };
-          });
-
-        // Calculate rating correlation
-        const ratingCorrelation = calculateRatingCorrelation([...commonMovies, ...commonShows]);
-
-        // Calculate genre match and recommendations
-        const genreMatch = calculateGenreMatch(userWatched, friendWatched);
-        const recommendations = await generateRecommendations(userWatched, friendWatched);
-        const overallMatch = calculateOverallMatch(
-          commonMovies.length, 
-          commonShows.length, 
-          ratingCorrelation,
-          genreMatch
+        // Fetch details for user's watched media
+        const userMediaDetails = await Promise.all(
+          userWatchedEntries.map(async (entry) => {
+            try {
+              const mediaDetails = await fetchMediaDetails(entry.mediaType, entry.mediaId, {
+                appendToResponse: ['credits']
+              }); 
+              return { ...mediaDetails, userRating: entry.rating };
+            } catch (error) {
+              console.error(`Error fetching details for ${entry.mediaType} ${entry.mediaId}:`, error);
+              return null;
+            }
+          })
         );
 
-        // Calculate fun stats
-        const funStats = calculateFunStats(commonMovies, commonShows, genreMatch);
+        // Fetch details for friend's watched media
+        const friendMediaDetails = await Promise.all(
+          friendWatchedEntries.map(async (entry) => {
+            try {
+              const mediaDetails = await fetchMediaDetails(entry.mediaType, entry.mediaId, {
+                appendToResponse: ['credits']
+              });
+              return { ...mediaDetails, friendRating: entry.rating };
+            } catch (error) {
+              console.error(`Error fetching details for ${entry.mediaType} ${entry.mediaId}:`, error);
+              return null;
+            }
+          })
+        );
 
-        setMatchStats({
-          overallMatch,
-          commonMovies,
-          commonShows,
-          recommendations,
-          genreMatch,
-          ratingCorrelation,
-          funStats
-        });
+        // Filter out failed requests
+        const validUserMediaDetails = userMediaDetails.filter(Boolean) as (MediaDetails & { userRating: number | null })[];
+        const validFriendMediaDetails = friendMediaDetails.filter(Boolean) as (MediaDetails & { friendRating: number | null })[];
+
+        if (validUserMediaDetails.length === 0 || validFriendMediaDetails.length === 0) {
+          setTasteMatchData(null);
+          setIsLoading(false);
+          return;
+        }
+
+        // Calculate taste match data
+        const matchData = calculateMatchData(validUserMediaDetails, validFriendMediaDetails, selectedMediaType);
+        setTasteMatchData(matchData);
       } catch (error) {
-        console.error('Error calculating match stats:', error);
-        setMatchStats(null);
+        console.error('Error calculating taste match:', error);
+        setError('Failed to calculate taste match. Please try again later.');
       } finally {
         setIsLoading(false);
       }
     };
 
-    calculateMatchStats();
-  }, [user, userId, watchlist, calculateOverallMatch]);
+    calculateTasteMatch();
+  }, [currentUserWatchlist, friendWatchlist, selectedMediaType]);
+
+  // Function to calculate taste match data
+  const calculateMatchData = (
+    userMedia: (MediaDetails & { userRating: number | null })[], 
+    friendMedia: (MediaDetails & { friendRating: number | null })[], 
+    mediaType: 'movie' | 'tv'
+  ): TasteMatchData => {
+    // Process user's genre preferences
+    const userGenreCounts: Record<number, { id: number; name: string; count: number }> = {};
+    const friendGenreCounts: Record<number, { id: number; name: string; count: number }> = {};
+    
+    // Process user's director/creator preferences
+    const userDirectorCounts: Record<number, Director> = {};
+    const friendDirectorCounts: Record<number, Director> = {};
+    
+    // Process user's actor preferences
+    const userActorCounts: Record<number, Actor> = {};
+    const friendActorCounts: Record<number, Actor> = {};
+    
+    // Process decade preferences
+    const userDecadeCounts: Record<string, number> = {};
+    const friendDecadeCounts: Record<string, number> = {};
+    
+    // Find media that both users have watched (for controversial picks)
+    const sharedMediaIds = new Set<number>();
+    const userMediaMap = new Map<number, MediaDetails & { userRating: number | null }>();
+    const friendMediaMap = new Map<number, MediaDetails & { friendRating: number | null }>();
+    
+    // Process user media
+    userMedia.forEach(media => {
+      // Store in map for later comparison
+      userMediaMap.set(media.id, media);
+      
+      // Process genres
+      media.genres?.forEach(genre => {
+        if (!userGenreCounts[genre.id]) {
+          userGenreCounts[genre.id] = { id: genre.id, name: genre.name, count: 0 };
+        }
+        userGenreCounts[genre.id].count++;
+      });
+      
+      // Process directors/creators
+      if (mediaType === 'movie') {
+        const directors = media.credits?.crew?.filter(person => person.job === 'Director') || [];
+        directors.forEach(director => {
+          if (!userDirectorCounts[director.id]) {
+            userDirectorCounts[director.id] = {
+              id: director.id,
+              name: director.name,
+              count: 0,
+              profilePath: director.profile_path || null
+            };
+          }
+          userDirectorCounts[director.id].count++;
+        });
+      } else {
+        const creators = media.credits?.crew?.filter(person => 
+          person.job === 'Creator' || 
+          person.job === 'Executive Producer' || 
+          person.job === 'Showrunner'
+        ) || [];
+        creators.forEach(creator => {
+          if (!userDirectorCounts[creator.id]) {
+            userDirectorCounts[creator.id] = {
+              id: creator.id,
+              name: creator.name,
+              count: 0,
+              profilePath: creator.profile_path || null
+            };
+          }
+          userDirectorCounts[creator.id].count++;
+        });
+      }
+      
+      // Process actors
+      const actors = media.credits?.cast?.slice(0, 5) || []; // Consider top 5 actors
+      actors.forEach(actor => {
+        if (!userActorCounts[actor.id]) {
+          userActorCounts[actor.id] = {
+            id: actor.id,
+            name: actor.name,
+            count: 0,
+            profilePath: actor.profile_path || null
+          };
+        }
+        userActorCounts[actor.id].count++;
+      });
+      
+      // Process decade
+      const releaseDate = mediaType === 'movie' ? media.release_date : media.first_air_date;
+      if (releaseDate) {
+        const year = new Date(releaseDate).getFullYear();
+        const decade = Math.floor(year / 10) * 10 + 's';
+        if (!userDecadeCounts[decade]) {
+          userDecadeCounts[decade] = 0;
+        }
+        userDecadeCounts[decade]++;
+      }
+    });
+    
+    // Process friend media
+    friendMedia.forEach(media => {
+      // Store in map for later comparison
+      friendMediaMap.set(media.id, media);
+      
+      // Check if both users watched this
+      if (userMediaMap.has(media.id)) {
+        sharedMediaIds.add(media.id);
+      }
+      
+      // Process genres
+      media.genres?.forEach(genre => {
+        if (!friendGenreCounts[genre.id]) {
+          friendGenreCounts[genre.id] = { id: genre.id, name: genre.name, count: 0 };
+        }
+        friendGenreCounts[genre.id].count++;
+      });
+      
+      // Process directors/creators
+      if (mediaType === 'movie') {
+        const directors = media.credits?.crew?.filter(person => person.job === 'Director') || [];
+        directors.forEach(director => {
+          if (!friendDirectorCounts[director.id]) {
+            friendDirectorCounts[director.id] = {
+              id: director.id,
+              name: director.name,
+              count: 0,
+              profilePath: director.profile_path || null
+            };
+          }
+          friendDirectorCounts[director.id].count++;
+        });
+      } else {
+        const creators = media.credits?.crew?.filter(person => 
+          person.job === 'Creator' || 
+          person.job === 'Executive Producer' || 
+          person.job === 'Showrunner'
+        ) || [];
+        creators.forEach(creator => {
+          if (!friendDirectorCounts[creator.id]) {
+            friendDirectorCounts[creator.id] = {
+              id: creator.id,
+              name: creator.name,
+              count: 0,
+              profilePath: creator.profile_path || null
+            };
+          }
+          friendDirectorCounts[creator.id].count++;
+        });
+      }
+      
+      // Process actors
+      const actors = media.credits?.cast?.slice(0, 5) || []; // Consider top 5 actors
+      actors.forEach(actor => {
+        if (!friendActorCounts[actor.id]) {
+          friendActorCounts[actor.id] = {
+            id: actor.id,
+            name: actor.name,
+            count: 0,
+            profilePath: actor.profile_path || null
+          };
+        }
+        friendActorCounts[actor.id].count++;
+      });
+      
+      // Process decade
+      const releaseDate = mediaType === 'movie' ? media.release_date : media.first_air_date;
+      if (releaseDate) {
+        const year = new Date(releaseDate).getFullYear();
+        const decade = Math.floor(year / 10) * 10 + 's';
+        if (!friendDecadeCounts[decade]) {
+          friendDecadeCounts[decade] = 0;
+        }
+        friendDecadeCounts[decade]++;
+      }
+    });
+    
+    // Calculate genre match score
+    const commonGenres = Object.keys(userGenreCounts)
+      .filter(id => friendGenreCounts[Number(id)])
+      .map(id => {
+        const numId = Number(id);
+        const userCount = userGenreCounts[numId].count;
+        const friendCount = friendGenreCounts[numId].count;
+        const totalUserGenres = Object.values(userGenreCounts).reduce((sum, g) => sum + g.count, 0);
+        const totalFriendGenres = Object.values(friendGenreCounts).reduce((sum, g) => sum + g.count, 0);
+        
+        // Calculate how important this genre is to each user
+        const userImportance = userCount / totalUserGenres;
+        const friendImportance = friendCount / totalFriendGenres;
+        
+        // Calculate match score based on how similar their preferences are
+        const matchScore = 100 - (Math.abs(userImportance - friendImportance) * 100);
+        
+        return {
+          id: numId,
+          name: userGenreCounts[numId].name,
+          userCount,
+          friendCount,
+          matchScore
+        };
+      })
+      .sort((a, b) => b.matchScore - a.matchScore);
+    
+    // Calculate genre score (weighted average of match scores)
+    const genreScore = commonGenres.length > 0 ?
+      Math.round(commonGenres.reduce((sum, g) => sum + g.matchScore, 0) / commonGenres.length) :
+      0;
+    
+    // Calculate director match score
+    const commonDirectors = Object.keys(userDirectorCounts)
+      .filter(id => friendDirectorCounts[Number(id)])
+      .map(id => {
+        const numId = Number(id);
+        const userCount = userDirectorCounts[numId].count;
+        const friendCount = friendDirectorCounts[numId].count;
+        const totalUserDirectors = Object.values(userDirectorCounts).reduce((sum, d) => sum + d.count, 0);
+        const totalFriendDirectors = Object.values(friendDirectorCounts).reduce((sum, d) => sum + d.count, 0);
+        
+        // Calculate importance
+        const userImportance = userCount / totalUserDirectors;
+        const friendImportance = friendCount / totalFriendDirectors;
+        
+        // Calculate match score
+        const matchScore = 100 - (Math.abs(userImportance - friendImportance) * 100);
+        
+        return {
+          ...userDirectorCounts[numId],
+          matchScore
+        };
+      })
+      .sort((a, b) => b.matchScore - a.matchScore);
+    
+    // Calculate director score
+    const directorScore = commonDirectors.length > 0 ?
+      Math.round(commonDirectors.reduce((sum, d) => sum + d.matchScore, 0) / commonDirectors.length) :
+      0;
+    
+    // Calculate actor match score
+    const commonActors = Object.keys(userActorCounts)
+      .filter(id => friendActorCounts[Number(id)])
+      .map(id => {
+        const numId = Number(id);
+        const userCount = userActorCounts[numId].count;
+        const friendCount = friendActorCounts[numId].count;
+        const totalUserActors = Object.values(userActorCounts).reduce((sum, a) => sum + a.count, 0);
+        const totalFriendActors = Object.values(friendActorCounts).reduce((sum, a) => sum + a.count, 0);
+        
+        // Calculate importance
+        const userImportance = userCount / totalUserActors;
+        const friendImportance = friendCount / totalFriendActors;
+        
+        // Calculate match score
+        const matchScore = 100 - (Math.abs(userImportance - friendImportance) * 100);
+        
+        return {
+          ...userActorCounts[numId],
+          matchScore
+        };
+      })
+      .sort((a, b) => b.matchScore - a.matchScore);
+    
+    // Calculate actor score
+    const actorScore = commonActors.length > 0 ?
+      Math.round(commonActors.reduce((sum, a) => sum + a.matchScore, 0) / commonActors.length) :
+      0;
+    
+    // Calculate decade preferences match
+    const decadePreferences: Record<string, { user: number; friend: number; matchScore: number }> = {};
+    const allDecades = new Set([...Object.keys(userDecadeCounts), ...Object.keys(friendDecadeCounts)]);
+    
+    const totalUserDecades = Object.values(userDecadeCounts).reduce((sum, count) => sum + count, 0);
+    const totalFriendDecades = Object.values(friendDecadeCounts).reduce((sum, count) => sum + count, 0);
+    
+    allDecades.forEach(decade => {
+      const userCount = userDecadeCounts[decade] || 0;
+      const friendCount = friendDecadeCounts[decade] || 0;
+      
+      // Calculate importance
+      const userImportance = totalUserDecades > 0 ? userCount / totalUserDecades : 0;
+      const friendImportance = totalFriendDecades > 0 ? friendCount / totalFriendDecades : 0;
+      
+      // Calculate match score
+      const matchScore = 100 - (Math.abs(userImportance - friendImportance) * 100);
+      
+      decadePreferences[decade] = {
+        user: userCount,
+        friend: friendCount,
+        matchScore
+      };
+    });
+    
+    // Calculate decade score
+    const decadeScore = Object.keys(decadePreferences).length > 0 ?
+      Math.round(Object.values(decadePreferences).reduce((sum, d) => sum + d.matchScore, 0) / Object.keys(decadePreferences).length) :
+      0;
+    
+    // Find controversial picks (both watched but rated differently)
+    const controversialPicks = Array.from(sharedMediaIds)
+      .map(id => {
+        const userMedia = userMediaMap.get(id)!;
+        const friendMedia = friendMediaMap.get(id)!;
+        
+        const userRating = userMedia.userRating;
+        const friendRating = friendMedia.friendRating;
+        
+        // Only include if both users rated the media
+        if (userRating === null || friendRating === null) {
+          return null;
+        }
+        
+        // Calculate rating difference
+        const ratingDiff = Math.abs(userRating - friendRating);
+        
+        // Only consider as controversial if difference is significant (2+ points)
+        if (ratingDiff < 2) {
+          return null;
+        }
+        
+        return {
+          mediaId: userMedia.id,
+          mediaType,
+          title: mediaType === 'movie' ? userMedia.title || '' : userMedia.name || '',
+          posterPath: (userMedia as { poster_path?: string }).poster_path || null,
+          userRating,
+          friendRating
+        };
+      })
+      .filter(Boolean) as Array<{ 
+        mediaId: number; 
+        mediaType: 'movie' | 'tv'; 
+        title: string; 
+        posterPath: string | null; 
+        userRating: number | null; 
+        friendRating: number | null 
+      }>;
+    
+    // Calculate overall score with weighted components
+    const weights = {
+      genre: 0.4,      // 40%
+      director: 0.25,  // 25%
+      actor: 0.2,      // 20%
+      decade: 0.15     // 15%
+    };
+    
+    const overallScore = Math.round(
+      genreScore * weights.genre +
+      directorScore * weights.director +
+      actorScore * weights.actor +
+      decadeScore * weights.decade
+    );
+    
+    // Determine taste personality based on overall score
+    let tastePersonality = 'Casual Acquaintances';
+    if (overallScore >= 90) {
+      tastePersonality = 'Taste Twins';
+    } else if (overallScore >= 80) {
+      tastePersonality = 'Cinema Soulmates';
+    } else if (overallScore >= 70) {
+      tastePersonality = 'Film Buddies';
+    } else if (overallScore >= 60) {
+      tastePersonality = 'Movie Mates';
+    } else if (overallScore >= 50) {
+      tastePersonality = 'Screen Partners';
+    } else if (overallScore >= 40) {
+      tastePersonality = 'Viewing Variety';
+    } else if (overallScore >= 30) {
+      tastePersonality = 'Different Tastes';
+    } else if (overallScore >= 20) {
+      tastePersonality = 'Opposite Critics';
+    } else {
+      tastePersonality = 'Cinema Opposites';
+    }
+    
+    return {
+      overallScore,
+      genreScore,
+      directorScore,
+      actorScore,
+      decadeScore,
+      commonGenres: commonGenres.slice(0, 5), // Top 5 common genres
+      commonDirectors: commonDirectors.slice(0, 3), // Top 3 common directors
+      commonActors: commonActors.slice(0, 3), // Top 3 common actors
+      decadePreferences,
+      controversialPicks: controversialPicks.slice(0, 5), // Top 5 controversial picks
+      sharedDiscoveries: sharedMediaIds.size,
+      tastePersonality
+    };
+  };
 
   if (isLoading) {
     return (
-      <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden">
-        <div className="p-6 flex items-center gap-4 animate-pulse">
-          <div className="bg-purple-500/20 p-3 rounded-xl">
-            <div className="w-6 h-6 bg-purple-400/20 rounded" />
-          </div>
-          <div className="flex-1">
-            <div className="h-6 bg-white/10 rounded w-32 mb-2" />
-            <div className="h-4 bg-white/10 rounded w-24" />
-          </div>
+      <div className="space-y-4 animate-pulse">
+        <div className="h-32 bg-gray-800 rounded-xl" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="h-24 bg-gray-800 rounded-xl" />
+          <div className="h-24 bg-gray-800 rounded-xl" />
+          <div className="h-24 bg-gray-800 rounded-xl" />
         </div>
       </div>
     );
   }
 
-  if (!matchStats) {
+  // If there's no match data, show empty state
+  if (!tasteMatchData) {
     return (
-      <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden">
-        <div className="p-6 text-center">
-          <p className="text-gray-400">No taste match data available</p>
-        </div>
-      </div>
-    );
-  }
-
-  const hasContent = matchStats && (
-    matchStats.commonMovies.length > 0 || 
-    matchStats.commonShows.length > 0 || 
-    (matchStats.genreMatch.length > 0 && matchStats.overallMatch > 0)
-  );
-
-  if (!hasContent) {
-    const hasWatchedContent = watchlist?.some(item => item.status === 'WATCHED');
-    return (
-      <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden">
-        <div className="p-6 text-center">
-          <p className="text-gray-400">
-            {hasWatchedContent 
-              ? "No matches found yet. Keep watching and rating content to see your taste match!"
-              : "Start watching content to see your taste match!"}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col items-center justify-center text-center p-8 space-y-6"
+      >
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ 
+            type: "spring",
+            stiffness: 260,
+            damping: 20,
+            delay: 0.2 
+          }}
+          className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center"
+        >
+          <LuUsers className="w-16 h-16 text-white/60" />
+        </motion.div>
+        
+        <div className="space-y-3">
+          <h3 className="text-2xl font-bold">
+            Not Enough Data
+          </h3>
+          <p className="text-gray-400 max-w-md">
+            We need more watched {selectedMediaType === 'movie' ? 'movies' : 'TV shows'} from both users to calculate a taste match.
           </p>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 overflow-hidden"
-    >
-      <button
+    <div className="space-y-6">
+      {/* TasteMatch Toggle Button */}
+      <motion.button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full p-6 flex items-center gap-4 text-left"
+        className="w-full flex items-center justify-between gap-4 px-6 py-4 rounded-xl bg-white/5 backdrop-blur-lg border border-white/10 hover:bg-white/10 transition-colors"
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 0.99 }}
       >
-        <div className="bg-purple-500/20 p-3 rounded-xl">
-          <LuUsers className="w-6 h-6 text-purple-400" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="font-medium truncate">Taste Match</h3>
-            {matchStats.overallMatch > 0 && (
-              <div className="px-2 py-1 text-sm bg-purple-500/20 text-purple-400 rounded-lg">
-                {matchStats.overallMatch}%
-              </div>
-            )}
+        <div className="flex items-center gap-4">
+          <div className="p-2 rounded-lg bg-white/10">
+            <LuUsers className="w-6 h-6" />
           </div>
-          <p className="text-sm text-gray-400 truncate">
-            {getMatchDescription(matchStats)}
-          </p>
+          <div className="text-left">
+            <h3 className="text-lg font-medium">
+              Taste Match
+            </h3>
+            <p className="text-sm text-gray-400">
+              {`${tasteMatchData.overallScore}% match • ${tasteMatchData.tastePersonality}`}
+            </p>
+          </div>
         </div>
-        <LuChevronRight 
-          className={clsx(
-            "w-5 h-5 text-gray-400 transition-transform",
-            isExpanded && "rotate-90"
-          )} 
-        />
-      </button>
+        <motion.div
+          animate={{ rotate: isExpanded ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <LuChevronDown className="w-6 h-6" />
+        </motion.div>
+      </motion.button>
 
       <AnimatePresence>
-        {isExpanded && matchStats && (
+        {isExpanded && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-6 overflow-hidden"
           >
-            <div className="p-6 pt-0 space-y-6">
-              {/* Fun Stats Section */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="bg-white/5 rounded-xl p-4 text-center">
-                  <LuHeart className="w-5 h-5 text-red-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">Perfect Matches</p>
-                  <p className="text-lg font-medium">{matchStats.funStats.perfectMatches}</p>
-                </div>
-                <div className="bg-white/5 rounded-xl p-4 text-center">
-                  <LuTrophy className="w-5 h-5 text-yellow-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">Favorite Genre</p>
-                  <p className="text-lg font-medium truncate">{matchStats.funStats.favoriteGenre}</p>
-                </div>
-                <div className="bg-white/5 rounded-xl p-4 text-center">
-                  <LuThumbsUp className="w-5 h-5 text-green-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">Rating Match</p>
-                  <p className="text-lg font-medium">{Math.round(matchStats.ratingCorrelation * 100)}%</p>
-                </div>
-                <div className="bg-white/5 rounded-xl p-4 text-center">
-                  <LuStar className="w-5 h-5 text-purple-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">Watch Time</p>
-                  <p className="text-lg font-medium">{Math.round(matchStats.funStats.totalWatchTime / 60)}h</p>
+            {/* Media Type Toggle */}
+            <div className="flex justify-center">
+              <div className="bg-black/20 backdrop-blur-xl rounded-full p-1 flex gap-1">
+                <motion.button
+                  onClick={() => setSelectedMediaType('movie')}
+                  className={`px-6 py-2 rounded-full transition-all duration-200 ${
+                    selectedMediaType === 'movie'
+                      ? 'bg-white/20 text-white shadow-lg'
+                      : 'text-gray-400 hover:text-white hover:bg-white/10'
+                  }`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <span className="flex items-center gap-2">
+                    <LuFilm className="w-4 h-4" />
+                    <span>Movies</span>
+                  </span>
+                </motion.button>
+                <motion.button
+                  onClick={() => setSelectedMediaType('tv')}
+                  className={`px-6 py-2 rounded-full transition-all duration-200 ${
+                    selectedMediaType === 'tv'
+                      ? 'bg-white/20 text-white shadow-lg'
+                      : 'text-gray-400 hover:text-white hover:bg-white/10'
+                  }`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <span className="flex items-center gap-2">
+                    <LuTv className="w-4 h-4" />
+                    <span>TV Shows</span>
+                  </span>
+                </motion.button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="bg-red-500/20 text-red-400 px-4 py-3 rounded-lg text-center">
+                {error}
+              </div>
+            )}
+
+            {/* Match Score Circle */}
+            <div className="flex flex-col items-center justify-center mb-8">
+              <div className="relative w-40 h-40">
+                <svg className="w-full h-full" viewBox="0 0 100 100">
+                  <circle 
+                    cx="50" cy="50" r="45" 
+                    fill="none" 
+                    stroke="#1a1a1a" 
+                    strokeWidth="10"
+                  />
+                  <circle 
+                    cx="50" cy="50" r="45" 
+                    fill="none" 
+                    stroke="url(#gradient)" 
+                    strokeWidth="10"
+                    strokeDasharray={`${2 * Math.PI * 45 * tasteMatchData.overallScore / 100} ${2 * Math.PI * 45 * (100 - tasteMatchData.overallScore) / 100}`}
+                    strokeDashoffset={2 * Math.PI * 45 * 0.25}
+                    transform="rotate(-90 50 50)"
+                  />
+                  <defs>
+                    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#8b5cf6" />
+                      <stop offset="100%" stopColor="#3b82f6" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center flex-col">
+                  <span className="text-4xl font-bold">{tasteMatchData.overallScore}%</span>
+                  <span className="text-sm text-gray-400">Match Score</span>
                 </div>
               </div>
-
-              {/* Common Content Section */}
-              {(matchStats.commonMovies.length > 0 || matchStats.commonShows.length > 0) && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-400 mb-3">Common Content</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Common Movies */}
-                    {matchStats.commonMovies.length > 0 && (
-                      <div>
-                        <h5 className="text-xs text-gray-500 mb-2">Movies ({matchStats.commonMovies.length})</h5>
-                        <div className="space-y-2">
-                          {matchStats.commonMovies.map((movie, index) => (
-                            <div key={index} className="flex items-center gap-2">
-                              {movie.posterPath ? (
-                                <Image
-                                  src={`https://image.tmdb.org/t/p/w92${movie.posterPath}`}
-                                  alt={movie.title}
-                                  width={32}
-                                  height={48}
-                                  className="rounded"
-                                />
-                              ) : (
-                                <div className="w-8 h-12 bg-white/5 rounded flex items-center justify-center">
-                                  <LuFilm className="w-4 h-4 text-gray-400" />
-                                </div>
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm truncate">{movie.title}</p>
-                                <div className="flex items-center gap-2 text-xs text-gray-400">
-                                  <span>You: {movie.rating}/10</span>
-                                  <span>•</span>
-                                  <span>Friend: {movie.friendRating}/10</span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Common Shows */}
-                    {matchStats.commonShows.length > 0 && (
-                      <div>
-                        <h5 className="text-xs text-gray-500 mb-2">TV Shows ({matchStats.commonShows.length})</h5>
-                        <div className="space-y-2">
-                          {matchStats.commonShows.map((show, index) => (
-                            <div key={index} className="flex items-center gap-2">
-                              {show.posterPath ? (
-                                <Image
-                                  src={`https://image.tmdb.org/t/p/w92${show.posterPath}`}
-                                  alt={show.title}
-                                  width={32}
-                                  height={48}
-                                  className="rounded"
-                                />
-                              ) : (
-                                <div className="w-8 h-12 bg-white/5 rounded flex items-center justify-center">
-                                  <LuTv className="w-4 h-4 text-gray-400" />
-                                </div>
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm truncate">{show.title}</p>
-                                <div className="flex items-center gap-2 text-xs text-gray-400">
-                                  <span>You: {show.rating}/10</span>
-                                  <span>•</span>
-                                  <span>Friend: {show.friendRating}/10</span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Genre Match Section */}
-              {matchStats.genreMatch.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-400 mb-3">Genre Match</h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {matchStats.genreMatch.map((genre, index) => (
-                      <div
-                        key={index}
-                        className="bg-white/5 rounded-lg p-3 flex items-center justify-between"
-                      >
-                        <span className="text-sm truncate">{genre.genre}</span>
-                        <span className="text-sm text-purple-400">{genre.percentage}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Recommendations Section */}
-              {matchStats.recommendations.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-400 mb-3">Recommendations</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    {matchStats.recommendations.map((item, index) => (
-                      <div key={index} className="space-y-2">
-                        <div className="aspect-[2/3] relative rounded overflow-hidden bg-white/5">
-                          {item.posterPath ? (
-                            <Image
-                              src={`https://image.tmdb.org/t/p/w342${item.posterPath}`}
-                              alt={item.title}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              {item.mediaType === 'movie' ? (
-                                <LuFilm className="w-8 h-8 text-gray-400" />
-                              ) : (
-                                <LuTv className="w-8 h-8 text-gray-400" />
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <div>
-                          <h5 className="text-sm font-medium truncate">{item.title}</h5>
-                          <p className="text-xs text-gray-400">{item.reason}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className="mt-4 text-center">
+                <h3 className="text-xl font-semibold">{tasteMatchData.tastePersonality}</h3>
+                <p className="text-sm text-gray-400">Based on your watching habits</p>
+              </div>
             </div>
+
+            {/* Category Score Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+              <StatCard
+                title="Genre Match"
+                value={`${tasteMatchData.genreScore}%`}
+                icon={LuFilm}
+                color="purple"
+              />
+              <StatCard
+                title="Director Match"
+                value={`${tasteMatchData.directorScore}%`}
+                icon={LuUsers}
+                color="blue"
+              />
+              <StatCard
+                title="Actor Match"
+                value={`${tasteMatchData.actorScore}%`}
+                icon={LuStar}
+                color="yellow"
+              />
+              <StatCard
+                title="Era Match"
+                value={`${tasteMatchData.decadeScore}%`}
+                icon={LuClock}
+                color="green"
+              />
+            </div>
+
+            {/* Common Genres */}
+            {tasteMatchData.commonGenres.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10 mb-6"
+              >
+                <h3 className="text-xl font-semibold mb-4">Common Genre Interests</h3>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  {tasteMatchData.commonGenres.map((genre, index) => (
+                    <motion.div
+                      key={genre.id}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="bg-white/5 backdrop-blur-lg rounded-lg p-4 text-center border border-white/10"
+                    >
+                      <div className="text-lg font-medium">{genre.name}</div>
+                      <div className="text-sm text-gray-400">
+                        {Math.round(genre.matchScore)}% match
+                      </div>
+                      <div className="mt-2 text-xs text-gray-500">
+                        Both enjoy this genre
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Common Directors/Creators */}
+            {tasteMatchData.commonDirectors.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10 mb-6"
+              >
+                <h3 className="text-xl font-semibold mb-4">
+                  {selectedMediaType === 'movie' ? 'Shared Favorite Directors' : 'Shared Favorite Creators'}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {tasteMatchData.commonDirectors.map((director, index) => (
+                    <motion.div
+                      key={director.id}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="flex items-center gap-4 bg-white/5 backdrop-blur-lg rounded-lg p-4 border border-white/10 hover:bg-white/10 transition-colors"
+                    >
+                      <div className="relative w-16 h-16 rounded-full overflow-hidden bg-white/10">
+                        {director.profilePath ? (
+                          <Image
+                            src={`https://image.tmdb.org/t/p/w185${director.profilePath}`}
+                            alt={director.name}
+                            fill
+                            sizes="64px"
+                            className="object-cover"
+                            priority={index < 3}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-2xl font-bold bg-gradient-to-br from-purple-500/20 to-blue-500/20 text-white/60">
+                            {director.name.charAt(0)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{director.name}</div>
+                        <div className="text-sm text-gray-400">
+                          {Math.round(director.matchScore)}% match
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Common Actors */}
+            {tasteMatchData.commonActors.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10 mb-6"
+              >
+                <h3 className="text-xl font-semibold mb-4">Shared Favorite Actors</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {tasteMatchData.commonActors.map((actor, index) => (
+                    <motion.div
+                      key={actor.id}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="flex items-center gap-4 bg-white/5 backdrop-blur-lg rounded-lg p-4 border border-white/10 hover:bg-white/10 transition-colors"
+                    >
+                      <div className="relative w-16 h-16 rounded-full overflow-hidden bg-white/10">
+                        {actor.profilePath ? (
+                          <Image
+                            src={`https://image.tmdb.org/t/p/w185${actor.profilePath}`}
+                            alt={actor.name}
+                            fill
+                            sizes="64px"
+                            className="object-cover"
+                            priority={index < 3}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-2xl font-bold bg-gradient-to-br from-purple-500/20 to-blue-500/20 text-white/60">
+                            {actor.name.charAt(0)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{actor.name}</div>
+                        <div className="text-sm text-gray-400">
+                          {Math.round(actor.matchScore)}% match
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Decade Preferences */}
+            {Object.keys(tasteMatchData.decadePreferences).length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10 mb-6"
+              >
+                <h3 className="text-xl font-semibold mb-4">Era Preferences</h3>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  {Object.entries(tasteMatchData.decadePreferences)
+                    .sort(([a], [b]) => Number(a.replace('s', '')) - Number(b.replace('s', '')))
+                    .map(([decade, data], index) => (
+                      <motion.div
+                        key={decade}
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="bg-white/5 backdrop-blur-lg rounded-lg p-4 text-center border border-white/10"
+                      >
+                        <div className="text-2xl font-bold">{decade}</div>
+                        <div className="text-sm text-gray-400 mt-1">
+                          {Math.round(data.matchScore)}% match
+                        </div>
+                        <div className="mt-2 text-xs text-gray-500 flex justify-between">
+                          <span>You: {data.user}</span>
+                          <span>Friend: {data.friend}</span>
+                        </div>
+                      </motion.div>
+                    ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Controversial Picks */}
+            {tasteMatchData.controversialPicks.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10 mb-6"
+              >
+                <h3 className="text-xl font-semibold mb-4">Controversial Picks</h3>
+                <p className="text-gray-400 mb-4">Titles you both rated differently</p>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  {tasteMatchData.controversialPicks.map((pick, index) => (
+                    <motion.div
+                      key={pick.mediaId}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="bg-white/5 backdrop-blur-lg rounded-lg overflow-hidden border border-white/10"
+                    >
+                      <div className="relative aspect-[2/3] w-full">
+                        {pick.posterPath ? (
+                          <Image
+                            src={`https://image.tmdb.org/t/p/w500${pick.posterPath}`}
+                            alt={pick.title}
+                            fill
+                            sizes="(max-width: 768px) 100vw, 200px"
+                            className="object-cover"
+                            priority={index < 2}
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
+                            <span className="text-gray-400 text-sm text-center px-4">No poster</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <h4 className="font-medium text-sm truncate">{pick.title}</h4>
+                        <div className="flex justify-between mt-2 text-sm">
+                          <div className="text-blue-400">You: {pick.userRating}/10</div>
+                          <div className="text-purple-400">Friend: {pick.friendRating}/10</div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Fun Stats */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10"
+            >
+              <h3 className="text-xl font-semibold mb-4">Fun Stats</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Shared Discoveries</span>
+                    <span className="font-medium">{tasteMatchData.sharedDiscoveries} {selectedMediaType === 'movie' ? 'movies' : 'shows'}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Common Genres</span>
+                    <span className="font-medium">{tasteMatchData.commonGenres.length}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Favorite Decade</span>
+                    <span className="font-medium">
+                      {Object.entries(tasteMatchData.decadePreferences)
+                        .sort(([, a], [, b]) => (a.matchScore > b.matchScore ? -1 : 1))[0]?.[0] || 'None'}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Taste Compatibility</span>
+                    <span className="font-medium">
+                      {tasteMatchData.overallScore >= 75 ? 'High' : 
+                       tasteMatchData.overallScore >= 50 ? 'Medium' : 'Low'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Controversial Picks</span>
+                    <span className="font-medium">{tasteMatchData.controversialPicks.length}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Recommendation Potential</span>
+                    <span className="font-medium">
+                      {tasteMatchData.overallScore >= 70 ? 'Excellent' : 
+                       tasteMatchData.overallScore >= 50 ? 'Good' : 'Limited'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }
 
-const getMatchDescription = (matchStats: MatchStats): string => {
-  if (matchStats.commonMovies.length === 0 && matchStats.commonShows.length === 0) {
-    return 'No common content yet';
-  }
 
-  const commonCount = matchStats.commonMovies.length + matchStats.commonShows.length;
-  const commonType = matchStats.commonMovies.length > matchStats.commonShows.length ? 'movies' : 'shows';
-  
-  if (matchStats.ratingCorrelation > 0.7) {
-    return `Strong match! You share ${commonCount} ${commonType}`;
-  } else if (matchStats.ratingCorrelation > 0.3) {
-    return `Good match with ${commonCount} shared ${commonType}`;
-  } else {
-    return `You share ${commonCount} ${commonType}`;
-  }
-}; 

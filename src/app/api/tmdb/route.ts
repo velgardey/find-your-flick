@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fetchWithRetry } from '@/lib/retryUtils';
+import { withCache, generateCacheKey, CACHE_TTL } from '@/lib/redis';
 
 export async function GET(request: Request) {
   try {
@@ -10,43 +11,48 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Path parameter is required' }, { status: 400 });
     }
 
-    const tmdbResponse = await fetchWithRetry(
-      `https://api.themoviedb.org/3${path}${path.includes('?') ? '&' : '?'}api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
-      {
-        headers: {
-          'Accept': 'application/json'
-        },
-        signal: AbortSignal.timeout(10000) // 10 second timeout
-      },
-      {
-        maxRetries: 3,
-        baseDelay: 1000,
-        maxDelay: 5000
+    // Generate cache key based on the TMDB path
+    const cacheKey = generateCacheKey('tmdb', { path });
+    
+    // Use the withCache helper to handle caching logic
+    const data = await withCache(
+      cacheKey,
+      CACHE_TTL.TMDB,
+      async () => {
+        const tmdbResponse = await fetchWithRetry(
+          `https://api.themoviedb.org/3${path}${path.includes('?') ? '&' : '?'}api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}`,
+          {
+            headers: {
+              'Accept': 'application/json'
+            },
+            signal: AbortSignal.timeout(10000) // 10 second timeout
+          },
+          {
+            maxRetries: 3,
+            baseDelay: 1000,
+            maxDelay: 5000
+          }
+        );
+
+        if (!tmdbResponse.ok) {
+          const errorData = await tmdbResponse.json().catch(() => ({ 
+            status_message: tmdbResponse.statusText || 'Unknown error',
+            status_code: tmdbResponse.status 
+          }));
+          
+          console.error('TMDB API error:', {
+            status: tmdbResponse.status,
+            statusText: tmdbResponse.statusText,
+            error: errorData
+          });
+          
+          throw new Error(errorData.status_message || 'TMDB API error');
+        }
+
+        return tmdbResponse.json();
       }
     );
-
-    if (!tmdbResponse.ok) {
-      const errorData = await tmdbResponse.json().catch(() => ({ 
-        status_message: tmdbResponse.statusText || 'Unknown error',
-        status_code: tmdbResponse.status 
-      }));
-      
-      console.error('TMDB API error:', {
-        status: tmdbResponse.status,
-        statusText: tmdbResponse.statusText,
-        error: errorData
-      });
-      
-      return NextResponse.json(
-        { 
-          error: errorData.status_message || 'TMDB API error',
-          status_code: errorData.status_code || tmdbResponse.status
-        },
-        { status: tmdbResponse.status }
-      );
-    }
-
-    const data = await tmdbResponse.json();
+    
     return NextResponse.json(data);
   } catch (error) {
     console.error('TMDB proxy error:', error);

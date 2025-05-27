@@ -7,6 +7,7 @@ import {
 import { watchlistCreateSchema } from '@/lib/validationSchemas'
 import { Prisma } from '@prisma/client'
 import { NextRequest } from 'next/server'
+import { withCache, generateCacheKey, CACHE_TTL, invalidateCache } from '@/lib/redis'
 
 // GET /api/watchlist - Get user's watchlist
 export async function GET(request: Request) {
@@ -20,34 +21,47 @@ export async function GET(request: Request) {
     // Get search query from URL params
     const { searchParams } = new URL(request.url)
     const searchQuery = searchParams.get('search')?.toLowerCase()
-
-    // First, ensure the user exists in the database
-    await withPrismaRetry(() => 
-      prisma.user.upsert({
-        where: { id: auth.user.uid },
-        update: {},
-        create: {
-          id: auth.user.uid,
-          email: auth.user.email,
-          displayName: auth.user.name,
-          photoURL: auth.user.picture,
-        },
-      })
-    )
-
-    const watchlist = await withPrismaRetry(() => 
-      prisma.watchlistEntry.findMany({
-        where: { 
-          userId: auth.user.uid,
-          ...(searchQuery && {
-            title: {
-              contains: searchQuery,
-              mode: 'insensitive'
-            }
+    
+    // Generate cache key based on user ID and search query
+    const cacheKey = generateCacheKey('watchlist', { 
+      userId: auth.user.uid, 
+      search: searchQuery || '' 
+    })
+    
+    // Use the withCache helper to handle caching logic
+    const watchlist = await withCache(
+      cacheKey,
+      CACHE_TTL.WATCHLIST,
+      async () => {
+        // First, ensure the user exists in the database
+        await withPrismaRetry(() => 
+          prisma.user.upsert({
+            where: { id: auth.user.uid },
+            update: {},
+            create: {
+              id: auth.user.uid,
+              email: auth.user.email,
+              displayName: auth.user.name,
+              photoURL: auth.user.picture,
+            },
           })
-        },
-        orderBy: { updatedAt: 'desc' },
-      })
+        )
+    
+        return withPrismaRetry(() => 
+          prisma.watchlistEntry.findMany({
+            where: { 
+              userId: auth.user.uid,
+              ...(searchQuery && {
+                title: {
+                  contains: searchQuery,
+                  mode: 'insensitive'
+                }
+              })
+            },
+            orderBy: { updatedAt: 'desc' },
+          })
+        )
+      }
     )
 
     return successResponse({ data: watchlist })
@@ -98,6 +112,13 @@ export async function POST(request: Request) {
           })
         })
       )
+      
+      // Invalidate watchlist cache for this user
+      await invalidateCache(`watchlist:userId=${auth.user.uid}*`)
+      
+      // Also invalidate feed cache for all users (since this update might affect their feeds)
+      await invalidateCache('feed:*')
+      
       console.log('Created watchlist entry:', entry)
       return successResponse({ data: entry })
     } catch (validationError) {
@@ -130,6 +151,12 @@ export async function DELETE(request: NextRequest, { params }: DeleteParams) {
         userId: auth.user.uid,
       },
     })
+    
+    // Invalidate watchlist cache for this user
+    await invalidateCache(`watchlist:userId=${auth.user.uid}*`)
+    
+    // Also invalidate feed cache for all users (since this deletion might affect their feeds)
+    await invalidateCache('feed:*')
 
     return successResponse({ data: { success: true } })
   } catch (error) {

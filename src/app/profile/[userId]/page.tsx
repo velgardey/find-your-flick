@@ -9,6 +9,7 @@ import WatchlistButton from '@/components/WatchlistButton';
 import MediaDetailsModal from '@/components/MediaDetailsModal';
 import UserStats from '@/components/UserStats';
 import TasteMatch from '@/components/TasteMatch';
+
 import withAuth from '@/components/withAuth';
 import { MagnifyingGlassIcon, FilmIcon, TvIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
@@ -518,17 +519,7 @@ function UserProfile({ params }: PageProps) {
               </div>
             </motion.div>
 
-            {/* TasteMatch component */}
-            {user && user.uid !== userId && (
-              <motion.div
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-12"
-              >
-                <TasteMatch userId={userId} />
-              </motion.div>
-            )}
+
 
             {/* UserStats component */}
             <motion.div
@@ -539,6 +530,19 @@ function UserProfile({ params }: PageProps) {
             >
               <UserStats userId={userId} />
             </motion.div>
+
+            {/* TasteMatch component - only show when viewing someone else's profile */}
+            {user && userId !== user.uid && (
+              <motion.div
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="mb-12"
+              >
+                <TasteMatch userId={userId} />
+              </motion.div>
+            )}
 
             {/* Watchlist Section */}
             <motion.div

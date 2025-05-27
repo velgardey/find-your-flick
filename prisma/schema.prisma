@@ -48,6 +48,10 @@ model WatchlistEntry {
   rating      Int?        @db.SmallInt
   notes       String?
   genres      String[]
+  // Progress tracking fields for both movies and TV shows
+  watchedSeconds  Float?     // Current position in seconds
+  totalDuration   Float?     // Total duration in seconds
+  lastWatched     DateTime?  // When the media was last watched
   // TV show specific fields
   currentSeason  Int?
   currentEpisode Int?

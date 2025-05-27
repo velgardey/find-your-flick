@@ -5,7 +5,7 @@ import { useAuth } from './AuthContext'
 import { WatchStatus } from '@/lib/prismaTypes'
 import { fetchWithAuth } from '@/lib/api'
 
-interface WatchlistEntry {
+export interface WatchlistEntry {
   id: string
   mediaId: number
   mediaType: 'movie' | 'tv'
@@ -14,6 +14,10 @@ interface WatchlistEntry {
   status: WatchStatus
   rating: number | null
   notes: string | null
+  // Progress tracking fields for both movies and TV shows
+  watchedSeconds?: number
+  totalDuration?: number
+  lastWatched?: string
   // TV show specific fields
   currentSeason?: number
   currentEpisode?: number
@@ -86,6 +90,11 @@ function isWatchlistEntry(item: unknown): item is WatchlistEntry {
     (entry.notes === null || typeof entry.notes === 'string') &&
     (entry.createdAt === undefined || typeof entry.createdAt === 'string') &&
     (entry.updatedAt === undefined || typeof entry.updatedAt === 'string') &&
+    // Progress tracking fields
+    (entry.watchedSeconds === undefined || entry.watchedSeconds === null || typeof entry.watchedSeconds === 'number') &&
+    (entry.totalDuration === undefined || entry.totalDuration === null || typeof entry.totalDuration === 'number') &&
+    (entry.lastWatched === undefined || entry.lastWatched === null || typeof entry.lastWatched === 'string') &&
+    // TV show specific fields
     (entry.currentSeason === undefined || entry.currentSeason === null || typeof entry.currentSeason === 'number') &&
     (entry.currentEpisode === undefined || entry.currentEpisode === null || typeof entry.currentEpisode === 'number') &&
     (entry.totalSeasons === undefined || entry.totalSeasons === null || typeof entry.totalSeasons === 'number') &&

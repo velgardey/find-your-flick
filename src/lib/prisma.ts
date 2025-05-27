@@ -4,12 +4,36 @@ import { withRetry } from './retryUtils'
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient }
 
-export const prisma = globalForPrisma.prisma || 
-  new PrismaClient({
-    // Disable engine binary generation warning in development
+// Create a base Prisma client
+const createPrismaClient = () => {
+  // Initialize the base Prisma client
+  const client = new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? [] : ['error']
-  }).$extends(withAccelerate())
+  })
 
+  // Try to use Accelerate if available, fall back to direct connection if it fails
+  try {
+    // When using Prisma Accelerate, we don't need to specify datasources
+    // as it's handled by the DATABASE_URL which should start with prisma://
+    return client.$extends(withAccelerate())
+  } catch (error) {
+    console.warn('Failed to initialize Prisma Accelerate, using direct connection:', error)
+    // If Accelerate fails, fall back to direct connection
+    return new PrismaClient({
+      log: process.env.NODE_ENV === 'development' ? [] : ['error'],
+      datasources: {
+        db: {
+          url: process.env.DIRECT_URL || ''
+        }
+      }
+    })
+  }
+}
+
+// Use existing client from global object or create a new one
+export const prisma = globalForPrisma.prisma || createPrismaClient()
+
+// Save client reference in development to avoid multiple instances
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 interface PrismaError extends Error {

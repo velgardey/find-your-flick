@@ -8,6 +8,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 import TVShowProgress from './TVShowProgress';
 import { useWatchlist } from '@/contexts/WatchlistContext';
 import { MovieDetails, TVShowDetails, MediaDetails, Provider, StreamingData, MediaVideo } from '@/types/media';
+import { fetchMediaDetails, fetchMediaVideos, fetchStreamingProviders } from '@/lib/mediaUtils';
 
 // Helper function to normalize provider names
 const normalizeProviderName = (name: string): string => {
@@ -160,59 +161,44 @@ export default function MediaDetailsModal({ mediaId, mediaType, onClose, layoutI
       setStreamingData(null);
       
       try {
-        // Fetch media details
-        const mediaResponse = await fetch(
-          `/api/tmdb?path=/${mediaType}/${mediaId}?language=en-US`,
-          { signal: controller.signal }
-        );
-        
-        if (!mediaResponse.ok) {
-          throw new Error(`Failed to fetch media details: ${mediaResponse.status}`);
-        }
-        
-        const mediaData = await mediaResponse.json();
+        // Fetch media details using the shared utility function
+        const mediaData = await fetchMediaDetails(mediaType, mediaId, {
+          signal: controller.signal
+        });
 
         if (isMounted) {
-          setMedia({
-            ...mediaData,
-            title: mediaData.title || mediaData.name,
-            media_type: mediaType
-          });
+          // Create a properly typed object based on the mediaType
+          if (mediaType === 'movie') {
+            setMedia({
+              ...mediaData,
+              title: mediaData.title,
+              media_type: 'movie'
+            } as MovieDetails);
+          } else {
+            setMedia({
+              ...mediaData,
+              title: (mediaData as TVShowDetails).name,
+              media_type: 'tv'
+            } as TVShowDetails);
+          }
         }
-
-        // Fetch videos
-        const videosResponse = await fetch(
-          `/api/tmdb?path=/${mediaType}/${mediaId}/videos?language=en-US`,
-          { signal: controller.signal }
-        );
         
-        if (!videosResponse.ok) {
-          throw new Error(`Failed to fetch videos: ${videosResponse.status}`);
+        // Fetch videos (trailers, etc.) using the shared utility function
+        const videosData = await fetchMediaVideos(mediaType, mediaId, {
+          signal: controller.signal
+        });
+        
+        if (isMounted) {
+          setVideos(videosData);
         }
         
-        const videosData = await videosResponse.json();
+        // Fetch streaming providers using the shared utility function
+        const streamingData = await fetchStreamingProviders(mediaType, mediaId, {
+          signal: controller.signal
+        });
 
         if (isMounted) {
-          setVideos(videosData.results?.filter((video: MediaVideo) => 
-            video.site.toLowerCase() === 'youtube' && 
-            ['Trailer', 'Teaser'].includes(video.type)
-          ) || []);
-        }
-
-        // Fetch streaming data
-        const streamingResponse = await fetch(
-          `/api/tmdb?path=/${mediaType}/${mediaId}/watch/providers`,
-          { signal: controller.signal }
-        );
-        
-        if (!streamingResponse.ok) {
-          throw new Error(`Failed to fetch streaming data: ${streamingResponse.status}`);
-        }
-        
-        const streamingData = await streamingResponse.json();
-
-        if (isMounted) {
-          setStreamingData(streamingData.results?.IN || null);
+          setStreamingData(streamingData);
         }
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
