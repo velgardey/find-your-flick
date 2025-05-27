@@ -38,7 +38,11 @@ interface LoadingStates {
 
 interface WatchlistContextType {
   watchlist: WatchlistEntry[]
-  addToWatchlist: (media: { id: number; title: string; poster_path: string; media_type: 'movie' | 'tv' }, status: WatchStatus) => Promise<void>
+  addToWatchlist: (
+    media: { id: number; title: string; poster_path: string; media_type: 'movie' | 'tv' }, 
+    status: WatchStatus,
+    initialProgress?: Partial<WatchlistEntry>
+  ) => Promise<void>
   updateWatchlistEntry: (entryId: string, updates: Partial<WatchlistEntry>) => Promise<void>
   removeFromWatchlist: (mediaId: number) => Promise<void>
   isInWatchlist: (mediaId: number) => boolean
@@ -242,7 +246,8 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
 
   const addToWatchlist = async (
     media: { id: number; title: string; poster_path: string; media_type: 'movie' | 'tv' },
-    status: WatchStatus
+    status: WatchStatus,
+    initialProgress?: Partial<WatchlistEntry>
   ) => {
     if (!user) throw new Error('User must be logged in')
 
@@ -274,12 +279,16 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       rating: null,
       notes: null,
       genres,
-      currentSeason: undefined,
-      currentEpisode: undefined,
-      totalSeasons: undefined,
-      totalEpisodes: undefined,
-      nextAirDate: undefined,
-      showStatus: undefined,
+      // Include initial progress data if provided
+      watchedSeconds: initialProgress?.watchedSeconds,
+      totalDuration: initialProgress?.totalDuration,
+      lastWatched: initialProgress?.lastWatched || new Date().toISOString(),
+      currentSeason: initialProgress?.currentSeason,
+      currentEpisode: initialProgress?.currentEpisode,
+      totalSeasons: initialProgress?.totalSeasons,
+      totalEpisodes: initialProgress?.totalEpisodes,
+      nextAirDate: initialProgress?.nextAirDate,
+      showStatus: initialProgress?.showStatus,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
@@ -291,26 +300,38 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       interface WatchlistResponse {
         data: WatchlistEntry;
       }
+      
+      // Prepare request body with progress data if available
+      const requestBody = {
+        mediaId: media.id,
+        mediaType: media.media_type,
+        title: media.title,
+        posterPath: media.poster_path,
+        status,
+        genres,
+        // Include progress data if provided
+        ...(initialProgress?.watchedSeconds !== undefined && { watchedSeconds: initialProgress.watchedSeconds }),
+        ...(initialProgress?.totalDuration !== undefined && { totalDuration: initialProgress.totalDuration }),
+        ...(initialProgress?.lastWatched && { lastWatched: initialProgress.lastWatched }),
+        ...(initialProgress?.currentSeason !== undefined && { currentSeason: initialProgress.currentSeason }),
+        ...(initialProgress?.currentEpisode !== undefined && { currentEpisode: initialProgress.currentEpisode }),
+        ...(initialProgress?.totalSeasons !== undefined && { totalSeasons: initialProgress.totalSeasons }),
+        ...(initialProgress?.totalEpisodes !== undefined && { totalEpisodes: initialProgress.totalEpisodes }),
+      };
+
       const { data: newEntry } = await fetchWithAuth<WatchlistResponse>('/api/watchlist', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          mediaId: media.id,
-          mediaType: media.media_type,
-          title: media.title,
-          posterPath: media.poster_path,
-          status,
-          genres,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!isWatchlistEntry(newEntry)) {
         throw new Error('Invalid response data')
       }
-
+      
       setWatchlist((prev) => 
         prev.map((entry) => 
           entry.id === optimisticEntry.id ? newEntry : entry
@@ -323,7 +344,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
       )
       console.error('Error adding to watchlist:', error)
       setHasError(true)
-      setLastFailedOperation(() => () => addToWatchlist(media, status))
+      setLastFailedOperation(() => () => addToWatchlist(media, status, initialProgress))
     } finally {
       setLoadingStates(prev => ({
         ...prev,

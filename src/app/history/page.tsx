@@ -1,0 +1,644 @@
+"use client";
+
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
+import Link from 'next/link';
+// No longer need date-fns format import
+import { LuPlay, LuCalendar, LuInfo, LuFilter, LuTv, LuFilm } from 'react-icons/lu';
+import { TbPlayerTrackNext, TbPlayerTrackPrev } from 'react-icons/tb';
+import { useAuth } from '@/contexts/AuthContext';
+import MediaDetailsModal from '@/components/MediaDetailsModal';
+import WatchlistButton from '@/components/WatchlistButton';
+import withAuth from '@/components/withAuth';
+
+interface HistoryItem {
+  id: string;
+  mediaId: number;
+  mediaType: string;
+  title: string;
+  posterPath: string | null;
+  status: string;
+  watchedSeconds: number | null;
+  totalDuration: number | null;
+  lastWatched: string | null;
+  currentSeason?: number | null;
+  currentEpisode?: number | null;
+  totalSeasons?: number | null;
+  totalEpisodes?: number | null;
+}
+
+// Define a type for local history items to avoid using 'any'
+type LocalHistoryItem = {
+  id: string;
+  mediaId: number;
+  mediaType: string;
+  title: string;
+  posterPath?: string | null;
+  status?: string;
+  watchedSeconds?: number | null;
+  totalDuration?: number | null;
+  lastWatched?: string | null;
+  currentSeason?: number | null;
+  currentEpisode?: number | null;
+  totalSeasons?: number | null;
+  totalEpisodes?: number | null;
+};
+
+function History() {
+  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedMediaId, setSelectedMediaId] = useState<number | null>(null);
+  const [selectedMediaType, setSelectedMediaType] = useState<'movie' | 'tv'>('movie');
+  const [filterType, setFilterType] = useState<'all' | 'movies' | 'tvshows'>('all');
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const { user } = useAuth();
+
+  // Ref to track if the component is mounted
+  const isMounted = useRef(true);
+  
+  // Function to refresh history data - wrapped in useCallback to prevent dependency changes
+  const refreshHistory = useCallback(async () => {
+    if (!isMounted.current) return;
+    
+    console.log('Refreshing history...');
+    
+    try {
+      // Get local history from sessionStorage
+      const localHistoryStr = sessionStorage.getItem('localHistory');
+      const localHistory = localHistoryStr ? JSON.parse(localHistoryStr) : [];
+      console.log('Found local history items:', localHistory.length);
+        
+      // Process the local history to ensure it has all required fields
+      // Using the LocalHistoryItem type defined at the top level
+        
+      const processedLocalHistory = localHistory.map((item: LocalHistoryItem) => {
+        // Ensure the item has watchedSeconds and totalDuration
+        return {
+          ...item,
+          watchedSeconds: item.watchedSeconds || 0,
+          totalDuration: item.totalDuration || 0,
+          status: item.status || 'watching'
+        };
+      });
+      
+      // Set local history items immediately to improve user experience
+      if (Array.isArray(processedLocalHistory) && processedLocalHistory.length > 0) {
+        setHistoryItems(processedLocalHistory);
+      }
+    } catch (localError) {
+      console.error('Error reading local history:', localError);
+    }
+  }, []);
+  
+  // Set up event listener for storage changes
+  useEffect(() => {
+    // Listen for changes to sessionStorage (from player page)
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'localHistory' && event.newValue) {
+        console.log('Local history updated in another tab/window');
+        refreshHistory();
+      }
+    };
+    
+    // Add event listener
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      isMounted.current = false;
+    };
+  }, [refreshHistory]);
+  
+  // Set up polling to check for updates every 5 seconds in a separate useEffect
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      console.log('Polling for history updates...');
+      if (historyItems.length === 0) {
+        refreshHistory();
+      }
+    }, 5000);
+    
+    return () => clearInterval(intervalId);
+  }, [historyItems.length, refreshHistory]);
+  
+  useEffect(() => {
+    const fetchHistory = async () => {
+      // Start with loading state
+      setIsLoading(true);
+      
+      // Initial fetch of local history
+      await refreshHistory();
+      
+      // Then try to fetch server history if user is logged in
+      if (!user) {
+        console.log('No user, using only local history');
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log('Fetching server history for user:', user.uid);
+      
+      try {
+        // Direct API call without expecting a nested data property
+        console.log('Making API request to /api/history');
+        const response = await fetch('/api/history', {
+          headers: {
+            Authorization: `Bearer ${await user.getIdToken()}`
+          }
+        });
+        
+        console.log('History API response status:', response.status);
+        
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        
+        const serverHistoryData = await response.json();
+        console.log('Server history data:', serverHistoryData);
+        console.log('Is array:', Array.isArray(serverHistoryData));
+        console.log('Length:', Array.isArray(serverHistoryData) ? serverHistoryData.length : 'N/A');
+        
+        // Get local history again in case it was updated while fetching server history
+        try {
+          const localHistoryStr = sessionStorage.getItem('localHistory');
+          const localHistory = localHistoryStr ? JSON.parse(localHistoryStr) : [];
+          
+          // Combine server and local history
+          // Filter out duplicates (same mediaId and mediaType)
+          const serverHistory = Array.isArray(serverHistoryData) ? serverHistoryData : [];
+          
+          // Create a map of server history items by mediaId+mediaType for quick lookup
+          const serverHistoryMap = new Map();
+          serverHistory.forEach(item => {
+            serverHistoryMap.set(`${item.mediaId}-${item.mediaType}`, item);
+          });
+          
+          // Define interface for history items
+          interface HistoryItemBase {
+            id: string;
+            mediaId: number;
+            mediaType: string;
+            title: string;
+            posterPath?: string;
+            lastWatched: string;
+          }
+          
+          // Process and combine history items
+          const processedHistory = [
+            // Process server history items
+            ...serverHistory.map((item: LocalHistoryItem) => ({
+              id: item.id || `history-${item.mediaId}`,
+              mediaId: item.mediaId,
+              mediaType: item.mediaType,
+              title: item.title,
+              posterPath: item.posterPath,
+              status: item.status || 'watched',
+              watchedSeconds: item.watchedSeconds || 0,
+              totalDuration: item.totalDuration || 0,
+              lastWatched: item.lastWatched,
+              currentSeason: item.currentSeason,
+              currentEpisode: item.currentEpisode,
+              totalSeasons: item.totalSeasons,
+              totalEpisodes: item.totalEpisodes
+            })),
+            // Process local history items that aren't in server history
+            ...localHistory.filter((localItem: HistoryItemBase) => {
+              // Only include local items that aren't in the server history
+              return !serverHistoryMap.has(`${localItem.mediaId}-${localItem.mediaType}`);
+            }).map((localItem: LocalHistoryItem) => ({
+              // Ensure all local items have required fields
+              ...localItem,
+              watchedSeconds: localItem.watchedSeconds || 0,
+              totalDuration: localItem.totalDuration || 0,
+              status: localItem.status || 'watching'
+            }))
+          ];
+          
+          // Sort by lastWatched (most recent first)
+          processedHistory.sort((a, b) => {
+            if (!a.lastWatched) return 1;
+            if (!b.lastWatched) return -1;
+            return new Date(b.lastWatched).getTime() - new Date(a.lastWatched).getTime();
+          });
+          
+          // Update history items
+          setHistoryItems(processedHistory);
+          
+          // Also update sessionStorage for immediate access next time
+          sessionStorage.setItem('localHistory', JSON.stringify(processedHistory));
+        } catch (combineError) {
+          console.error('Error combining history:', combineError);
+          // If we can't combine, just use server history
+          if (Array.isArray(serverHistoryData)) {
+            setHistoryItems(serverHistoryData);
+          }
+        }
+      } catch (serverError) {
+        console.error('Error fetching server history:', serverError);
+        // Don't set error state if we have local history
+        if (historyItems.length === 0) {
+          setError('Failed to load history data');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchHistory();
+  }, [user, historyItems.length, refreshHistory]);
+
+  // Filter history items based on selected filter
+  const filteredHistoryItems = historyItems.filter(item => {
+    if (filterType === 'all') return true;
+    if (filterType === 'movies') return item.mediaType === 'movie';
+    if (filterType === 'tvshows') return item.mediaType === 'tv';
+    return true;
+  });
+
+  const handleMediaClick = (mediaId: number, mediaType: 'movie' | 'tv') => {
+    setSelectedMediaId(mediaId);
+    setSelectedMediaType(mediaType);
+  };
+
+  // Format time in HH:MM:SS or MM:SS format depending on length
+  const formatTime = (seconds: number | null): string => {
+    if (!seconds || isNaN(seconds)) return '00:00';
+    
+    // Convert to hours, minutes, seconds
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    
+    // Format with or without hours depending on length
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    } else {
+      return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+  };
+
+  // Format date to relative time (e.g., '2 days ago')
+  const formatRelativeTime = (dateString: string | null): string => {
+    if (!dateString) return 'Unknown';
+    try {
+      // Calculate relative time manually instead of using formatDistanceToNow
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7) return `${diffDays} days ago`;
+      if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+      if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+      return `${Math.floor(diffDays / 365)} years ago`;
+    } catch {
+      // Catch without a parameter to avoid unused variable warnings
+      return 'Invalid date';
+    }
+  };
+
+  // We'll remove the unused formatFullDate function
+
+  // Calculate progress percentage with more accurate calculation
+  const calculateProgress = (watched: number | null, total: number | null): number => {
+    if (!watched || !total || total === 0) {
+      return 0;
+    }
+    
+    // Calculate percentage and ensure it's between 0 and 100
+    const percentage = (watched / total) * 100;
+    return Math.min(Math.max(percentage, 0), 100);
+  };
+
+  if (error) {
+    return (
+      <div className="min-h-screen pt-24 px-4">
+        <div className="max-w-2xl mx-auto text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">Oops! Something went wrong</h2>
+          <p className="text-gray-400 mb-8">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen pt-20 pb-16 px-4 bg-gradient-to-b from-black via-gray-900 to-black">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-white">Watch History</h1>
+          
+          <div className="relative">
+            <button
+              onClick={() => setShowFilterMenu(!showFilterMenu)}
+              className="flex items-center space-x-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <LuFilter className="text-lg" />
+              <span>
+                {filterType === 'all' ? 'All' : filterType === 'movies' ? 'Movies' : 'TV Shows'}
+              </span>
+            </button>
+            
+            {showFilterMenu && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg overflow-hidden z-10"
+              >
+                <button
+                  onClick={() => {
+                    setFilterType('all');
+                    setShowFilterMenu(false);
+                  }}
+                  className={`w-full text-left px-4 py-2 hover:bg-gray-700 transition-colors ${
+                    filterType === 'all' ? 'bg-blue-900/50 text-blue-400' : 'text-white'
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => {
+                    setFilterType('movies');
+                    setShowFilterMenu(false);
+                  }}
+                  className={`w-full text-left px-4 py-2 hover:bg-gray-700 transition-colors ${
+                    filterType === 'movies' ? 'bg-blue-900/50 text-blue-400' : 'text-white'
+                  }`}
+                >
+                  Movies
+                </button>
+                <button
+                  onClick={() => {
+                    setFilterType('tvshows');
+                    setShowFilterMenu(false);
+                  }}
+                  className={`w-full text-left px-4 py-2 hover:bg-gray-700 transition-colors ${
+                    filterType === 'tvshows' ? 'bg-blue-900/50 text-blue-400' : 'text-white'
+                  }`}
+                >
+                  TV Shows
+                </button>
+              </motion.div>
+            )}
+          </div>
+        </div>
+        
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : filteredHistoryItems.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-400 mb-4">No watch history yet</p>
+            <p className="text-sm text-gray-500">
+              Start watching movies and shows to see your history here
+            </p>
+          </div>
+        ) : (
+          <AnimatePresence mode="popLayout">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredHistoryItems.map((item) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="bg-black/30 backdrop-blur-sm border border-gray-800/50 rounded-xl p-4 transition-all duration-300 hover:bg-black/50 hover:border-gray-700/50 group"
+                >
+                  <div className="flex flex-col h-full">
+                    <div className="flex mb-4 gap-4">
+                      <div className="relative w-24 h-36 flex-shrink-0">
+                        {item.posterPath ? (
+                          <Image
+                            src={`https://image.tmdb.org/t/p/w500${item.posterPath}`}
+                            alt={item.title}
+                            fill
+                            sizes="(max-width: 768px) 100px, 150px"
+                            className="rounded-lg object-cover"
+                            priority
+                            quality={85}
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              target.parentElement?.classList.add('bg-gray-800', 'rounded-lg');
+                              const fallbackText = document.createElement('span');
+                              fallbackText.className = 'text-gray-400 text-xs text-center absolute inset-0 flex items-center justify-center px-2';
+                              fallbackText.textContent = 'Image not available';
+                              target.parentElement?.appendChild(fallbackText);
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-800 rounded-lg flex items-center justify-center">
+                            <span className="text-gray-400 text-xs text-center px-2">No poster</span>
+                          </div>
+                        )}
+                        
+                        {/* Play button overlay */}
+                        <Link 
+                          href={`/player/${item.mediaType}/${item.mediaId}${item.mediaType === 'tv' && item.currentSeason && item.currentEpisode ? `?season=${item.currentSeason}&episode=${item.currentEpisode}` : ''}`}
+                          className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
+                        >
+                          <div className="bg-blue-600 rounded-full p-2 transform group-hover:scale-110 transition-transform">
+                            <LuPlay className="text-white text-xl" />
+                          </div>
+                        </Link>
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <h3 
+                          className="text-white text-lg font-semibold group-hover:text-blue-400 transition-colors cursor-pointer line-clamp-2"
+                          onClick={() => handleMediaClick(item.mediaId, item.mediaType as 'movie' | 'tv')}
+                        >
+                          {item.title}
+                        </h3>
+                        
+                        <div className="flex items-center mt-1 text-gray-400 text-sm">
+                          <LuCalendar className="mr-1" />
+                          <span>{formatRelativeTime(item.lastWatched)}</span>
+                        </div>
+                        
+                        {/* Enhanced TV Show Episode Info */}
+                        {item.mediaType === 'tv' && item.currentSeason && item.currentEpisode && (
+                          <motion.div 
+                            initial={{ opacity: 0, y: 5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="mt-2 p-3 bg-gradient-to-r from-blue-900/30 to-purple-900/30 rounded-xl border border-blue-700/30 shadow-lg shadow-blue-900/10"
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <LuTv className="h-4 w-4 text-blue-400" />
+                              <span className="text-sm font-medium text-gray-200">Currently Watching</span>
+                            </div>
+                            
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                              <div className="flex items-center gap-1">
+                                <span className="text-gray-400">Season</span>
+                                <span className="font-medium text-white bg-blue-800/50 px-2 py-0.5 rounded-md">{item.currentSeason}</span>
+                              </div>
+                              
+                              <span className="text-gray-500">•</span>
+                              
+                              <div className="flex items-center gap-1">
+                                <span className="text-gray-400">Episode</span>
+                                <span className="font-medium text-white bg-blue-800/50 px-2 py-0.5 rounded-md">{item.currentEpisode}</span>
+                                {item.totalEpisodes && (
+                                  <span className="text-gray-500">of {item.totalEpisodes}</span>
+                                )}
+                              </div>
+                              
+                              {item.totalSeasons && (
+                                <div className="ml-auto flex items-center gap-1">
+                                  <span className="text-gray-400">Total Seasons:</span>
+                                  <span className="font-medium text-white">{item.totalSeasons}</span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Episode Navigation */}
+                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-blue-700/30">
+                              <Link 
+                                href={`/player/${item.mediaType}/${item.mediaId}?season=${item.currentSeason}&episode=${Math.max(1, (item.currentEpisode || 1) - 1)}`}
+                                className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-400 transition-colors"
+                              >
+                                <TbPlayerTrackPrev className="h-3.5 w-3.5" />
+                                <span>Previous</span>
+                              </Link>
+                              
+                              <Link 
+                                href={`/player/${item.mediaType}/${item.mediaId}?season=${item.currentSeason}&episode=${(item.currentEpisode || 0) + 1}`}
+                                className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-400 transition-colors"
+                              >
+                                <span>Next</span>
+                                <TbPlayerTrackNext className="h-3.5 w-3.5" />
+                              </Link>
+                            </div>
+                          </motion.div>
+                        )}
+                        
+                        {/* Movie Type Indicator */}
+                        {item.mediaType === 'movie' && (
+                          <div className="mt-1 flex items-center gap-1 text-gray-400 text-sm">
+                            <LuFilm className="h-3.5 w-3.5" />
+                            <span>Movie</span>
+                          </div>
+                        )}
+                        
+                        {/* Enhanced Progress bar */}
+                        <div className="mt-3">
+                          <div className="flex justify-between text-xs text-gray-400 mb-1">
+                            <span className="font-medium">Progress</span>
+                            <motion.span 
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: 0.5 }}
+                              className="font-medium text-blue-400"
+                            >
+                              {calculateProgress(item.watchedSeconds, item.totalDuration)}%
+                            </motion.span>
+                          </div>
+                          
+                          <div className="h-3 bg-gray-800 rounded-full overflow-hidden shadow-inner shadow-black/50 relative">
+                            {/* Progress fill */}
+                            <motion.div
+                              initial={{ width: `${calculateProgress(item.watchedSeconds, item.totalDuration)}%` }}
+                              animate={{ 
+                                width: `${calculateProgress(item.watchedSeconds, item.totalDuration)}%`,
+                                transition: { duration: 0.5, ease: "easeOut" }
+                              }}
+                              className="h-full bg-gradient-to-r from-blue-600 via-blue-500 to-purple-500 rounded-full relative"
+                            >
+                              {/* Animated glow effect */}
+                              <motion.div 
+                                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                                initial={{ x: '-100%' }}
+                                animate={{ x: '100%' }}
+                                transition={{ 
+                                  repeat: Infinity, 
+                                  duration: 2, 
+                                  ease: "linear",
+                                  repeatDelay: 0.5
+                                }}
+                              />
+                              
+                              {/* Position indicator dot */}
+                              <motion.div 
+                                className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-4 bg-white rounded-full shadow-lg shadow-blue-500/50 border-2 border-blue-600 z-10"
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ delay: 0.5, type: 'spring' }}
+                              />
+                            </motion.div>
+                            
+                            {/* Time markers */}
+                            <div className="absolute inset-0 flex justify-between px-1 pointer-events-none">
+                              {[0, 25, 50, 75, 100].map((mark) => (
+                                <div key={mark} className="h-full flex flex-col justify-center">
+                                  <div className="h-1 w-0.5 bg-gray-600/50" />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          <div className="flex justify-between text-xs mt-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse"></span>
+                              <span className="text-blue-300 font-medium">{formatTime(item.watchedSeconds)}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-gray-400">of</span>
+                              <span className="text-gray-300 font-medium">{formatTime(item.totalDuration)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-auto pt-3 flex justify-between items-center">
+                      <button
+                        onClick={() => handleMediaClick(item.mediaId, item.mediaType as 'movie' | 'tv')}
+                        className="text-gray-400 hover:text-blue-400 text-sm flex items-center transition-colors"
+                      >
+                        <LuInfo className="mr-1" />
+                        Details
+                      </button>
+                      
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <WatchlistButton
+                          media={{
+                            id: item.mediaId,
+                            title: item.title,
+                            poster_path: item.posterPath || '',
+                            media_type: item.mediaType as 'movie' | 'tv'
+                          }}
+                          position="bottom"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </AnimatePresence>
+        )}
+      </div>
+
+      <MediaDetailsModal
+        mediaId={selectedMediaId}
+        mediaType={selectedMediaType}
+        onClose={() => setSelectedMediaId(null)}
+      />
+    </div>
+  );
+}
+
+export default withAuth(History);

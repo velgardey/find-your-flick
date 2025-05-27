@@ -5,7 +5,7 @@ import { Dialog, Menu, Transition } from '@headlessui/react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { LuHouse, LuUsers, LuRss, LuMenu, LuX, LuLogIn, LuLogOut, LuUser } from 'react-icons/lu';
+import { LuHouse, LuUsers, LuRss, LuMenu, LuX, LuLogIn, LuLogOut, LuUser, LuClock } from 'react-icons/lu';
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import Image from 'next/image';
@@ -29,6 +29,7 @@ export default function Navbar() {
   const navigation = [
     { name: 'Home', href: '/', icon: LuHouse, protected: false },
     { name: 'Feed', href: '/feed', icon: LuRss, protected: true },
+    { name: 'History', href: '/history', icon: LuClock, protected: true },
     { name: 'Friends', href: '/friends', icon: LuUsers, protected: true },
   ];
 

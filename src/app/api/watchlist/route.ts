@@ -98,7 +98,7 @@ export async function POST(request: Request) {
             },
           })
 
-          // Add media to watchlist
+          // Add media to watchlist with progress data if provided
           return tx.watchlistEntry.create({
             data: {
               userId: auth.user.uid,
@@ -108,6 +108,17 @@ export async function POST(request: Request) {
               posterPath: validatedData.posterPath,
               status: validatedData.status,
               genres: validatedData.genres,
+              // Include progress tracking fields if provided
+              ...(validatedData.watchedSeconds !== undefined && { watchedSeconds: validatedData.watchedSeconds }),
+              ...(validatedData.totalDuration !== undefined && { totalDuration: validatedData.totalDuration }),
+              ...(validatedData.lastWatched !== undefined && { lastWatched: validatedData.lastWatched }),
+              // Include TV show specific fields if provided
+              ...(validatedData.currentSeason !== undefined && { currentSeason: validatedData.currentSeason }),
+              ...(validatedData.currentEpisode !== undefined && { currentEpisode: validatedData.currentEpisode }),
+              ...(validatedData.totalSeasons !== undefined && { totalSeasons: validatedData.totalSeasons }),
+              ...(validatedData.totalEpisodes !== undefined && { totalEpisodes: validatedData.totalEpisodes }),
+              ...(validatedData.nextAirDate !== undefined && { nextAirDate: validatedData.nextAirDate }),
+              ...(validatedData.showStatus !== undefined && { showStatus: validatedData.showStatus }),
             },
           })
         })

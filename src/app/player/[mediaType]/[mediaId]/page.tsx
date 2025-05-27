@@ -9,10 +9,28 @@ import { useWatchlist } from '@/contexts/WatchlistContext';
 import { fetchMediaDetails } from '@/lib/mediaUtils';
 import { WatchStatus } from '@/lib/prismaTypes';
 
+// Define a type for local history items
+type LocalHistoryItem = {
+  id: string;
+  mediaId: number;
+  mediaType: string;
+  title: string;
+  posterPath?: string;
+  status?: string;
+  watchedSeconds?: number;
+  totalDuration?: number;
+  lastWatched?: string;
+  currentSeason?: number;
+  currentEpisode?: number;
+  totalSeasons?: number;
+  totalEpisodes?: number;
+};
+
 // Add TypeScript declaration for window.progressUpdateTimeout
 declare global {
   interface Window {
     progressUpdateTimeout: ReturnType<typeof setTimeout> | undefined;
+    historyTracked?: boolean; // Flag to prevent duplicate history tracking
   }
 }
 
@@ -38,7 +56,7 @@ export default function PlayerPage() {
     };
   } | null>(null);
   
-  const { getWatchlistEntry, updateWatchlistEntry } = useWatchlist();
+  const { getWatchlistEntry, updateWatchlistEntry, addToWatchlist } = useWatchlist();
   const watchlistEntry = mediaId ? getWatchlistEntry(parseInt(mediaId)) : undefined;
 
   // Custom parameters from URL
@@ -57,8 +75,8 @@ export default function PlayerPage() {
         console.log('Received watch progress update:', event.data);
         setWatchProgress(event.data);
         
-        // Update watchlist entry if available
-        if (watchlistEntry && event.data.id === mediaId) {
+        // Always track watch progress, even if not in watchlist
+        if (event.data.id === mediaId) {
           const progressData = event.data;
           
           try {
@@ -97,15 +115,18 @@ export default function PlayerPage() {
                     updates.currentEpisode = currentEpisode + 1;
                     
                     // If status is WATCHING, update it to reflect progress
-                    if (watchlistEntry.status === WatchStatus.WATCHING) {
+                    if (watchlistEntry && watchlistEntry.status === WatchStatus.WATCHING) {
                       updates.status = WatchStatus.WATCHED;
                     }
                   }
                 }
                 
                 // For movies, update status if nearly complete
-                if (mediaType === 'movie' && progressPercentage > 90 && watchlistEntry.status === WatchStatus.WATCHING) {
-                  updates.status = WatchStatus.WATCHED;
+                if (mediaType === 'movie' && progressPercentage > 90) {
+                  // Only update status if entry exists and is in WATCHING state
+                  if (watchlistEntry && watchlistEntry.status === WatchStatus.WATCHING) {
+                    updates.status = WatchStatus.WATCHED;
+                  }
                 }
                 
                 // Debounce updates to avoid too many API calls
@@ -115,12 +136,58 @@ export default function PlayerPage() {
                 }
                 
                 window.progressUpdateTimeout = setTimeout(() => {
-                  updateWatchlistEntry(watchlistEntry.id, updates)
-                    .catch(error => {
-                      console.error('Failed to update watch progress:', error);
-                      // Show a toast or notification to the user
-                      // This could be implemented with a toast library
+                  console.log('Saving watch progress:', {
+                    mediaId,
+                    mediaType,
+                    updates,
+                    hasWatchlistEntry: !!watchlistEntry,
+                    hasMedia: !!media
+                  });
+                  
+                  if (watchlistEntry) {
+                    console.log('Updating existing watchlist entry:', watchlistEntry.id);
+                    // Update existing watchlist entry
+                    updateWatchlistEntry(watchlistEntry.id, updates)
+                      .then(() => {
+                        console.log('Successfully updated watch progress');
+                      })
+                      .catch(error => {
+                        console.error('Failed to update watch progress:', error);
+                      });
+                  } else if (media) {
+                    // Add to watchlist with WATCHING status if not already in watchlist
+                    // Handle different properties for movies vs TV shows
+                    const title = mediaType === 'movie' 
+                      ? (media as MovieDetails).title 
+                      : (media as TVShowDetails).name;
+                    
+                    console.log('Adding to watchlist with progress data:', {
+                      mediaId: parseInt(mediaId as string),
+                      title,
+                      mediaType,
+                      updates
                     });
+                    
+                    // Add to watchlist with progress data
+                    addToWatchlist(
+                      {
+                        id: parseInt(mediaId as string),
+                        title: title || 'Unknown Title',
+                        poster_path: media.poster_path || '',
+                        media_type: mediaType
+                      },
+                      WatchStatus.WATCHING,
+                      updates // Pass the progress updates
+                    )
+                    .then(() => {
+                      console.log('Successfully added to watchlist with progress');
+                    })
+                    .catch((error: Error) => {
+                      console.error('Failed to add to watchlist with progress:', error);
+                    });
+                  } else {
+                    console.error('Cannot save watch progress: no watchlist entry and no media details available');
+                  }
                 }, 5000);
               }
             }
@@ -138,8 +205,9 @@ export default function PlayerPage() {
     return () => {
       window.removeEventListener('message', handleMessage);
     };
-  }, [mediaId, mediaType, watchlistEntry, season, episode, updateWatchlistEntry]);
+  }, [mediaId, mediaType, watchlistEntry, season, episode, updateWatchlistEntry, media, addToWatchlist]);
   
+  // Fetch media details on component mount
   useEffect(() => {
     let isMounted = true;
     const controller = new AbortController();
@@ -189,7 +257,211 @@ export default function PlayerPage() {
       controller.abort();
     };
   }, [mediaId, mediaType]);
-
+  
+  // Track history locally without requiring authentication
+  useEffect(() => {
+    // Only run once when component mounts and media data is available
+    if (!mediaId || !mediaType || !media) return;
+    
+    // Check if we've already tracked this media in this session
+    const historyKey = `history-tracked-${mediaId}-${mediaType}`;
+    if (sessionStorage.getItem(historyKey)) {
+      console.log('History already tracked for this media in this session');
+      return;
+    }
+    
+    // Set flag to prevent duplicate tracking
+    sessionStorage.setItem(historyKey, 'true');
+    
+    // We'll get the title and timestamp inside the update functions when needed
+    
+    // Get progress data from watchProgress state if available
+    // We'll use these values directly in the update functions
+    // Function to update local history
+    const updateLocalHistory = () => {
+      try {
+        if (!media || !watchProgress || !watchProgress.progress) return false;
+        
+        const watchedTime = watchProgress.progress.watched || 0;
+        const totalTime = watchProgress.progress.duration || 0;
+        const progressPercentage = totalTime > 0 ? (watchedTime / totalTime) * 100 : 0;
+        const lastWatched = new Date().toISOString();
+        
+        console.log('Tracking media view for history locally');
+        
+        // Get existing local history or initialize empty array
+        const localHistoryStr = sessionStorage.getItem('localHistory') || '[]';
+        const localHistory = JSON.parse(localHistoryStr);
+        
+        // Create a local history entry with progress data
+        const localEntry = {
+          id: `local-${mediaId}-${mediaType}`,
+          mediaId: parseInt(mediaId as string),
+          mediaType: mediaType,
+          title: media.title || (media as TVShowDetails).name || 'Unknown Title',
+          posterPath: media.poster_path || '',
+          status: progressPercentage > 90 ? 'WATCHED' : 'WATCHING',
+          watchedSeconds: watchedTime,
+          totalDuration: totalTime,
+          lastWatched: lastWatched,
+          // For TV shows, include season and episode info
+          ...(mediaType === 'tv' && {
+            currentSeason: season ? parseInt(season) : 1,
+            currentEpisode: episode ? parseInt(episode) : 1,
+            totalSeasons: (media as TVShowDetails).number_of_seasons,
+            totalEpisodes: (media as TVShowDetails).number_of_episodes
+          })
+        };
+        
+        // Check if this media already exists in local history
+        const existingIndex = localHistory.findIndex(
+          (item: LocalHistoryItem) => item.mediaId === parseInt(mediaId as string) && item.mediaType === mediaType
+        );
+        
+        if (existingIndex >= 0) {
+          // Update existing entry with new progress data
+          localHistory[existingIndex] = {
+            ...localHistory[existingIndex],
+            lastWatched: lastWatched,
+            watchedSeconds: watchedTime,
+            totalDuration: totalTime,
+            status: progressPercentage > 90 ? 'WATCHED' : 'WATCHING',
+            // For TV shows, update season and episode info
+            ...(mediaType === 'tv' && {
+              currentSeason: season ? parseInt(season) : 1,
+              currentEpisode: episode ? parseInt(episode) : 1,
+              totalSeasons: (media as TVShowDetails).number_of_seasons,
+              totalEpisodes: (media as TVShowDetails).number_of_episodes
+            })
+          };
+        } else {
+          // Add new entry to the beginning of the array
+          localHistory.unshift(localEntry);
+        }
+        
+        // Limit history to 20 items to prevent storage issues
+        const limitedHistory = localHistory.slice(0, 20);
+        
+        // Save back to sessionStorage
+        sessionStorage.setItem('localHistory', JSON.stringify(limitedHistory));
+        console.log('Added to local history with progress data:', localEntry);
+        return true;
+      } catch (localError) {
+        console.error('Error saving to local history:', localError);
+        return false;
+      }
+    };
+    
+    // Function to update server history
+    const updateServerHistory = async () => {
+      if (!media || !watchProgress || !watchProgress.progress) return false;
+      
+      try {
+        const watchedTime = watchProgress.progress.watched || 0;
+        const totalTime = watchProgress.progress.duration || 0;
+        const progressPercentage = totalTime > 0 ? (watchedTime / totalTime) * 100 : 0;
+        const lastWatched = new Date().toISOString();
+        const status = progressPercentage > 90 ? WatchStatus.WATCHED : WatchStatus.WATCHING;
+        
+        // Prepare the update data
+        const updateData = {
+          watchedSeconds: watchedTime,
+          totalDuration: totalTime,
+          lastWatched: lastWatched,
+          status: status,
+          // For TV shows, include season and episode info
+          ...(mediaType === 'tv' && {
+            currentSeason: season ? parseInt(season) : 1,
+            currentEpisode: episode ? parseInt(episode) : 1,
+            totalSeasons: (media as TVShowDetails).number_of_seasons,
+            totalEpisodes: (media as TVShowDetails).number_of_episodes,
+          })
+        };
+        
+        // Check if the media is already in the watchlist
+        const watchlistEntry = getWatchlistEntry(parseInt(mediaId as string));
+        
+        // If it's in the watchlist, update the entry
+        if (watchlistEntry) {
+          console.log('Updating existing watchlist entry with progress:', updateData);
+          
+          // Use direct API call to ensure all fields are updated properly
+          const response = await fetch(`/api/watchlist/${watchlistEntry.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData),
+          });
+          
+          if (!response.ok) {
+            console.error('Failed to update watchlist entry:', await response.text());
+            return false;
+          } else {
+            console.log('Successfully updated watchlist entry with progress');
+            return true;
+          }
+        } else {
+          // If user is watching but not in watchlist, add it to watchlist with WATCHING status
+          console.log('Adding media to watchlist with progress:', updateData);
+          
+          // Use direct API call to ensure all fields are included
+          const response = await fetch('/api/watchlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              mediaId: parseInt(mediaId as string),
+              mediaType: mediaType,
+              title: media.title || (media as TVShowDetails).name || 'Unknown Title',
+              posterPath: media.poster_path,
+              genres: media.genres?.map(g => g.name) || [],
+              watchedSeconds: watchedTime,
+              totalDuration: totalTime,
+              lastWatched: lastWatched,
+              status: status,
+              // For TV shows, include season and episode info
+              ...(mediaType === 'tv' && {
+                currentSeason: season ? parseInt(season) : 1,
+                currentEpisode: episode ? parseInt(episode) : 1,
+                totalSeasons: (media as TVShowDetails).number_of_seasons,
+                totalEpisodes: (media as TVShowDetails).number_of_episodes,
+              })
+            }),
+          });
+          
+          if (!response.ok) {
+            console.error('Failed to add media to watchlist:', await response.text());
+            return false;
+          } else {
+            console.log('Successfully added media to watchlist with progress');
+            return true;
+          }
+        }
+      } catch (serverError) {
+        console.error('Failed to update server history:', serverError);
+        return false;
+      }
+    };
+    
+    // Execute both functions when we have watch progress data
+    if (watchProgress && watchProgress.progress) {
+      // Use a debounce mechanism to avoid too frequent updates
+      if (window.progressUpdateTimeout) {
+        clearTimeout(window.progressUpdateTimeout);
+      }
+      
+      window.progressUpdateTimeout = setTimeout(() => {
+        updateLocalHistory();
+        updateServerHistory();
+      }, 2000); // Update after 2 seconds of stable progress
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (window.progressUpdateTimeout) {
+        clearTimeout(window.progressUpdateTimeout);
+      }
+    };
+  }, [media, mediaId, mediaType, watchProgress, getWatchlistEntry, season, episode]);
+  
   const handleClose = () => {
     router.back();
   };
