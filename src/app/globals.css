@@ -1,3 +1,4 @@
+/* tailwindcss directives - ignore linter warnings */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -108,4 +109,31 @@ body {
   animation: borderShine 3s linear infinite;
   pointer-events: none;
   z-index: -1;
+}
+
+/* Spinner animations for player page */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 1.5s linear infinite;
 }

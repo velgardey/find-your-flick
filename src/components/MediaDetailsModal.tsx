@@ -485,9 +485,7 @@ export default function MediaDetailsModal({ mediaId, mediaType, onClose, layoutI
                       </div>
                       {mediaType === 'movie' && (
                         <motion.a
-                          href={`https://www.cineby.app/${mediaType}/${media.id}?play=true`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          href={`/player/movie/${media.id}?autoplay=true&colour=00ff9d`}
                           className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transform transition-all duration-200 active:scale-95 select-none touch-manipulation"
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
@@ -503,9 +501,7 @@ export default function MediaDetailsModal({ mediaId, mediaType, onClose, layoutI
                       )}
                       {mediaType === 'tv' && (
                         <motion.a
-                          href={`https://www.cineby.app/${mediaType}/${media.id}?play=true`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          href={`/player/tv/${media.id}?autoplay=true&colour=00ff9d&autonextepisode=true`}
                           className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transform transition-all duration-200 active:scale-95 select-none touch-manipulation"
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}

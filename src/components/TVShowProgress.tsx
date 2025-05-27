@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TVShowDetails, WatchlistEntry } from '@/types/media';
 import { useWatchlist } from '@/contexts/WatchlistContext';
-import { LuChevronDown, LuPlay, LuCheck, LuClock } from 'react-icons/lu';
+import { LuChevronDown, LuPlay, LuCheck, LuClock, LuExternalLink } from 'react-icons/lu';
 import { WatchStatus } from '@/lib/prismaTypes';
 import RatingModal from './RatingModal';
+import Link from 'next/link';
 
 interface TVShowProgressProps {
   show: TVShowDetails;
@@ -234,33 +235,42 @@ export default function TVShowProgress({ show, watchlistEntry }: TVShowProgressP
                   <label className="block text-sm text-gray-400 mb-3 font-medium">Season</label>
                   <div className="flex gap-2 flex-wrap">
                     {show.seasons.map((season) => (
-                      <motion.button
-                        key={season.id}
-                        onClick={() => {
-                          if (selectedSeason === season.season_number) {
-                            handleSeasonSelect(null);
-                          } else {
-                            handleSeasonSelect(season.season_number);
-                          }
-                        }}
-                        disabled={isUpdating}
-                        className={`px-4 py-2 rounded-lg text-sm transition-all duration-200 flex items-center gap-2 ${
-                          selectedSeason === season.season_number
-                            ? 'bg-white/20 text-white shadow-lg scale-105'
-                            : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white hover:scale-105'
-                        } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        whileHover={{ scale: isUpdating ? 1 : 1.05 }}
-                        whileTap={{ scale: isUpdating ? 1 : 0.95 }}
-                      >
-                        {selectedSeason !== null && season.season_number < selectedSeason ? (
-                          <LuCheck className="w-4 h-4" />
-                        ) : season.season_number === selectedSeason ? (
-                          <LuPlay className="w-4 h-4" />
-                        ) : (
-                          <LuClock className="w-4 h-4" />
-                        )}
-                        <span>{season.name}</span>
-                      </motion.button>
+                      <div key={season.id} className="relative group">
+                        <motion.button
+                          onClick={() => {
+                            if (selectedSeason === season.season_number) {
+                              handleSeasonSelect(null);
+                            } else {
+                              handleSeasonSelect(season.season_number);
+                            }
+                          }}
+                          disabled={isUpdating}
+                          className={`px-4 py-2 rounded-lg text-sm transition-all duration-200 flex items-center gap-2 ${
+                            selectedSeason === season.season_number
+                              ? 'bg-white/20 text-white shadow-lg scale-105'
+                              : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white hover:scale-105'
+                          } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          whileHover={{ scale: isUpdating ? 1 : 1.05 }}
+                          whileTap={{ scale: isUpdating ? 1 : 0.95 }}
+                        >
+                          {selectedSeason !== null && season.season_number < selectedSeason ? (
+                            <LuCheck className="w-4 h-4" />
+                          ) : season.season_number === selectedSeason ? (
+                            <LuPlay className="w-4 h-4" />
+                          ) : (
+                            <LuClock className="w-4 h-4" />
+                          )}
+                          <span>{season.name}</span>
+                        </motion.button>
+                        
+                        {/* Play button for season */}
+                        <Link
+                          href={`/player/tv/${show.id}?season=${season.season_number}&episode=1&autoplay=true&colour=00ff9d&autonextepisode=true`}
+                          className="absolute top-0 right-0 p-1 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 transform translate-x-1/2 -translate-y-1/2 hover:bg-black/80"
+                        >
+                          <LuExternalLink className="w-3 h-3 text-white" />
+                        </Link>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -271,39 +281,48 @@ export default function TVShowProgress({ show, watchlistEntry }: TVShowProgressP
                     <label className="block text-sm text-gray-400 mb-3 font-medium">Episode</label>
                     <div className="grid grid-cols-5 sm:grid-cols-8 gap-2">
                       {Array.from({ length: totalEpisodes }, (_, i) => i + 1).map((episode) => (
-                        <motion.button
-                          key={episode}
-                          onClick={() => {
-                            if (selectedEpisode === episode) {
-                              handleEpisodeSelect(Math.max(episode - 1, 0));
-                            } else {
-                              handleEpisodeSelect(episode);
-                            }
-                          }}
-                          disabled={isUpdating}
-                          className={`px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
-                            selectedEpisode === episode
-                              ? 'bg-white/20 text-white shadow-lg scale-105'
-                              : episode < selectedEpisode
-                              ? 'bg-white/10 text-gray-300'
-                              : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
-                          } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          whileHover={{ scale: isUpdating ? 1 : 1.05 }}
-                          whileTap={{ scale: isUpdating ? 1 : 0.95 }}
-                        >
-                          {episode <= selectedEpisode ? (
-                            <div className="flex items-center justify-center gap-1">
-                              {episode === selectedEpisode ? (
-                                <LuPlay className="w-3 h-3" />
-                              ) : (
-                                <LuCheck className="w-3 h-3" />
-                              )}
-                              {episode}
-                            </div>
-                          ) : (
-                            episode
-                          )}
-                        </motion.button>
+                        <div key={episode} className="relative group">
+                          <motion.button
+                            onClick={() => {
+                              if (selectedEpisode === episode) {
+                                handleEpisodeSelect(Math.max(episode - 1, 0));
+                              } else {
+                                handleEpisodeSelect(episode);
+                              }
+                            }}
+                            disabled={isUpdating}
+                            className={`w-full px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                              selectedEpisode === episode
+                                ? 'bg-white/20 text-white shadow-lg scale-105'
+                                : episode < selectedEpisode
+                                ? 'bg-white/10 text-gray-300'
+                                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                            } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            whileHover={{ scale: isUpdating ? 1 : 1.05 }}
+                            whileTap={{ scale: isUpdating ? 1 : 0.95 }}
+                          >
+                            {episode <= selectedEpisode ? (
+                              <div className="flex items-center justify-center gap-1">
+                                {episode === selectedEpisode ? (
+                                  <LuPlay className="w-3 h-3" />
+                                ) : (
+                                  <LuCheck className="w-3 h-3" />
+                                )}
+                                {episode}
+                              </div>
+                            ) : (
+                              episode
+                            )}
+                          </motion.button>
+                          
+                          {/* Play button overlay */}
+                          <Link
+                            href={`/player/tv/${show.id}?season=${selectedSeason}&episode=${episode}&autoplay=true&colour=00ff9d&autonextepisode=true`}
+                            className="absolute top-0 right-0 p-1 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 transform translate-x-1/2 -translate-y-1/2 hover:bg-black/80"
+                          >
+                            <LuExternalLink className="w-3 h-3 text-white" />
+                          </Link>
+                        </div>
                       ))}
                     </div>
                   </div>

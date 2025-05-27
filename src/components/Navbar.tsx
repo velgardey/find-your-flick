@@ -17,6 +17,14 @@ export default function Navbar() {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const auth = getAuth();
   const [user] = useAuthState(auth);
+  
+  // Hide navbar on player pages
+  const isPlayerPage = pathname?.startsWith('/player');
+  
+  // If we're on a player page, don't render the navbar
+  if (isPlayerPage) {
+    return null;
+  }
 
   const navigation = [
     { name: 'Home', href: '/', icon: LuHouse, protected: false },
